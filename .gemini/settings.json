@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "obsidian": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-obsidian"
+      ],
+      "env": {
+        "OBSIDIAN_VAULT_PATH": "/home/alanyh/oil_dataset/new/obsidian-vault"
+      }
+    }
+  }
+}
