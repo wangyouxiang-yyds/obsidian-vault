@@ -43,6 +43,12 @@ _尚無頁面_
 
 ---
 
+## 環境設定（wiki/environment/）
+
+- [Docker_環境設定.md](wiki/environment/Docker_環境設定.md) — Docker 環境與 MCP 設定紀錄：基礎映像檔、全域套件、CUDA 核心算子、MCP 自動化指令
+
+---
+
 ## 分析輸出（outputs/）
 
 _尚無頁面_
