@@ -8,6 +8,7 @@
 
 - [sen2like.md](wiki/pipeline/sen2like.md) — Sen2Like 處理流程：大氣校正、光譜一致化、Fusion、空間對齊、比對工具箱
 - [project_overview.md](wiki/pipeline/project_overview.md) — OIL_PROJECT_MutiBand_0420 專案概述：模型架構、前處理、訓練設定、I/O 優化、重要路徑
+- [OIL_PROJECT_VRT_0422.md](wiki/pipeline/OIL_PROJECT_VRT_0422.md) — 0422 VRT 訓練專案：GDAL VRT 虛擬影像、動態 Patch 讀取、全場景 Mask 流程
 
 ---
 
