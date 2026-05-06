@@ -6,7 +6,7 @@
 
 ## 專案背景
 
-**研究目標**：利用多光譜衛星影像（Sentinel-2 / Landsat 8/9）進行海面油汙自動偵測，最終訓練 SegFormer 語義分割模型。
+**研究目標**：利用多光譜衛星影像（Sentinel-2 / Landsat 8/9）進行海面油汙自動偵測，最終訓練 Deeplabv3+ 或 OSDmamba 語義分割模型。
 
 **資料來源**：Sen2Like 處理後的多波段 TIF 檔案，統一為 11 個波段（443/492/560/665/704/740/783/833/865/1614/2202 nm），解析度對齊至 10m（10980×10980）。
 
@@ -17,7 +17,7 @@
     ↓ stack_multiband_tif.py（11 波段疊合）
     ↓ patch_from_stacked_tif.py（切 256×256 patch）
     ↓ Hard_Negative_Mining（HNM 四步驟）
-    ↓ SegFormer 訓練
+    ↓ Deeplabv3+ or OSDmamba 訓練
     ↓ 油汙偵測結果
 ```
 
@@ -195,7 +195,7 @@ tags: []
 
 每次 Claude 完成一批 Wiki 更新後，執行：
 ```bash
-cd /home/alanyh/oil_dataset/new/obsidian-vault
+cd /home/alanyh/obsidian-vault
 git add .
 git commit -m "wiki: [說明更新內容]"
 git push
@@ -209,3 +209,11 @@ git push
 - `log.md` 只能 append，不可修改舊紀錄
 - 每次新增頁面後必須更新 `index.md`
 - 不確定的技術細節請詢問使用者後再寫入，不要猜測
+
+
+## 啟動規則
+
+每次 Claude Code 在以下目錄啟動時，自動執行：
+1. 讀取本文件（CLAUDE.md）
+2. 讀取 index.md 了解目前 wiki 狀態
+3. 等待使用者指令，不要主動修改任何檔案
