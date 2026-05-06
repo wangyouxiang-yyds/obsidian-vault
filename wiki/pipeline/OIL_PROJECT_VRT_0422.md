@@ -48,6 +48,23 @@
 
 ---
 
+## 🔄 OSDMamba 優化移植 (來自 0420 版本)
+
+為了提升 OSDMamba 的訓練效能與準確度，已將 0420 版本中的關鍵優化移植至 0422 專案中，同時確保不影響 VRT 動態讀取流程：
+
+### 1. 訓練效能優化
+- **AMP (混合精度)**：引入 `torch.amp` 自動混合精度訓練，顯著降低顯存佔用並提升計算速度。
+- **EMA (權重平均)**：引入 `ModelEma` 並支援 `ema_update_interval`，驗證與儲存均使用平滑後的權重。
+- **向量化指標計算**：在訓練迴圈中使用矩陣運算計算 IoU，減少 CPU 與 GPU 之間的同步等待。
+
+### 2. 模型優化與損失函數
+- **加權損失 (Class Weights)**：`_dice_loss` 與 `FocalLoss` 均支援類別權重，針對樣本不均的油汙類別進行加強學習。
+- **標竿儲存 (Best Model Saving)**：模型儲存基準從整體的 `mIoU` 改為專注於 **Oil Class IoU**，確保最佳權重是對油汙偵測最有利的版本。
+
+### 3. 進階驗證 (TTA Validation)
+- **TTA (測試時增強)**：`val()` 方法支援「原圖 + 水平翻轉 + 垂直翻轉」三者融合預測，提升預測結果的穩定性。
+- **詳細混淆矩陣**：自動生成百分比格式的混淆矩陣，並輸出 Recall, Precision, IoU, F1 等完整指標。
+
 ## 🔗 相關路徑
 - **Dataset (NAS)**: \`/mnt/backup/oil_dataset/new/full_band/\`
 - **VRT Files**: \`/mnt/backup/oil_dataset/new/full_band/vrt/\`
