@@ -65,6 +65,13 @@
 - **TTA (測試時增強)**：`val()` 方法支援「原圖 + 水平翻轉 + 垂直翻轉」三者融合預測，提升預測結果的穩定性。
 - **詳細混淆矩陣**：自動生成百分比格式的混淆矩陣，並輸出 Recall, Precision, IoU, F1 等完整指標。
 
+### YAML 配置優化 (05-05)
+針對 OSDMamba 實驗進行了路徑與效能優化：
+- **CV 分割調整**：切換至 `patch_level_GB1.0` 版本。
+- **資料讀取轉型**：全面啟用 `read_images_from_vrt: true`，移除 NAS 上的實體 Patch 快取，改由本機 Mask TIF 動態讀取。
+- **類別權重平衡**：加入 `class_weights: [30.0, 1.0]` 強化油汙類別權重。
+- **重組效能提升**：推論時切換至本機 NVMe 的 Stacked TIF (`original_data_root`)，避開網路 I/O 瓶頸，Batch Size 提升至 32。
+
 ## 🔗 相關路徑
 - **Dataset (NAS)**: \`/mnt/backup/oil_dataset/new/full_band/\`
 - **VRT Files**: \`/mnt/backup/oil_dataset/new/full_band/vrt/\`
