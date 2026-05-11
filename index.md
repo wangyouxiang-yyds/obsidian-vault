@@ -23,7 +23,8 @@
 
 ## 模型（wiki/models/）
 
-_尚無頁面_
+- [DeepLabV3+.md](wiki/models/DeepLabV3+.md) — DeepLabV3+ 工程紀錄：ResNet50 骨幹、11 通道輸入、FocalLoss、Sliding Window 推論設定
+- [OSDMamba.md](wiki/models/OSDMamba.md) — OSDMamba 工程紀錄：SwinUMambaD 配置、Dice+Focal 聯合損失、EMA、RTX 5090 踩坑與對策
 
 ---
 
