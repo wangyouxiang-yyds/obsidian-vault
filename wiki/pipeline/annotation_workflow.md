@@ -67,6 +67,28 @@ json_to_mask_tif.py / reconstruct_module（完全不動）
 
 ---
 
+## acolite 舊標注 vs. sen2like 新資料：像素座標是否對齊？
+
+**結論：對齊，舊 JSON 可直接用於 sen2like 資料。**
+
+原因：JSON 存的是像素座標，不是地理座標。只要兩個工具處理同一個 Sentinel-2 tile 時像素網格一致，座標就不會偏移。
+
+Sentinel-2 的 tile 邊界是固定的 UTM 座標，acolite 和 sen2like 處理同一個 granule（例如 34SGG）時，兩者的像素 (0,0) 都指向同一個地理位置（tile 左上角）。
+
+**實際驗證（34SGG 場景）**：
+- 舊 JSON：`imageHeight: 10980, imageWidth: 10980`
+- sen2like TIF：`height: 10980, width: 10980`，`transform origin: (699960, 4200000)` = 34SGG tile 標準左上角
+
+兩者完全一致。
+
+### 唯一的風險
+
+如果當初 acolite 是在**裁切過**的影像上標記的（不是完整的 10980×10980 tile），起點就不同，座標會偏移。
+
+**判斷方式**：看 JSON 的 `imageWidth/imageHeight` 是否為 10980。若是，則像素網格與 sen2like 對齊，可直接使用。
+
+---
+
 ## 待改進
 
 - `gpkg_to_labelme.py` 目前為單場景硬編碼，若要批次處理多個場景需要改寫成接受資料夾或命令列參數的版本
