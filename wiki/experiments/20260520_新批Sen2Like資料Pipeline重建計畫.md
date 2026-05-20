@@ -308,9 +308,19 @@ conda run -n yolo11 python main/main_runner.py \
 
 ---
 
+## 重新分配場景的時機
+
+`build_scene_splits_stratified.py` 設計為可重複執行：每次執行會掃描當下所有已存在的場景，完整重建所有 fold TXT 檔。
+
+**若後續有新場景加入或場景有異動，只需重跑 Step 3（+ Step 4）即可，不需重跑 Step 1/2。**
+
+> ⚠️ 建議等所有新資料**完全上傳就位**後再執行 Step 3，避免因資料未齊而多次重跑。
+
+---
+
 ## 下一步
 
-1. 確認新資料上傳進度
+1. 等新資料全部上傳完畢
 2. 對新 GPKG 場景執行 Step 0（gpkg → JSON 轉換）
 3. 實作 `build_scene_splits_stratified.py`，先在 dry-run 模式印出分配結果讓你確認
 4. 確認分配結果後，依序執行 Step 1 → 2 → 3 → 4 → 5
