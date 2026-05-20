@@ -3,7 +3,7 @@ date: 2026-05-20
 type: experiment
 stage: preprocess
 status: planning
-tags: [sen2like, deeplabv3+, patching, fold-split, GB1.0]
+tags: [sen2like, deeplabv3+, patching, fold-split, GB1.0, 8band]
 ---
 
 # 新批 Sen2Like 資料完整 Pipeline 重建計畫
@@ -14,6 +14,9 @@ tags: [sen2like, deeplabv3+, patching, fold-split, GB1.0]
 
 本次同步調整 fold 分割策略，確保訓練集設計更嚴謹、各 fold 難度更均衡。
 
+> ⚠️ **重要：波段數從 11 改為 8**
+> 新批 Sen2Like 只輸出 B01/02/03/04/08/8A/11/12（8 個波段），不含原本的 B05/B06/B07（紅邊波段）。全流程中凡涉及波段設定的地方均需更新，詳見各步驟說明。
+
 ---
 
 ## 本次設計原則
@@ -21,6 +24,7 @@ tags: [sen2like, deeplabv3+, patching, fold-split, GB1.0]
 | 項目 | 設定 |
 |---|---|
 | 模型 | DeepLabV3+ |
+| 輸入波段數 | **8 bands**（B01/02/03/04/08/8A/11/12） |
 | Oil : Background 比例 | **1 : 1**（GB1.0） |
 | Test set | **2025 年全部場景**（5 個 fold 共用固定 test set） |
 | Train / Val | 非 2025 年資料做 5-fold 輪換 |
@@ -42,11 +46,13 @@ tags: [sen2like, deeplabv3+, patching, fold-split, GB1.0]
 ## 完整流程
 
 ```
-JSON 標注（已更新）
+GPKG 標注（新場景）
+    ↓ Step 0：gpkg_to_labelme.py（以 B02 為 ref_tif）
+JSON 標注（統一格式）
     ↓ Step 1：json_to_mask_tif.py
 全場景 mask TIF（重新生成）
-    ↓ Step 2：stack_multiband_tif.py + build_vrt.py（新場景就位後）
-11-band VRT 虛擬影像
+    ↓ Step 2：stack_multiband_tif.py（8-band）+ build_vrt.py（新場景就位後）
+8-band VRT 虛擬影像
     ↓ Step 3：build_scene_splits_stratified.py（新腳本）
 scene_level fold TXT（stratified 分配）
     ↓ Step 4：patch_from_stacked_tif_0421.py（OIL_TO_BG_RATIO=1.0）
@@ -54,6 +60,34 @@ patch_level_GB1.0 fold TXT（座標清單）
     ↓ Step 5：main_runner.py + experiments_CV.yaml
 DeepLabV3+ 5-fold CV 訓練
 ```
+
+---
+
+## Step 0：GPKG 標注 → LabelMe JSON 轉換
+
+**只適用於新批資料中帶有 `.gpkg` 標注的場景；已是 `.json` 格式的舊場景直接跳過。**
+
+使用已有腳本：`file_label_temp/gpkg_to_labelme.py`
+
+**ref_tif**：用 Sen2Like 輸出的 **B02 單波段 TIF**（10m native，不需等 stack 完成，CRS/transform 與 stacked TIF 完全一致）。
+
+```bash
+# 對每個有 GPKG 標注的場景執行一次（場景資料夾模式）
+python file_label_temp/gpkg_to_labelme.py \
+    --scene_dir /path/to/scene_gpkg_folder/ \
+    --ref_tif   /path/to/scene/B02.tif \
+    --output    /mnt/backup/oil_dataset/new/full_band/JSON/SCENE_NAME.json
+```
+
+**檔名命名規則**（`infer_label` 自動識別）：
+
+| GPKG 檔名 | 推斷 label |
+|---|---|
+| `*_oil.gpkg` | oil |
+| `*_oil_1.gpkg`、`*_oil_2.gpkg` | oil |
+| `*_background.gpkg` | background |
+
+輸出放到 `/mnt/backup/oil_dataset/new/full_band/JSON/`，與舊資料 JSON 放同一目錄。
 
 ---
 
@@ -92,7 +126,20 @@ conda run -n yolo11 python preprocess/build_vrt.py
 ```
 
 - 輸出：`/mnt/backup/oil_dataset/new/full_band/vrt/*.vrt`
-- 格式：11 波段（443/492/560/665/704/740/783/833/865/1614/2202 nm），10m 解析度
+- 格式：**8 波段**，依波長升序排列，10m 解析度
+
+| Index | 波長(nm) | 對應波段 |
+|---|---|---|
+| 1 | 443 | B01 |
+| 2 | 492 | B02 |
+| 3 | 560 | B03 |
+| 4 | 665 | B04 |
+| 5 | 833 | B08 |
+| 6 | 865 | B8A |
+| 7 | 1614 | B11 |
+| 8 | 2202 | B12 |
+
+> ⚠️ `stack_multiband_tif.py` 的波段清單需從原本的 11 個更新為上表這 8 個。
 
 ---
 
@@ -220,9 +267,10 @@ dataset:
 
 **確認其他設定**：
 - `architecture: deeplab`
-- `in_channels: 11`
+- `in_channels: 8`（原本 11 → 改 8）
 - `read_images_from_vrt: true`
 - `cross_validation.enabled: true`、`num_folds: 5`
+- `mean: []`、`std: []`（清空，讓程式從訓練 fold 自動重算 8 個值，算完印出後貼回 YAML 固定）
 
 **啟動訓練**：
 
@@ -237,12 +285,13 @@ conda run -n yolo11 python main/main_runner.py \
 
 | 檔案 | 動作 | 備註 |
 |---|---|---|
+| `file_label_temp/gpkg_to_labelme.py` | 執行 | 新 GPKG 場景轉 JSON，ref_tif 用 B02 |
 | `preprocess/json_to_mask_tif.py` | 重跑 | 先清除舊 mask/ |
-| `preprocess/stack_multiband_tif.py` | 重跑 | 新場景就位後 |
+| `preprocess/stack_multiband_tif.py` | **修改 + 重跑** | 波段清單改為 8 個（B01/02/03/04/08/8A/11/12） |
 | `preprocess/build_vrt.py` | 重跑 | 新場景就位後 |
 | `preprocess/build_scene_splits_stratified.py` | **新建** | 本次核心新腳本 |
 | `preprocess/patch_from_stacked_tif_0421.py` | 修改第 45 行 | `OIL_TO_BG_RATIO = 1.0` |
-| `main/experiments_CV.yaml` | 修改 `split_dir` | 指向 `patch_level_GB1.0` |
+| `main/experiments_CV.yaml` | 修改多處 | `split_dir`、`in_channels: 8`、`mean/std` 清空 |
 
 ---
 
@@ -250,8 +299,9 @@ conda run -n yolo11 python main/main_runner.py \
 
 | 步驟 | 等待條件 | 預估耗時 |
 |---|---|---|
-| Step 1（mask 重生） | 無（可立即執行） | 依場景數量 |
-| Step 2（VRT） | 新資料完全上傳 | 依資料量 |
+| Step 0（GPKG → JSON） | 無（可立即執行，只需 B02） | 數分鐘 |
+| Step 1（mask 重生） | Step 0 完成 | 依場景數量 |
+| Step 2（stack + VRT） | 新資料完全上傳 | 依資料量 |
 | Step 3（fold split） | Step 2 完成 | 數分鐘 |
 | Step 4（patching） | Step 1 + Step 3 完成 | 數小時 |
 | Step 5（訓練） | Step 4 完成 | 數天 |
@@ -261,5 +311,6 @@ conda run -n yolo11 python main/main_runner.py \
 ## 下一步
 
 1. 確認新資料上傳進度
-2. 實作 `build_scene_splits_stratified.py`，先在 dry-run 模式印出分配結果讓你確認
-3. 確認分配結果後，再依序執行 Step 1 → 4 → 5
+2. 對新 GPKG 場景執行 Step 0（gpkg → JSON 轉換）
+3. 實作 `build_scene_splits_stratified.py`，先在 dry-run 模式印出分配結果讓你確認
+4. 確認分配結果後，依序執行 Step 1 → 2 → 3 → 4 → 5

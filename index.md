@@ -18,7 +18,7 @@
 - [20260429_OSDMamba整合至0420.md](wiki/experiments/20260429_OSDMamba整合至0420.md) — OSDMamba 整合至 0420 專案：移植工作、與 0422 版差異、下一步
 - [20260430_訓練效能優化.md](wiki/experiments/20260430_訓練效能優化.md) — OSDMamba 訓練效能優化：CPU-GPU 同步瓶頸、向量化 Loss、EMA 調整
 - [20260501_大圖重組效能優化.md](wiki/experiments/20260501_大圖重組效能優化.md) — 大圖重組效能優化：NAS I/O 瓶頸、GPU 側重組、Batch Size 提升
-- [20260520_新批Sen2Like資料Pipeline重建計畫.md](wiki/experiments/20260520_新批Sen2Like資料Pipeline重建計畫.md) — 新資料引入完整 pipeline：GB1.0、2025 固定 test set、stratified scene-level fold split 設計
+- [20260520_新批Sen2Like資料Pipeline重建計畫.md](wiki/experiments/20260520_新批Sen2Like資料Pipeline重建計畫.md) — 新資料引入完整 pipeline：8-band（B01/02/03/04/08/8A/11/12）、GPKG→JSON 轉換、GB1.0、2025 固定 test set、stratified scene-level fold split
 - [OSDMamba_摘要.md](wiki/papers/OSDMamba_摘要.md) — OSDMamba 論文摘要：首個基於 Mamba 的油汙偵測架構、SS2D 感受野擴張、ConvSSM 解碼器
 
 ---
