@@ -216,12 +216,97 @@ patch = src.read(...).astype(np.float32) / 10000.0
 
 ---
 
+## Bug 2：VRT 解析度與 Mask 不對齊（2026-05-21 發現）
+
+### 現象
+
+修正 Bug 1、重建 VRT、重啟訓練後，62 個 epoch 的 `val_iou_Oil` 始終為 0。
+
+### 根本原因
+
+`build_vrt_ms6.py` 以 **B01（60m，1830×1830）** 作為 VRT 參考波段：
+
+```python
+with rasterio.open(str(band_files[0])) as src:  # band_files[0] 是 B01
+    h, w = src.height, src.width   # 1830 × 1830
+```
+
+導致 VRT 解析度為 **60m（1830×1830）**，但：
+
+| 檔案 | 解析度 | 像素座標系 |
+|------|--------|-----------|
+| Mask TIF | 10m (10980×10980) | 最大座標 10979 |
+| Patch TXT 座標 | 10m 像素空間 | x,y 最大 ~9500 |
+| VRT（舊） | 60m (1830×1830) | 最大座標 1829 |
+
+Patch 座標（如 x=7296, y=5184）遠超 VRT 邊界 → `rasterio` `boundless=True` 填 0 → **模型訓練的所有影像都是空白（全零）**。
+
+### 驗證
+
+```python
+# 在已知有 63419 個油污像素的 patch 讀取影像
+patch = src.read(window=Window(7296, 5184, 256, 256), ...)
+# 舊 VRT（60m）：min=0, max=0  ← 全零！
+# 新 VRT（10m）：mean≈0.13      ← 正常反射率
+```
+
+### 修復
+
+**`preprocess/build_vrt_ms6.py`**：以 `band_files[1]`（B02，10m）為 VRT 參考，並為每個波段讀取其實際尺寸作為 SrcRect，VRT 尺寸作為 DstRect：
+
+```python
+# 修改前（錯誤）
+with rasterio.open(str(band_files[0])) as src:   # B01, 60m
+    h, w = src.height, src.width  # 1830×1830
+
+_BAND_TMPL: SrcRect={w}×{h}, DstRect={w}×{h}  # 所有 band 用同一尺寸
+
+# 修改後（正確）
+with rasterio.open(str(band_files[1])) as src:   # B02, 10m
+    h, w = src.height, src.width  # 10980×10980
+
+# 每個 band 讀其真實尺寸作 SrcRect，VRT 尺寸作 DstRect
+for band_file in band_files:
+    with rasterio.open(band_file) as src:
+        src_w, src_h = src.width, src.height
+    # SrcRect=(0,0,src_w,src_h), DstRect=(0,0,10980,10980)
+    # GDAL 自動處理 resample（B01 6x upsample、B8A/B11/B12 2x upsample）
+```
+
+VRT_OUT_DIR 同時從 `/mnt/backup/.../vrt` 改為直接輸出到本機 SSD：`/home/alanyh/oil_dataset/new/full_band/MS6_sen2like_vrt`。
+
+### 處理步驟
+
+1. 刪除 220 個舊 VRT（`find ... -name "*.vrt" -delete`）
+2. 執行修正後的腳本重建（約 35 秒，220 成功 / 1 失敗（B02 缺失）)
+3. 重算 mean/std（只計算非零像素，排除 nodata fill）
+
+### 修正後的 mean/std（2026-05-21，500 patch 抽樣）
+
+| 波段 | mean | std |
+|------|------|-----|
+| B01 | 0.190978 | 0.136939 |
+| B02 | 0.184417 | 0.130860 |
+| B03 | 0.177819 | 0.129367 |
+| B04 | 0.171368 | 0.131349 |
+| B08 | 0.171265 | 0.136126 |
+| B8A | 0.169873 | 0.131062 |
+| B11 | 0.151570 | 0.072673 |
+| B12 | 0.145186 | 0.062876 |
+
+（舊值 mean≈0.005 是因為大部分像素讀出全零）
+
+---
+
+## 目前狀態（2026-05-21）
+
+- Fold 1 重啟訓練中（修正後第一次有效訓練）
+- `num_folds: 1`，epochs=300，patience=50，workers=8
+
+---
+
 ## 下一步
 
-1. **重啟 Docker** 清除卡住的 process
-2. **修正 `deeplab_adapter.py`**：在 `_get_pos_vrt_item` 和 `_auto_calculate_stats_vrt` 中讀取後加 `/ 10000.0`
-3. **在 YAML 固定 mean/std**（跳過自動計算，加速啟動）：
-   - 從 20 個 patch 抽樣估算：mean ≈ `[0.023, 0.006, 0.006, 0.005, 0.006, 0.010, 0.011, 0.011]`
-   - 正式 500 樣本版在修正後重算
-4. 修正後重新試跑 Fold 1，確認 GPU 訓練正常啟動
-5. Fold 1 確認 OK 後，`num_folds: 1` 改回 `5`，啟動完整 5-fold 訓練
+1. 等 Fold 1 訓練完成，確認 `val_iou_Oil` 有明顯改善
+2. 若 Oil IoU 仍偏低，考慮加入 `class_weights`（初步建議 `[20.0, 1.0]`）
+3. Fold 1 OK 後 `num_folds: 5` 啟動完整 5-fold
