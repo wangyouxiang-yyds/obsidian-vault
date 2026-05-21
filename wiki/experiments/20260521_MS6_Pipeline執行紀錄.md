@@ -298,15 +298,71 @@ VRT_OUT_DIR 同時從 `/mnt/backup/.../vrt` 改為直接輸出到本機 SSD：`/
 
 ---
 
+## 效能優化：DataLoader I/O 瓶頸（2026-05-21）
+
+### 現象
+
+VRT 修復後訓練有效（Oil IoU ≠ 0），但每個 epoch 約 7–9 分鐘（300 epoch ≈ 35–45 小時）。
+診斷：GPU 使用率 0%，8 個 DataLoader workers 各佔 ~49% CPU → 資料讀取是瓶頸。
+
+### 根本原因
+
+兩層問題：
+
+1. **每個 sample 都重新開檔**：`_get_pos_vrt_item` 用 `with rasterio.open(VRT)` → 每次打開 VRT XML + 8 個來源 TIF（共 9 個 file open）。每個 epoch 2406 個 samples × 9 次 open = 21,654 次 file open。
+
+2. **Worker 每 epoch 重建**：PyTorch DataLoader 預設 `persistent_workers=False`，每個 epoch 結束就殺掉 worker process，下一個 epoch 重新 fork → `_ds_cache` 每次清空，快取完全失效。
+
+### 修復
+
+**`main/deeplab_adapter.py`** 兩處修改：
+
+**A. Module-level rasterio file handle cache**（每個 worker process 獨立，fork 後各自維持）：
+```python
+_ds_cache: dict = {}
+
+def _cached_rasterio_open(path: str):
+    if path not in _ds_cache:
+        import rasterio
+        _ds_cache[path] = rasterio.open(path)
+    return _ds_cache[path]
+```
+
+`_get_pos_vrt_item` 改用 `_cached_rasterio_open()`，不再用 `with rasterio.open() as src`。
+
+**B. `persistent_workers=True`**（讓 worker process 跨 epoch 存活，快取得以保留）：
+```python
+persist = workers > 0
+train_loader = DataLoader(..., persistent_workers=persist)
+val_loader   = DataLoader(..., persistent_workers=persist)
+```
+
+### 效果
+
+- Epoch 1（cold cache）：~420 秒（快取正在填充）
+- Epoch 2+（warm cache）：待確認
+
+---
+
 ## 目前狀態（2026-05-21）
 
-- Fold 1 重啟訓練中（修正後第一次有效訓練）
+- Fold 1 訓練中（含 file handle cache + persistent_workers 優化）
 - `num_folds: 1`，epochs=300，patience=50，workers=8
+- Epoch 1–6 結果（舊跑次，已確認 VRT 修復有效）：
+
+| Epoch | val_iou_Oil | val_miou |
+|-------|------------|---------|
+| 1 | 0.000 | 0.493 |
+| 2 | 0.000 | 0.493 |
+| 3 | 0.026 | 0.505 |
+| 4 | 0.031 | 0.501 |
+| 5 | 0.022 | 0.491 |
+| 6 | 0.026 | 0.500 |
 
 ---
 
 ## 下一步
 
-1. 等 Fold 1 訓練完成，確認 `val_iou_Oil` 有明顯改善
-2. 若 Oil IoU 仍偏低，考慮加入 `class_weights`（初步建議 `[20.0, 1.0]`）
-3. Fold 1 OK 後 `num_folds: 5` 啟動完整 5-fold
+1. 確認 `persistent_workers` 後 epoch 速度改善
+2. 若 Oil IoU 仍在 0.02–0.03 停滯，考慮加 `class_weights: [20.0, 1.0]`
+3. Fold 1 完成後 `num_folds: 5` 啟動完整 5-fold
