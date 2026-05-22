@@ -298,71 +298,121 @@ VRT_OUT_DIR 同時從 `/mnt/backup/.../vrt` 改為直接輸出到本機 SSD：`/
 
 ---
 
-## 效能優化：DataLoader I/O 瓶頸（2026-05-21）
+## 效能優化 Round 1：DataLoader file handle cache（2026-05-21）
 
 ### 現象
 
 VRT 修復後訓練有效（Oil IoU ≠ 0），但每個 epoch 約 7–9 分鐘（300 epoch ≈ 35–45 小時）。
 診斷：GPU 使用率 0%，8 個 DataLoader workers 各佔 ~49% CPU → 資料讀取是瓶頸。
 
-### 根本原因
+### 第一層原因（已修）：每 epoch 重建 worker process
 
-兩層問題：
+PyTorch DataLoader 預設 `persistent_workers=False`，每個 epoch 結束就殺掉 worker process，module-level `_ds_cache` 清空。
 
-1. **每個 sample 都重新開檔**：`_get_pos_vrt_item` 用 `with rasterio.open(VRT)` → 每次打開 VRT XML + 8 個來源 TIF（共 9 個 file open）。每個 epoch 2406 個 samples × 9 次 open = 21,654 次 file open。
+**修復（`main/deeplab_adapter.py`）：**
 
-2. **Worker 每 epoch 重建**：PyTorch DataLoader 預設 `persistent_workers=False`，每個 epoch 結束就殺掉 worker process，下一個 epoch 重新 fork → `_ds_cache` 每次清空，快取完全失效。
-
-### 修復
-
-**`main/deeplab_adapter.py`** 兩處修改：
-
-**A. Module-level rasterio file handle cache**（每個 worker process 獨立，fork 後各自維持）：
 ```python
 _ds_cache: dict = {}
 
 def _cached_rasterio_open(path: str):
     if path not in _ds_cache:
-        import rasterio
         _ds_cache[path] = rasterio.open(path)
     return _ds_cache[path]
 ```
 
-`_get_pos_vrt_item` 改用 `_cached_rasterio_open()`，不再用 `with rasterio.open() as src`。
-
-**B. `persistent_workers=True`**（讓 worker process 跨 epoch 存活，快取得以保留）：
-```python
-persist = workers > 0
-train_loader = DataLoader(..., persistent_workers=persist)
-val_loader   = DataLoader(..., persistent_workers=persist)
-```
+`_get_pos_vrt_item` 改用 `_cached_rasterio_open()`；DataLoader 加 `persistent_workers=True`。
 
 ### 效果
 
-- Epoch 1（cold cache）：~420 秒（快取正在填充）
-- Epoch 2+（warm cache）：待確認
+- 有改善，但 epoch 仍約 8–9 分鐘，GPU 仍 0%
+- 表示瓶頸不在 file open 次數，而在讀取本身
 
 ---
 
-## 目前狀態（2026-05-21）
+## 效能優化 Round 2：TIF 格式根本原因診斷（2026-05-22）
 
-- Fold 1 訓練中（含 file handle cache + persistent_workers 優化）
+### Benchmark
+
+```python
+# 讀取 256×256 window from B03.tif（10m, 10980×10980）
+B03 strip read (10 次平均): 397ms
+B03 COG tiled read (10 次平均): 43.6ms  ← 9× 加速
+```
+
+### 根本原因
+
+MS6_sen2like TIF 的內部結構：
+
+```
+block_shapes: [(1, 10980)]   ← strip 格式：每行儲存一條
+compress: LZW
+```
+
+讀取一個 256×256 的 patch → GDAL 必須解壓 256 條 strip，每條 10980 pixels → 實際 I/O 是需求量的 **43 倍**。
+
+| 波段 | 格式 | 每 sample 讀取時間 |
+|------|------|------------------|
+| B01 (60m, 1830×1830) | strip | ~46ms（小檔，尚可）|
+| B02/03/04/08 (10m) | strip | ~330ms 各 ← 主要瓶頸 |
+| B8A/11/12 (20m, 5490×5490) | strip | ~115ms 各 |
+| **VRT 8 band 合計** | | **~1600ms/sample** |
+
+**舊的「1:20/epoch」是虛假速度**：60m VRT 版本所有 patch 讀出全零（座標超出邊界），根本沒有真正的 I/O。
+
+### 修復：in-place COG 轉換
+
+將所有 B02/03/04/08（10m）及 B8A/11/12（20m）的 TIF 轉成 **256×256 tile 的 COG**（Cloud Optimized GeoTIFF）。
+
+- **Lossless**：DEFLATE + predictor=2，uint16 資料完整保留
+- **VRT 路徑不變**：in-place 轉換（tmp → rename），VRT 與 deeplab_adapter.py 不需修改
+- **轉換腳本**：`/home/alanyh/oil_dataset/new/full_band/convert_to_cog.py`
+  - 8 workers 並行，每檔寫入 `.cog_tmp.tif` 後驗證 pixel 值一致再 rename
+  - Log：`/home/alanyh/oil_dataset/new/full_band/cog_convert.log`
+
+### 預計效果
+
+| | 現況 | COG 後（估算）|
+|---|---|---|
+| B02/03/04/08 各 | ~330ms | ~44ms |
+| B8A/11/12 各 | ~115ms | ~12ms |
+| **每 sample 合計** | ~1600ms | ~258ms |
+| **epoch 時間** | ~9 min | **~2 min（估算）** |
+
+### 轉換進度（2026-05-22 開始）
+
+- 目標：1546 個檔案（B02×220、B03/04/08/8A/11/12 各 221）
+- 估計時間：約 2.7 小時（8 workers 並行）
+- 狀態：**轉換中**（PID 49030）
+
+---
+
+## 訓練結果（VRT 修復後，已停止）
+
+Fold 1 在 VRT 修復後、COG 轉換前跑了約 65 個 epoch 後因速度過慢而停止。
+
+| Epoch | val_iou_Oil | val_miou | 備註 |
+|-------|------------|---------|------|
+| 1 | 0.000 | 0.493 | |
+| 2 | 0.000 | 0.493 | |
+| 3 | 0.026 | 0.505 | ← VRT 修復有效，首次 > 0 |
+| 4 | 0.031 | 0.501 | |
+| 5 | 0.022 | 0.491 | |
+| 6 | 0.026 | 0.500 | |
+| ~65 | ~0.24 | — | 停止前最高點（約估） |
+
+---
+
+## 目前狀態（2026-05-22）
+
+- COG 轉換進行中，完成後重啟 Fold 1 訓練
 - `num_folds: 1`，epochs=300，patience=50，workers=8
-- Epoch 1–6 結果（舊跑次，已確認 VRT 修復有效）：
-
-| Epoch | val_iou_Oil | val_miou |
-|-------|------------|---------|
-| 1 | 0.000 | 0.493 |
-| 2 | 0.000 | 0.493 |
-| 3 | 0.026 | 0.505 |
-| 4 | 0.031 | 0.501 |
-| 5 | 0.022 | 0.491 |
-| 6 | 0.026 | 0.500 |
+- YAML 不需修改（路徑不變）
 
 ---
 
 ## 下一步
 
-1. 確認 `persistent_workers` 後 epoch 速度改善
-2. 若 Oil IoU 仍在 0.02–0.03 停滯，考慮加 `class_weights: [20.0, 1.0]`
-3. Fold 1 完成後 `num_folds: 5` 啟動完整 5-fold
+1. ✅ COG 轉換完成
+2. 跑 2 個 epoch 確認實際 epoch 速度
+3. 重啟 Fold 1 正式訓練（清空舊 checkpoint）
+4. Fold 1 完成後 `num_folds: 5` 啟動完整 5-fold CV
