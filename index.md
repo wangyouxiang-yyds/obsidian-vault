@@ -33,13 +33,15 @@
 
 ## 資料集（wiki/datasets/）
 
-_尚無頁面_
+- [ms6_sen2like.md](wiki/datasets/ms6_sen2like.md) — MS6_sen2like 8-band 資料集：路徑、波段定義、Mask 映射與 COG 狀態
 
 ---
 
 ## 技術概念（wiki/concepts/）
 
-_尚無頁面_
+- [cloud_optimized_geotiff.md](wiki/concepts/cloud_optimized_geotiff.md) — COG 效能優化：原理與在專案中帶來的 I/O 加速實測
+- [hard_negative_mining.md](wiki/concepts/hard_negative_mining.md) — 困難樣本挖掘：降低誤判率的 HNM 五步驟流程說明
+
 
 ---
 
