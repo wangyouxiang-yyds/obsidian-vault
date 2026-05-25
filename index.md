@@ -19,14 +19,15 @@
 - [20260430_訓練效能優化.md](wiki/experiments/20260430_訓練效能優化.md) — OSDMamba 訓練效能優化：CPU-GPU 同步瓶頸、向量化 Loss、EMA 調整
 - [20260501_大圖重組效能優化.md](wiki/experiments/20260501_大圖重組效能優化.md) — 大圖重組效能優化：NAS I/O 瓶頸、GPU 側重組、Batch Size 提升
 - [20260520_新批Sen2Like資料Pipeline重建計畫.md](wiki/experiments/20260520_新批Sen2Like資料Pipeline重建計畫.md) — 新資料引入完整 pipeline：8-band（B01/02/03/04/08/8A/11/12）、GPKG→JSON 轉換、GB1.0、2025 固定 test set、stratified scene-level fold split
-- [20260521_MS6_Pipeline執行紀錄.md](wiki/experiments/20260521_MS6_Pipeline執行紀錄.md) — Steps 2–5 執行結果、VRT 解析度 Bug（60m→10m 修復）、/10000 資料單位 Bug、I/O 瓶頸診斷（strip TIF 397ms→COG 44ms）、COG 轉換進行中
+- [20260521_MS6_Pipeline執行紀錄.md](wiki/experiments/20260521_MS6_Pipeline執行紀錄.md) — MS6 8-band DeepLabV3+ 完整執行紀錄：VRT 建置（B02 10m 參考）、COG 轉換（1546 TIF，9× I/O 提升）、class_weights、AMP、Bug 修正 6 項（VRT 60m 參考致訓練全零 / 三處 /10000 遺漏 / NIR-R-G PNG 路徑 / 輸出路徑）、重組速度優化（_read_vrt_parallel、async save、bg prefetch）、per-fold log / start_fold、5-fold CV 進行中（Fold 1 完成 mIoU=0.593）
+- [20260525_架構演進與差異彙整.md](wiki/experiments/20260525_架構演進與差異彙整.md) — 2026-05-20 至 05-25 全面對比：資料格式（11→8 band、strip→COG、VRT Bug 修正）、前處理 pipeline、訓練設定（AMP/class_weights）、重組速度優化（_read_vrt_parallel / async save / prefetch）、Bug 修正彙總
 - [OSDMamba_摘要.md](wiki/papers/OSDMamba_摘要.md) — OSDMamba 論文摘要：首個基於 Mamba 的油汙偵測架構、SS2D 感受野擴張、ConvSSM 解碼器
 
 ---
 
 ## 模型（wiki/models/）
 
-- [DeepLabV3+.md](wiki/models/DeepLabV3+.md) — DeepLabV3+ 工程紀錄：ResNet50 骨幹、11 通道輸入、FocalLoss、Sliding Window 推論設定
+- [DeepLabV3+.md](wiki/models/DeepLabV3+.md) — DeepLabV3+ 工程紀錄：ResNet50 骨幹、8 通道輸入（B01/02/03/04/08/8A/11/12）、class_weights=[13.0,1.0]、FocalLoss、Sliding Window 推論設定
 - [OSDMamba.md](wiki/models/OSDMamba.md) — OSDMamba 工程紀錄：SwinUMambaD 配置、Dice+Focal 聯合損失、EMA、RTX 5090 踩坑與對策
 
 ---

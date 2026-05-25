@@ -8,7 +8,7 @@ related: [OSDMamba.md, ../pipeline/project_overview.md]
 
 ## 一句話定義
 
-以 ResNet50 為骨幹的語義分割模型，作為本專案油汙偵測的 Baseline，輸入層改為 11 通道以支援多光譜影像。
+以 ResNet50 為骨幹的語義分割模型，作為本專案油汙偵測的 Baseline，輸入層改為 8 通道以支援 MS6 Sen2Like 多光譜影像。
 
 ---
 
@@ -16,8 +16,8 @@ related: [OSDMamba.md, ../pipeline/project_overview.md]
 
 | 項目 | 設定 |
 |------|------|
-| 骨幹 | ResNet50（torchvision pretrained，第一層 conv 改為 11-ch） |
-| 輸入通道 | 11（443~2202 nm 多光譜） |
+| 骨幹 | ResNet50（torchvision pretrained，第一層 conv 改為 8-ch） |
+| 輸入通道 | **8**（B01/02/03/04/08/8A/11/12，443~2202 nm，不含紅邊 B05/06/07） |
 | 輸出類別 | 2（Oil, Background） |
 | 損失函數 | FocalLoss（gamma=2.0） |
 | EMA | decay=0（直接用當下模型權重驗證） |
@@ -36,7 +36,7 @@ related: [OSDMamba.md, ../pipeline/project_overview.md]
 | Epochs / Patience | 300 / 50 |
 | Batch Size | 24 |
 | Workers | 16 |
-| Class Weights | [30.0, 1.0]（Oil : Background） |
+| Class Weights | **[13.0, 1.0]**（Oil : Background，inverse frequency；Oil:BG 像素比 ≈ 1:13.8） |
 
 ---
 

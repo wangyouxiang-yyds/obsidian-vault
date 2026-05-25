@@ -419,16 +419,149 @@ class_weights 有效：Epoch 1 就出現 Oil IoU > 0（上一版無 class_weight
 
 ---
 
-## 目前狀態（2026-05-22）
+## Fold 1（第一輪）完整結果（2026-05-22 完成）
 
-- Fold 1 訓練中（Epoch 9+），GPU I/O bound，epoch ~3 min
-- 下一步優化方向：AMP（GPU 未啟用 fp16）、pre-stacked 8-band COG（消除 VRT 多檔開銷）
+| Epoch | Oil IoU | BG IoU | Val mIoU | Best |
+|-------|---------|--------|---------|------|
+| 5 | 0.124 | 0.960 | 0.542 | ★ |
+| 8 | 0.164 | 0.953 | 0.558 | ★ |
+| 12 | 0.179 | 0.954 | 0.566 | ★ |
+| 15 | 0.188 | 0.958 | 0.573 | ★ |
+| 20 | 0.191 | 0.963 | 0.577 | ★ |
+| 33 | **0.201** | **0.966** | **0.584** | ★ 最佳 |
+| 83 | — | — | — | Early Stop |
+
+Best checkpoint：Epoch 33，mIoU=0.5835，Oil IoU=0.201
+
+---
+
+## Bug 修正（2026-05-22/23）
+
+### 1. NIR-R-G PNG VRT 路徑錯誤
+- **問題**：`generate_nirRG_png.py` 指向 `/mnt/backup/` 的舊 60m VRT（1830×1830），overlay 只覆蓋全圖左上角 2.8%
+- **修正**：改指 `/home/alanyh/` 的 10m VRT（10980×10980）；刪除舊 66 張 PNG，重新生成（3h9min）
+- **影響**：僅視覺化輸出，不影響訓練
+
+### 2. reconstruct_module.py 缺少 /10000.0（致命）
+- **問題**：VRT 讀出 uint16 raw 值（0–10000）未除以 10000，clip(0,10) 把所有值壓成 10，normalize 後 ≈76 → 模型全部輸出背景 → Oil IoU=0.0000
+- **修正**：`reconstruct_module.py` line 315 加入 `/ 10000.0`
+- **驗證**：快速測試 3 個場景，Oil IoU 從 0 → 0.0007~0.0056；**Oil Recall=87.1%**（模型確實找到油汙）
+- **說明**：Recall 高但 Precision 極低（0.13%）因全圖油汙僅佔 0.0015%，任何誤判都會大幅壓低 Precision；patch-level Val IoU=0.201 仍有效（patch 以油汙為中心，密度高）
+
+### 3. 輸出路徑相對路徑重複一層
+- **問題**：YAML 的 `results_base_dir` 為相對路徑，從專案根執行時多一層 `OIL_PROJECT_.../OIL_PROJECT_.../result-seg`
+- **修正**：改為絕對路徑
+
+---
+
+## AMP 加速（2026-05-23 實作）
+
+修改 `main/deeplab_adapter.py` 5 處，YAML 新增 `use_amp: true`：
+
+| 位置 | 修改內容 |
+|------|---------|
+| init | `use_amp = bool(kwargs.get('use_amp', False))` + `GradScaler(enabled=use_amp)` |
+| train forward | `torch.autocast('cuda', enabled=use_amp)` 包裹 forward + loss |
+| accum step | `scaler.unscale_` → `clip_grad_norm_` → `scaler.step` → `scaler.update` |
+| epoch flush | 同 accum step |
+| val loop | `autocast` 包裹 forward；`outputs['out'].float()` 轉回 fp32 計算 loss |
+
+---
+
+## 5-fold CV 訓練（2026-05-23 重啟）
+
+**設定**：`num_folds=5`, `use_amp=true`, `epochs=300`, `patience=50`, `batch=16`, `lr=5e-5`
+Log：`train_log/train_5fold.log`
+
+### Fold 1/5 完成結果（2026-05-24）
+
+| Epoch | Oil IoU | BG IoU | Val mIoU | Best |
+|-------|---------|--------|---------|------|
+| 1 | 0.033 | 0.938 | 0.486 | ★ |
+| 7 | 0.122 | 0.940 | 0.531 | ★ |
+| 14 | 0.142 | 0.953 | 0.548 | ★ |
+| 18 | 0.156 | 0.954 | 0.555 | ★ |
+| 26 | **0.212** | **0.973** | **0.593** | ★ 最佳 |
+
+與第一輪 Fold 1 相比：Best mIoU 0.5926 vs 0.5835（+0.9%），Oil IoU 0.212 vs 0.201（略升）。Fold 1 已完成，後續 Fold 2–5 從 `start_fold: 2` 繼續。
+
+---
+
+## 重組速度優化（2026-05-24）
+
+### 背景
+
+原始重組（66 場景/fold）預估耗時：VRT 讀取 166s + inference + post-process ≈ **9.7 小時/fold**，主要瓶頸為 GDAL deflate 解壓縮（單執行緒，CPU bound）。
+
+### 已實作優化
+
+**`main/reconstruct_module.py`**：
+
+| 優化項目 | 效果 |
+|----------|------|
+| `_read_vrt_parallel`：解析 VRT XML，ThreadPoolExecutor(8) 並行讀 8 個 band TIF，cv2.resize 升採樣 | 166s → **39s**（4.2×） |
+| `torch.autocast('cuda')` 包裹推論迴圈（fp16 inference） | ~1.5× 推論加速 |
+| `_save_pool`（ThreadPoolExecutor, max_workers=2）：imwrite JPG/PNG 非同步執行 | 儲存時間（26s）隱藏於下一場景推論中 |
+| bg PNG prefetch：`_save_pool` 在推論前提交 NAS imread（40s），結果於推論結束後取用 | NAS I/O 隱藏於推論（120s）中 |
+| preprocessing executor 跨 batch 重用：單一 ThreadPoolExecutor 貫穿整個場景推論 | 消除 29 次 executor 建立/銷毀開銷 |
+
+**`main/experiments_CV.yaml`（reconstruction 區塊）**：
+
+| 參數 | 舊值 | 新值 | 說明 |
+|------|------|------|------|
+| `infer_batch_size` | 8 | 64 | GPU VRAM 夠用，batch overhead 減少 8× |
+| `stride` | 192 | 256 | patch 數 3249 → 1849（43% 減少），無重疊推論 |
+| `num_workers` | 2 | 8 | preprocessing 並行度提升 |
+
+**實測速度**（單場景）：
+- band 讀取：39s（原 166s）
+- inference：~120s（64 batch_size + TTA）
+- post-process（含 NAS imread）：~78s（大部分隱藏於推論）
+- **實際每場景：~6 min**（CPU 各環節並行競爭，理論 240s 實際較高）
+- **66 場景預估：~6 小時/fold**（原估 9.7 小時）
+
+---
+
+## Bug 修正（2026-05-24）
+
+### 4. `_get_coord_vrt_item` 缺少 `/10000.0`（背景樣本）
+
+- **問題**：`deeplab_adapter.py` 的 `_get_coord_vrt_item`（負樣本/背景座標路徑）讀取 VRT 後未除以 10000，raw uint16 值直接送入 normalize，分佈嚴重偏移
+- **影響**：與正樣本 `_get_pos_vrt_item` 不一致；背景 patch 全部超出 normalize 分佈範圍，模型可能學到「異常大值＝背景」的捷徑
+- **修正**：`deeplab_adapter.py` line 267 加入 `/ 10000.0`
+- **時機**：已於 Fold 2 啟動前修正
+
+---
+
+## Per-Fold 日誌與 `start_fold` 功能（2026-05-24）
+
+### Per-Fold 日誌（`_FoldTee`）
+
+`main/main_runner.py` 新增 `_FoldTee` 類別：每個 fold 的 stdout 同時輸出至原始 stream 和獨立 log 檔（`fold_log_dir/YYYYMMDD_HHMMSS_fold_N.log`）。
+
+- YAML 新增 `fold_log_dir` 欄位指定存放目錄
+- 各 fold 完成後 tee 自動關閉，不影響下一個 fold
+
+### `start_fold` 支援
+
+- YAML `cross_validation.start_fold` 設為 `2`，允許從指定 fold 繼續（跳過已完成的 Fold 1）
+- `main_runner.py` CV loop 改為 `range(start_fold, num_folds + 1)`
+
+---
+
+## 目前狀態（2026-05-24）
+
+- Fold 1/5 已完成（Best mIoU=0.593，Epoch 26，AMP）
+- Fold 2–5 訓練中（`start_fold: 2`，已含 BG bug 修正 + 重組速度優化）
+- 等各 fold 全部完成後彙整 CV 結果
 
 ---
 
 ## 下一步
 
 1. ✅ COG 轉換完成
-2. ✅ Fold 1 重啟（class_weights 加入）
-3. 評估是否啟用 AMP + 增大 batch_size
-4. Fold 1 完成後 `num_folds: 5` 啟動完整 5-fold CV
+2. ✅ Fold 1（第一輪）完成（基準確認）
+3. ✅ Bug 修正（NIR-R-G PNG、reconstruct /10000、輸出路徑、BG sample /10000）
+4. ✅ AMP 實作
+5. ✅ 5-fold CV 重啟（Fold 2–5，AMP + BG bug 修正 + 重組速度優化）
+6. 等待 5 個 fold 全部完成，彙整 CV 結果

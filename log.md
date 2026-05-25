@@ -52,3 +52,27 @@
 ## [2026-05-22] init | 建立知識庫骨架與 MS6 資料集頁面 (wiki/datasets/ms6_sen2like.md)
 ## [2026-05-22] update | 新增技術概念頁面：COG (wiki/concepts/cloud_optimized_geotiff.md), Hard Negative Mining (wiki/concepts/hard_negative_mining.md)
 ## [2026-05-22] lint | 更新 index.md 目錄結構
+
+## [2026-05-22] experiment | Fold 1（第一輪）訓練完成：Best Val mIoU=0.5835（Oil IoU=0.201, BG IoU=0.966）at Epoch 33；Early stopping at Epoch 83（patience=50）
+## [2026-05-22] bug | 發現 NIR-R-G PNG VRT 路徑錯誤：generate_nirRG_png.py 指向 /mnt/backup/ 的舊 60m VRT（1830×1830），導致 overlay 只有左上角有畫面（僅 2.8% 覆蓋）；已改指 /home/alanyh/ 的 10m VRT（10980×10980）
+## [2026-05-22] fix | 刪除舊 66 個 NIR-R-G PNG，重新生成（3h9min）；新 PNG 為 10980×10980，93.7% 非黑像素，overlay 正確覆蓋全圖
+## [2026-05-22] bug | 發現 reconstruct_module.py 缺少 /10000.0：VRT 讀出 uint16 raw 值（0–10000），未除以 10000 直接進 preprocess_patch，clip(0,10) 把所有值壓到 10，normalize 後得 ≈76（遠超分佈），模型全預測背景 → Oil IoU=0.0000
+## [2026-05-22] fix | reconstruct_module.py line 315：加入 / 10000.0，與訓練時 _get_pos_vrt_item 一致
+## [2026-05-22] bug | Fold 1 第一輪重組（66 個場景）仍全部 IoU=0：訓練 process 於 05:08 啟動時已載入舊版 reconstruct_module.py，17:04 的修正未被載入（Python 不重載已 import 的 module）
+## [2026-05-23] verify | 快速重組測試（3 場景，使用 test_recon_quick.py）驗證 /10000 修正有效：Oil IoU 從 0 變非零（0.0007–0.0056）；Oil Recall=87.1%（模型確實找到油汙）；Oil Precision 極低因全圖油汙佔比僅 0.0015%，假陽性易累積
+## [2026-05-23] perf | 實作 AMP（Automatic Mixed Precision）：修改 deeplab_adapter.py 5 處（GradScaler init、train forward+backward、accum step、epoch flush、val loop autocast）；YAML 新增 use_amp: true
+## [2026-05-23] fix | 修正 experiments_CV.yaml 輸出路徑：results_base_dir 與 excel_log_path 改為絕對路徑，消除相對路徑導致資料夾名稱重複一層的問題
+## [2026-05-23] experiment | 重啟 5-fold CV 訓練（AMP + num_folds=5）：log → train_log/train_5fold.log；Fold 1 Epoch 26 已達 Best mIoU=0.5926（Oil IoU=0.212），略優於上一輪
+
+## [2026-05-24] perf | 診斷重組速度瓶頸：GDAL deflate 解壓縮為 CPU 單執行緒瓶頸，8-band 全場景 VRT 讀取耗時 166s；原設定 infer_batch_size=8 + stride=192 預估 9.7 小時/fold
+## [2026-05-24] perf | reconstruct_module.py 新增 _read_vrt_parallel：解析 VRT XML → ThreadPoolExecutor(8) 並行讀 8 個 band TIF → cv2.resize 升採樣；band 讀取 166s → 39s（4.2×）
+## [2026-05-24] perf | reconstruct_module.py 加入 torch.autocast('cuda') 包裹推論迴圈（fp16 inference）；preprocessing executor 跨 batch 重用（消除每 batch 重建 executor 開銷）
+## [2026-05-24] perf | reconstruct_module.py 加入 _save_pool（async imwrite）與 bg PNG prefetch：NAS imread（40s）提交於推論前，儲存（26s）非同步執行；實際每場景 ~6 min
+## [2026-05-24] config | experiments_CV.yaml reconstruction 區塊：infer_batch_size 8→64、stride 192→256（patch 數 3249→1849）、num_workers 2→8
+## [2026-05-24] feat | main_runner.py 新增 _FoldTee 類別：stdout 同時 tee 至 fold 專屬 log 檔（fold_log_dir/YYYYMMDD_fold_N.log）；experiments_CV.yaml 新增 fold_log_dir 欄位
+## [2026-05-24] feat | experiments_CV.yaml 新增 start_fold: 2；main_runner.py CV loop 改為 range(start_fold, num_folds+1)，允許從指定 fold 繼續
+## [2026-05-24] bug | 發現 deeplab_adapter.py _get_coord_vrt_item（背景樣本路徑）line 267 缺少 /10000.0，與正樣本路徑不一致；已修正
+## [2026-05-24] experiment | Fold 1/5 完成（Best mIoU=0.593，Oil IoU=0.212，Epoch 26）；Fold 2–5 以 start_fold=2 重啟（含 BG bug 修正 + 重組速度優化）
+
+## [2026-05-25] doc | 新增 wiki/experiments/20260525_架構演進與差異彙整.md：彙整 5/20–5/25 所有改動，對照資料格式（11→8 band、strip→COG、VRT Bug）、前處理 pipeline、訓練設定、重組速度優化、Bug 修正共 6 項
+## [2026-05-25] doc | 更新 wiki/models/DeepLabV3+.md：in_channels 11→8（B01/02/03/04/08/8A/11/12）、class_weights [30.0,1.0]→[13.0,1.0]（inverse frequency，Oil:BG≈1:13.8）；更新 index.md 對應描述
