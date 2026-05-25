@@ -76,3 +76,4 @@
 
 ## [2026-05-25] doc | 新增 wiki/experiments/20260525_架構演進與差異彙整.md：彙整 5/20–5/25 所有改動，對照資料格式（11→8 band、strip→COG、VRT Bug）、前處理 pipeline、訓練設定、重組速度優化、Bug 修正共 6 項
 ## [2026-05-25] doc | 更新 wiki/models/DeepLabV3+.md：in_channels 11→8（B01/02/03/04/08/8A/11/12）、class_weights [30.0,1.0]→[13.0,1.0]（inverse frequency，Oil:BG≈1:13.8）；更新 index.md 對應描述
+## [2026-05-25] doc | 新增 wiki/pipeline/add_new_data.md：新增 Sen2Like 資料的完整流程（目錄結構規範、Step 1 convert_to_cog.py、Step 2 build_vrt_ms6.py、Step 3 fold split + patch coords 重算、Step 4 NIR-R-G PNG）；更新 index.md

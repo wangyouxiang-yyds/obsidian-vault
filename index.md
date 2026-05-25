@@ -10,6 +10,7 @@
 - [project_overview.md](wiki/pipeline/project_overview.md) — OIL_PROJECT_MutiBand_0420 專案概述：模型架構、前處理、訓練設定、I/O 優化、重要路徑
 - [OIL_PROJECT_VRT_0422.md](wiki/pipeline/OIL_PROJECT_VRT_0422.md) — 0422 VRT 訓練專案：GDAL VRT 虛擬影像、動態 Patch 讀取、全場景 Mask 流程
 - [annotation_workflow.md](wiki/pipeline/annotation_workflow.md) — 標注工作流程：LabelMe JSON 在 pipeline 的角色、QGIS GPKG → JSON 橋接腳本說明
+- [add_new_data.md](wiki/pipeline/add_new_data.md) — 新增 Sen2Like 資料流程：目錄結構規範、Strip→COG 轉換、VRT 建置、fold split 重算、patch 座標重生成（含腳本指令與關鍵路徑索引）
 
 ---
 
