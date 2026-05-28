@@ -79,3 +79,18 @@
 ## [2026-05-25] doc | 新增 wiki/pipeline/add_new_data.md：新增 Sen2Like 資料的完整流程（目錄結構規範、Step 1 convert_to_cog.py、Step 2 build_vrt_ms6.py、Step 3 fold split + patch coords 重算、Step 4 NIR-R-G PNG）；更新 index.md
 ## [2026-05-25] doc | 擴充 wiki/concepts/cloud_optimized_geotiff.md：加入 Strip vs COG 磁碟排列 ASCII 圖解、index 粒度差異說明、與 VRT 的關係、實測數字表
 ## [2026-05-25] doc | 新增 wiki/concepts/acolite_vs_sen2like.md：Acolite vs Sen2Like 完整格式比較（像素單位、波段數、解析度、大氣校正、標注對齊、pipeline 差異）；更新 index.md
+
+## [2026-05-26] preprocess | 新建 3-fold all-220 實驗前置準備
+## [2026-05-26] preprocess | build_scene_splits_3fold_all220.py：全 220 場景打散 3-fold；Fold1:train=106,val=39,test=75 / Fold2:train=113,val=30,test=77 / Fold3:train=121,val=31,test=68；三個 test set 不重疊合集=220
+## [2026-05-26] preprocess | generate_patch_coords_3fold.py：GB1.5 patch 座標生成；Fold1 train=2333 / Fold2=2337 / Fold3=2715；output→3fold_all220/patch_level_GB1.5/
+## [2026-05-26] preprocess | generate_nirRG_png_all220.py：8-worker 並行 JPEG 生成全 220 場景；output→NIR_R_G_Output_png/all_ms6/（220 jpg + 66 png）
+## [2026-05-26] fix | reconstruct_module.py line 356：fuzzy_find_file 改為先找 .jpg 再 fallback .png，支援新 all_ms6/ JPEG 底圖
+## [2026-05-26] config | 新建 main/experiments_3fold_all220.yaml：num_folds=3, GB1.5, split_dir→3fold_all220, vis_image_dir→all_ms6
+
+## [2026-05-27] training | 5-fold MS6 GB1.0 CV 全部完成（fold1-5 best.pt 就緒）；3-fold all-220 GB1.5 訓練完成；兩組結果均可作為 HNM baseline 比較
+## [2026-05-27] HNM | Cross-Fold HNM step2_per_fold_mine_fp.py 卡死 bug 診斷：原實作一次讀取整場景背景 bounding box（最大 3.86 GB NAS），對 NAS 等同掛住；改為 mask-first + 8-worker prefetch pipeline（reader thread 與 GPU inference 重疊）
+## [2026-05-27] fix | Cross-Fold HNM step2 卡死修正完成：平均 ~48s/scene（原 ~290s），全 220 scenes ≈ 2.9 小時
+## [2026-05-28] HNM | step2 執行完成：45,848 FP patch candidates，220/220 場景全數處理，4 個場景 n_eligible=0（mask 條件正常過濾），輸出→HNM/step2_output/cfhnm_mined_all220.txt
+## [2026-05-28] fix | step3_spectral_safety_filter.py：修正 6 處 cand_df["fold"] → cand_df["source_model_fold"]（欄位名稱不符，原本會 KeyError crash）
+## [2026-05-28] HNM | step3 spectral safety filter 開始執行（CPU bound，預計 30–60 min）；輸出 dmin_distribution.png + decision_summary.txt 後由使用者決定 cutoff
+## [2026-05-28] doc | 新增 wiki/experiments/20260527_CrossFoldHNM_執行紀錄.md（step2 卡死修正、prefetch pipeline 設計、step2 結果、step3 bug 修正）
