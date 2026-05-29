@@ -2,11 +2,11 @@
 date: 2026-05-27
 type: experiment
 stage: HNM
-status: running
+status: training
 tags: [HNM, Cross-Fold, FP-mining, spectral-filter, DeepLabV3+]
 ---
 
-# Cross-Fold HNM — Step 2 & 3 執行紀錄
+# Cross-Fold HNM — Step 2~4 執行紀錄
 
 ## 目標
 
@@ -95,10 +95,74 @@ mask 讀取 → eligible 篩選 → [prefetch queue] → GPU inference
 - **輸出目錄**：`HNM/step3_output/`
 - **預計耗時**：30–60 分鐘（CPU bound）
 
-## 下一步
+## Step 3 結果（2026-05-28 完成）
 
-Step 3 跑完後：
-1. 查看 `dmin_distribution.png` 與 `decision_summary.txt`
-2. 決定 d_min cutoff（建議觀察 p10/p15 對應的感觀品質）
-3. 執行 `step4_within_fold_assemble.py` 組裝 `patch_level_GB1.0_cfhnm`
-4. 訓練 `experiments_3fold_all220_cfhnm.yaml`
+| 統計項目 | 數值 |
+|---------|------|
+| 輸入 candidates | 45,848 |
+| Valid feature | 45,848 |
+| Valid d_min | 45,673 |
+| 輸出目錄 | `HNM/step3_output/` |
+
+**d_min 分布（z-scored L2，8-dim spectral）：**
+
+| Percentile | d_min |
+|-----------|-------|
+| p1 | 0.040 |
+| p5 | 0.101 |
+| p10 | 0.152 |
+| p25 | 0.337 |
+| p50 | 0.773 |
+| p75 | 1.581 |
+| p90 | 3.176 |
+| max | 21.286 |
+
+p50=0.773 表示超過一半的 candidate 光譜距真油很遠，整體品質良好。
+最低 d_min≈0.000 的 candidates（`20241118_L9_19TDE` 等）光譜與真油幾乎完全一致，高度疑似漏標。
+
+**決定採用 p10 截點（d_min < 0.1516）**，移除最像真油的 10%，保留 ~41,280 個 candidates。
+
+---
+
+## Step 4 結果（2026-05-29 完成）
+
+腳本：`step4_within_fold_assemble.py`
+輸出：`3fold_all220/patch_level_GB1.0_cfhnm/`
+
+**Assembly summary（HN_TO_OIL_RATIO = 0.5）：**
+
+| Fold | Role | Oil patches | +HN | 原始大小 | 最終大小 |
+|------|------|------------|-----|---------|---------|
+| 1 | train | 933 | 466 | 1,866 | 2,332 |
+| 1 | val | 354 | 177 | 708 | 885 |
+| 2 | train | 935 | 467 | 1,870 | 2,337 |
+| 2 | val | 230 | 115 | 460 | 575 |
+| 3 | train | 1,086 | 543 | 2,172 | 2,715 |
+| 3 | val | 202 | 101 | 404 | 505 |
+
+最終比例：oil : bg : HN = 1 : 1 : 0.5 = 1 : 1.5（與 A 組 GB1.5 總量相同）
+
+---
+
+## 訓練啟動（2026-05-29）
+
+```bash
+cd main
+python main_runner.py --config experiments_3fold_all220_cfhnm.yaml
+```
+
+- **Split**：`patch_level_GB1.0_cfhnm`
+- **結果目錄**：`result-seg/CV_3fold_all220_cfhnm/`
+- **超參數**：epochs=300, patience=50, batch=16, lr=5e-5, AMP, class_weights=[13.0,1.0]
+- **預計耗時**：1.5～2 天
+
+---
+
+## 實驗對比設計
+
+| 組別 | Split | 那 0.5 是什麼 | 狀態 |
+|------|-------|-------------|------|
+| A | GB1.5 | 隨機背景 | ✅ 完成（val mIoU 平均 0.601） |
+| B | GB1.0_cfhnm | cfHNM hard negative | 🔄 訓練中 |
+
+A vs B 總資料量相同，差距純粹來自「hard negative 品質」。

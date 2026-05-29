@@ -94,3 +94,8 @@
 ## [2026-05-28] fix | step3_spectral_safety_filter.py：修正 6 處 cand_df["fold"] → cand_df["source_model_fold"]（欄位名稱不符，原本會 KeyError crash）
 ## [2026-05-28] HNM | step3 spectral safety filter 開始執行（CPU bound，預計 30–60 min）；輸出 dmin_distribution.png + decision_summary.txt 後由使用者決定 cutoff
 ## [2026-05-28] doc | 新增 wiki/experiments/20260527_CrossFoldHNM_執行紀錄.md（step2 卡死修正、prefetch pipeline 設計、step2 結果、step3 bug 修正）
+
+## [2026-05-29] HNM | step3 完成：45,848 candidates，valid d_min=45,673；分布 p10=0.152 / p50=0.773 / max=21.3；決定採 p10 截點（移除最像真油的 10%）
+## [2026-05-29] HNM | step4 完成：d_min < 0.1516 截除後剩 ~41,280 candidates；組裝 patch_level_GB1.0_cfhnm；train 加入 HN：fold1=466, fold2=467, fold3=543；最終比例 1:1.5
+## [2026-05-29] training | 啟動 3-fold cfhnm 訓練：experiments_3fold_all220_cfhnm.yaml；結果→result-seg/CV_3fold_all220_cfhnm/；與 GB1.5 組比較 HNM 效益
+## [2026-05-29] doc | 更新 wiki/experiments/20260527_CrossFoldHNM_執行紀錄.md：補入 step3 d_min 分布、step4 assembly 結果、訓練對比設計表

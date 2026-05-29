@@ -22,7 +22,7 @@
 - [20260520_新批Sen2Like資料Pipeline重建計畫.md](wiki/experiments/20260520_新批Sen2Like資料Pipeline重建計畫.md) — 新資料引入完整 pipeline：8-band（B01/02/03/04/08/8A/11/12）、GPKG→JSON 轉換、GB1.0、2025 固定 test set、stratified scene-level fold split
 - [20260521_MS6_Pipeline執行紀錄.md](wiki/experiments/20260521_MS6_Pipeline執行紀錄.md) — MS6 8-band DeepLabV3+ 完整執行紀錄：VRT 建置（B02 10m 參考）、COG 轉換（1546 TIF，9× I/O 提升）、class_weights、AMP、Bug 修正 6 項（VRT 60m 參考致訓練全零 / 三處 /10000 遺漏 / NIR-R-G PNG 路徑 / 輸出路徑）、重組速度優化（_read_vrt_parallel、async save、bg prefetch）、per-fold log / start_fold、5-fold CV 進行中（Fold 1 完成 mIoU=0.593）
 - [20260525_架構演進與差異彙整.md](wiki/experiments/20260525_架構演進與差異彙整.md) — 2026-05-20 至 05-25 全面對比：資料格式（11→8 band、strip→COG、VRT Bug 修正）、前處理 pipeline、訓練設定（AMP/class_weights）、重組速度優化（_read_vrt_parallel / async save / prefetch）、Bug 修正彙總
-- [20260527_CrossFoldHNM_執行紀錄.md](wiki/experiments/20260527_CrossFoldHNM_執行紀錄.md) — Cross-Fold HNM Step 2 & 3：step2 卡死 bug 修正（mask-first + prefetch pipeline）、45,848 FP candidates 挖掘結果、step3 欄位名稱 bug 修正
+- [20260527_CrossFoldHNM_執行紀錄.md](wiki/experiments/20260527_CrossFoldHNM_執行紀錄.md) — Cross-Fold HNM Step 2~4 完整紀錄：step2 卡死修正（45,848 FP candidates）、step3 d_min 分布（p10=0.152 截點）、step4 組裝（1:1+0.5HN=1:1.5）、cfhnm 訓練啟動
 - [OSDMamba_摘要.md](wiki/papers/OSDMamba_摘要.md) — OSDMamba 論文摘要：首個基於 Mamba 的油汙偵測架構、SS2D 感受野擴張、ConvSSM 解碼器
 
 ---
