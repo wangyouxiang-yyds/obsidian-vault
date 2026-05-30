@@ -99,3 +99,4 @@
 ## [2026-05-29] HNM | step4 完成：d_min < 0.1516 截除後剩 ~41,280 candidates；組裝 patch_level_GB1.0_cfhnm；train 加入 HN：fold1=466, fold2=467, fold3=543；最終比例 1:1.5
 ## [2026-05-29] training | 啟動 3-fold cfhnm 訓練：experiments_3fold_all220_cfhnm.yaml；結果→result-seg/CV_3fold_all220_cfhnm/；與 GB1.5 組比較 HNM 效益
 ## [2026-05-29] doc | 更新 wiki/experiments/20260527_CrossFoldHNM_執行紀錄.md：補入 step3 d_min 分布、step4 assembly 結果、訓練對比設計表
+## [2026-05-30] doc | 新增 wiki/datasets/dataset_split_strategy.md（資料集切割策略規劃：定義場景層級 Scene-level 切割原則，規劃「完全隨機 K-Fold」、「特定事件留出」、「時序預測」三種實驗策略以驗證泛化能力）
