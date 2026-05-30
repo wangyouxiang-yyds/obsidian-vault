@@ -24,6 +24,7 @@
 - [20260525_架構演進與差異彙整.md](wiki/experiments/20260525_架構演進與差異彙整.md) — 2026-05-20 至 05-25 全面對比：資料格式（11→8 band、strip→COG、VRT Bug 修正）、前處理 pipeline、訓練設定（AMP/class_weights）、重組速度優化（_read_vrt_parallel / async save / prefetch）、Bug 修正彙總
 - [20260527_CrossFoldHNM_執行紀錄.md](wiki/experiments/20260527_CrossFoldHNM_執行紀錄.md) — Cross-Fold HNM Step 2~4 完整紀錄：step2 卡死修正（45,848 FP candidates）、step3 d_min 分布（p10=0.152 截點）、step4 組裝（1:1+0.5HN=1:1.5）、cfHNM 訓練完成（avg Oil IoU=0.224，未超越 A 組 0.242）
 - [20260530_實驗結果彙整.md](wiki/experiments/20260530_實驗結果彙整.md) — 截至 2026-05-30 全實驗彙整：Ref 5-fold GB1.0（avg Oil IoU=0.277）、A 組 3-fold GB1.5（0.242）、B 組 3-fold cfHNM（0.224）、跨組對比與後續方向
+- [三策略比較實驗計畫.md](wiki/experiments/三策略比較實驗計畫.md) — 待執行計畫：策略一純隨機 / 策略二地理留出 / 策略三時序擴展，各跑 3-fold DeepLabV3+，待資料上傳完畢後啟動
 - [OSDMamba_摘要.md](wiki/papers/OSDMamba_摘要.md) — OSDMamba 論文摘要：首個基於 Mamba 的油汙偵測架構、SS2D 感受野擴張、ConvSSM 解碼器
 
 ---
