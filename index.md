@@ -26,6 +26,7 @@
 - [20260530_實驗結果彙整.md](wiki/experiments/20260530_實驗結果彙整.md) — 截至 2026-05-30 全實驗彙整：Ref 5-fold GB1.0（avg Oil IoU=0.277）、A 組 3-fold GB1.5（0.242）、B 組 3-fold cfHNM（0.224）、跨組對比與後續方向
 - [三策略比較實驗計畫.md](wiki/experiments/三策略比較實驗計畫.md) — 執行計畫（更新中）：策略一純隨機 / 策略二事件留出 / 策略三時序擴展，各跑 3-fold DeepLabV3+；scene split 完成，patch 座標生成進行中
 - [20260602_三策略前置作業執行紀錄.md](wiki/experiments/20260602_三策略前置作業執行紀錄.md) — 三策略前置作業完整紀錄：資料現況修正（NOAA 可用 220 非 395）、事件 36 場景 GPKG→mask→VRT、COG 轉換 3073 TIF、scene split 三策略執行結果、patch 座標生成指令
+- [20260603_Unsupervised油汙偵測初探.md](wiki/experiments/20260603_Unsupervised油汙偵測初探.md) — Unsupervised 油汙偵測兩階段 pipeline 初探：HOSD 高光譜基準（AUC=0.99）、5 個 S2 場景 iForest + OSI 對比、雲遮罩設計、Precision 低問題診斷與改善方向
 - [OSDMamba_摘要.md](wiki/papers/OSDMamba_摘要.md) — OSDMamba 論文摘要：首個基於 Mamba 的油汙偵測架構、SS2D 感受野擴張、ConvSSM 解碼器
 
 ---
@@ -46,6 +47,7 @@
 
 ## 技術概念（wiki/concepts/）
 
+- [unsupervised_oil_detection.md](wiki/concepts/unsupervised_oil_detection.md) — Unsupervised 油汙偵測方法總覽：iForest / OSI / RX / VAE 比較、雲遮罩替代方案（NDWI+Blue）、S2 實施路線、文獻缺口分析
 - [cloud_optimized_geotiff.md](wiki/concepts/cloud_optimized_geotiff.md) — Strip TIF vs COG TIF：磁碟排列方式差異（index 粒度）、為何 COG 能直接跳到指定區塊、ASCII 圖解、在專案的 I/O 加速實測（9×）、與 VRT 的關係
 - [acolite_vs_sen2like.md](wiki/concepts/acolite_vs_sen2like.md) — Acolite vs Sen2Like 格式差異：像素值單位（float32 vs uint16×10000）、波段數（11 vs 8）、SWIR 解析度（20m vs 10m Fusion）、大氣校正方向、標注對齊說明
 - [hard_negative_mining.md](wiki/concepts/hard_negative_mining.md) — 困難樣本挖掘：降低誤判率的 HNM 五步驟流程說明
@@ -55,7 +57,7 @@
 
 ## 文獻摘要（wiki/papers/）
 
-_尚無頁面_
+- [Duan2022_HOSD_IsolationForest.md](wiki/papers/Duan2022_HOSD_IsolationForest.md) — Duan et al. 2022：HOSD 高光譜資料集 + Isolation Forest Unsupervised 油汙偵測；iForest 單步 AUC=0.99（224 波段）
 
 ---
 

@@ -100,3 +100,10 @@
 ## [2026-05-29] training | 啟動 3-fold cfhnm 訓練：experiments_3fold_all220_cfhnm.yaml；結果→result-seg/CV_3fold_all220_cfhnm/；與 GB1.5 組比較 HNM 效益
 ## [2026-05-29] doc | 更新 wiki/experiments/20260527_CrossFoldHNM_執行紀錄.md：補入 step3 d_min 分布、step4 assembly 結果、訓練對比設計表
 ## [2026-05-30] doc | 新增 wiki/datasets/dataset_split_strategy.md（資料集切割策略規劃：定義場景層級 Scene-level 切割原則，規劃「完全隨機 K-Fold」、「特定事件留出」、「時序預測」三種實驗策略以驗證泛化能力）
+
+## [2026-06-03] research | 文獻調查：Unsupervised 油汙偵測方法（RX/iForest/OSI/VAE）；確認 Duan 2022（HOSD+iForest）為最重要對標；規劃兩階段 pipeline（Unsupervised 粗定位 → DeepLabV3+ 精分割）
+## [2026-06-03] experiment | HOSD 高光譜基準測試（GM03）：iForest 單步 F1=0.78 / AUC=0.9899（224 波段），確認 iForest 可行性
+## [2026-06-03] experiment | S2 多光譜 iForest + OSI 批次測試（5 個 NOAA Gulf of Mexico 場景）：AUC 0.31~0.95，F1 偏低（Precision 問題）；實作雲遮罩（NDWI+B02）、F1 最佳閾值、空間後處理改善中
+## [2026-06-03] doc | 新增 wiki/experiments/20260603_Unsupervised油汙偵測初探.md（完整實驗紀錄）
+## [2026-06-03] doc | 新增 wiki/papers/Duan2022_HOSD_IsolationForest.md（論文摘要 + 本專案實測對比）
+## [2026-06-03] doc | 新增 wiki/concepts/unsupervised_oil_detection.md（方法總覽、實施路線、文獻缺口）（資料集切割策略規劃：定義場景層級 Scene-level 切割原則，規劃「完全隨機 K-Fold」、「特定事件留出」、「時序預測」三種實驗策略以驗證泛化能力）
