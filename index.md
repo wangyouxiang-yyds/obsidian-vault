@@ -27,6 +27,7 @@
 - [三策略比較實驗計畫.md](wiki/experiments/三策略比較實驗計畫.md) — 執行計畫（更新中）：策略一純隨機 / 策略二事件留出 / 策略三時序擴展，各跑 3-fold DeepLabV3+；scene split 完成，patch 座標生成進行中
 - [20260602_三策略前置作業執行紀錄.md](wiki/experiments/20260602_三策略前置作業執行紀錄.md) — 三策略前置作業完整紀錄：資料現況修正（NOAA 可用 220 非 395）、事件 36 場景 GPKG→mask→VRT、COG 轉換 3073 TIF、scene split 三策略執行結果、patch 座標生成指令
 - [20260603_Unsupervised油汙偵測初探.md](wiki/experiments/20260603_Unsupervised油汙偵測初探.md) — Unsupervised 油汙偵測兩階段 pipeline 初探：HOSD 高光譜基準（AUC=0.99）、5 個 S2 場景 iForest + OSI 對比、雲遮罩設計、Precision 低問題診斷與改善方向
+- [20260604_iForest全場景改進.md](wiki/experiments/20260604_iForest全場景改進.md) — iForest 全場景失效根因分析（污染比例/競爭異常/均值稀釋）、改進方案：乾淨水體訓練（NDWI>0.1+std<0.05）+ 5th Percentile 聚合取代均值、Fallback 機制
 - [OSDMamba_摘要.md](wiki/papers/OSDMamba_摘要.md) — OSDMamba 論文摘要：首個基於 Mamba 的油汙偵測架構、SS2D 感受野擴張、ConvSSM 解碼器
 
 ---
