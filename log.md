@@ -107,3 +107,9 @@
 ## [2026-06-03] doc | 新增 wiki/experiments/20260603_Unsupervised油汙偵測初探.md（完整實驗紀錄）
 ## [2026-06-03] doc | 新增 wiki/papers/Duan2022_HOSD_IsolationForest.md（論文摘要 + 本專案實測對比）
 ## [2026-06-03] doc | 新增 wiki/concepts/unsupervised_oil_detection.md（方法總覽、實施路線、文獻缺口）（資料集切割策略規劃：定義場景層級 Scene-level 切割原則，規劃「完全隨機 K-Fold」、「特定事件留出」、「時序預測」三種實驗策略以驗證泛化能力）
+
+## [2026-06-05] fix | 補齊 183 個 NOAA 場景 JSON+Mask：check_dataset_completeness.py --fix-json + json_to_mask_tif.py；NOAA 可用 220→403，總場景 256→439
+## [2026-06-05] cleanup | 刪除廢棄目錄：processed/（1.1TB）、JSON/、JSON_ms6/、175 個舊格式 mask TIF
+## [2026-06-05] fix | 重建 JSON flat 目錄 MS6_sen2like_JSON/（439 個，以場景資料夾名命名）；更新三個 yaml json_dir 指向新目錄
+## [2026-06-05] preprocess | 三策略 scene split 重跑（439 全場景）；patch coords GB1.5 三策略全部重生成
+## [2026-06-05] doc | 新增 wiki/experiments/20260605_資料集修正與三策略重跑.md
