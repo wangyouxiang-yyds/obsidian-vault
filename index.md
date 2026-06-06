@@ -59,6 +59,7 @@
 
 ## 文獻摘要（wiki/papers/）
 
+- [IsolationForest_Liu2008.md](wiki/papers/IsolationForest_Liu2008.md) — Isolation Forest 原始論文（Liu et al. 2008/2012）：演算法原理、anomaly score 公式、sklearn 參數對照、在本專案 S2 油汙偵測的實測結果
 - [Duan2022_HOSD_IsolationForest.md](wiki/papers/Duan2022_HOSD_IsolationForest.md) — Duan et al. 2022：HOSD 高光譜資料集 + Isolation Forest Unsupervised 油汙偵測；iForest 單步 AUC=0.99（224 波段）
 
 ---
