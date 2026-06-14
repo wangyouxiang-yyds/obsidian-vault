@@ -29,6 +29,8 @@
 - [20260605_資料集修正與三策略重跑.md](wiki/experiments/20260605_資料集修正與三策略重跑.md) — 183 NOAA 場景補齊 JSON+Mask（220→403 NOAA，總計 439）、廢棄目錄清理（1.1TB）、JSON flat 目錄重建、yaml json_dir 修正、三策略 scene split + patch coords 全部重跑、RGB viz 升級、early stop 觀察與 class_weights 矛盾分析
 - [20260603_Unsupervised油汙偵測初探.md](wiki/experiments/20260603_Unsupervised油汙偵測初探.md) — Unsupervised 油汙偵測兩階段 pipeline 初探：HOSD 高光譜基準（AUC=0.99）、5 個 S2 場景 iForest + OSI 對比、雲遮罩設計、Precision 低問題診斷與改善方向
 - [20260604_iForest全場景改進.md](wiki/experiments/20260604_iForest全場景改進.md) — iForest 全場景失效根因分析（污染比例/競爭異常/均值稀釋）、改進方案：乾淨水體訓練（NDWI>0.1+std<0.05）+ 5th Percentile 聚合取代均值、Fallback 機制
+- [20260613_iForest_LocalContrast_B4B8B11_全場景實驗總結.md](wiki/experiments/20260613_iForest_LocalContrast_B4B8B11_全場景實驗總結.md) — iForest + Local Contrast（B4/B8/B11）全 439 場景評估：Micro Recall=0.0225，TP=104，FP=24,063；非零場景僅 43/438（9.8%）
+- [20260614_DeepRX_EM_v3_全場景實驗總結.md](wiki/experiments/20260614_DeepRX_EM_v3_全場景實驗總結.md) — DeepRX + EM v3 全 439 場景評估：Micro Recall=0.3712（iForest 16.4×），TP=1,698，非零場景 275/433（63.5%）；VAE latent + Mahalanobis + EM 自動門檻
 - [OSDMamba_摘要.md](wiki/papers/OSDMamba_摘要.md) — OSDMamba 論文摘要：首個基於 Mamba 的油汙偵測架構、SS2D 感受野擴張、ConvSSM 解碼器
 
 ---
