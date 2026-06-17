@@ -55,6 +55,7 @@
 - [cloud_optimized_geotiff.md](wiki/concepts/cloud_optimized_geotiff.md) — Strip TIF vs COG TIF：磁碟排列方式差異（index 粒度）、為何 COG 能直接跳到指定區塊、ASCII 圖解、在專案的 I/O 加速實測（9×）、與 VRT 的關係
 - [acolite_vs_sen2like.md](wiki/concepts/acolite_vs_sen2like.md) — Acolite vs Sen2Like 格式差異：像素值單位（float32 vs uint16×10000）、波段數（11 vs 8）、SWIR 解析度（20m vs 10m Fusion）、大氣校正方向、標注對齊說明
 - [hard_negative_mining.md](wiki/concepts/hard_negative_mining.md) — 困難樣本挖掘：降低誤判率的 HNM 五步驟流程說明
+- [iforest_架構與運作機制.md](wiki/concepts/iforest_架構與運作機制.md) — iForest 深入理解：樹結構本質、建樹過程（含 8 像素具體例子）、Duan 2022 對 GM01 完整 10 步驟、訓測同源為何不是資料外洩、contamination 才是真正失敗點
 
 
 ---

@@ -113,3 +113,4 @@
 ## [2026-06-05] fix | 重建 JSON flat 目錄 MS6_sen2like_JSON/（439 個，以場景資料夾名命名）；更新三個 yaml json_dir 指向新目錄
 ## [2026-06-05] preprocess | 三策略 scene split 重跑（439 全場景）；patch coords GB1.5 三策略全部重生成
 ## [2026-06-05] doc | 新增 wiki/experiments/20260605_資料集修正與三策略重跑.md
+## [2026-06-17] concept | 新增 wiki/concepts/iforest_架構與運作機制.md（Q&A 學習紀錄：樹結構本質、建樹過程含 8 像素例子、Duan 2022 GM01 完整 10 步驟、訓測同源 vs 資料外洩釐清、contamination 失敗點）
