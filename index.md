@@ -56,6 +56,7 @@
 - [acolite_vs_sen2like.md](wiki/concepts/acolite_vs_sen2like.md) — Acolite vs Sen2Like 格式差異：像素值單位（float32 vs uint16×10000）、波段數（11 vs 8）、SWIR 解析度（20m vs 10m Fusion）、大氣校正方向、標注對齊說明
 - [hard_negative_mining.md](wiki/concepts/hard_negative_mining.md) — 困難樣本挖掘：降低誤判率的 HNM 五步驟流程說明
 - [iforest_架構與運作機制.md](wiki/concepts/iforest_架構與運作機制.md) — iForest 深入理解：樹結構本質、建樹過程（含 8 像素具體例子）、Duan 2022 對 GM01 完整 10 步驟、訓測同源為何不是資料外洩、contamination 才是真正失敗點
+- [deeprx_vae_架構與運作機制.md](wiki/concepts/deeprx_vae_架構與運作機制.md) — Deep-RX 深入理解：VAE 架構（reparam trick / KL 約束）、San Diego I 完整流程、訓測同源爭議的誠實討論、論文評估方式的學術批評、Background-Only Training 洞察（v9 已實作）
 
 ---
 

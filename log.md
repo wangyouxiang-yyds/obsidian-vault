@@ -114,3 +114,4 @@
 ## [2026-06-05] preprocess | 三策略 scene split 重跑（439 全場景）；patch coords GB1.5 三策略全部重生成
 ## [2026-06-05] doc | 新增 wiki/experiments/20260605_資料集修正與三策略重跑.md
 ## [2026-06-17] concept | 新增 wiki/concepts/iforest_架構與運作機制.md（Q&A 學習紀錄：樹結構本質、建樹過程含 8 像素例子、Duan 2022 GM01 完整 10 步驟、訓測同源 vs 資料外洩釐清、contamination 失敗點）
+## [2026-06-17] concept | 新增 wiki/concepts/deeprx_vae_架構與運作機制.md（Q&A 學習紀錄：VAE 架構（reparam trick / KL 約束）、為何 VAE+RX、San Diego I 完整流程、訓測同源爭議的誠實討論含論文評估方式的批判、Background-Only Training 洞察）
