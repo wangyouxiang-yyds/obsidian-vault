@@ -57,6 +57,7 @@
 - [hard_negative_mining.md](wiki/concepts/hard_negative_mining.md) — 困難樣本挖掘：降低誤判率的 HNM 五步驟流程說明
 - [iforest_架構與運作機制.md](wiki/concepts/iforest_架構與運作機制.md) — iForest 深入理解：樹結構本質、建樹過程（含 8 像素具體例子）、Duan 2022 對 GM01 完整 10 步驟、訓測同源為何不是資料外洩、contamination 才是真正失敗點
 - [deeprx_vae_架構與運作機制.md](wiki/concepts/deeprx_vae_架構與運作機制.md) — Deep-RX 深入理解：VAE 架構（reparam trick / KL 約束）、San Diego I 完整流程、訓測同源爭議的誠實討論、論文評估方式的學術批評、Background-Only Training 洞察（v9 已實作）、v9 完整 12 步驟流程（per-scene VAE + Mahalanobis + EM + NDOI）、論文 vs 真實場景複雜度差異（one anomaly vs multi-anomaly）、v3 濫抓四大根本原因與 v9 對應解法
+- [deeplabv3plus_358clean_overfitting_改善方向.md](wiki/concepts/deeplabv3plus_358clean_overfitting_改善方向.md) — DeepLabV3+ 358-clean 訓練改善方向統整：overfitting 根本診斷（初始化+資料量錯位）、A~C 三組改善方向表（依 ROI 排序）、A1 pre-trained backbone 完整實作細節（input conv 改造 code、differential lr、兩階段 fine-tune）
 
 ---
 
