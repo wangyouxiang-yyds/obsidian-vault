@@ -116,3 +116,7 @@
 ## [2026-06-17] concept | 新增 wiki/concepts/iforest_架構與運作機制.md（Q&A 學習紀錄：樹結構本質、建樹過程含 8 像素例子、Duan 2022 GM01 完整 10 步驟、訓測同源 vs 資料外洩釐清、contamination 失敗點）
 ## [2026-06-17] concept | 新增 wiki/concepts/deeprx_vae_架構與運作機制.md（Q&A 學習紀錄：VAE 架構（reparam trick / KL 約束）、為何 VAE+RX、San Diego I 完整流程、訓測同源爭議的誠實討論含論文評估方式的批判、Background-Only Training 洞察）
 ## [2026-06-18] concept | 更新 wiki/concepts/deeprx_vae_架構與運作機制.md：追加第 8-12 章（論文 vs 真實場景複雜度差異 / v9 完整 12 步驟流程 / 跨影像不共用 VAE 的原因 / v3 濫抓四大根本原因與 v9 解法 / 投影片報告用三大 Takeaways）；更新 index.md 對應描述
+## [2026-06-24] pipeline | 新增 wiki/pipeline/VRT_pipeline_01_前處理.md（完整前處理 pipeline：VRT 建置、GT Mask、GB1.5 patch 切分、3-fold 策略、HNM、NIR-R-G 背景圖；439 scenes / 8-band 最新狀態）
+## [2026-06-24] pipeline | 新增 wiki/pipeline/VRT_pipeline_02_模型訓練.md（訓練 pipeline：DeepLabV3+ ResNet-50 from-scratch、FocalLoss(alpha=0.25,gamma=2)、class_weights=[13,1]、EMA decay=0.9997、checkpoint/resume、Docker v6 環境）
+## [2026-06-24] pipeline | 新增 wiki/pipeline/VRT_pipeline_03_重組評估.md（重組評估 pipeline：全場景 sliding window TTA、Cloud Mask 後處理、annot-only/JSON 雙 GT 指標、prevalence 三組對照、reconstruct_v2 效能優化、fold2 Oil IoU=39.80%）
+## [2026-06-24] index | 更新 index.md：新增三份 VRT pipeline 系列文件的索引條目

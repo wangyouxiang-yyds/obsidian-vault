@@ -11,6 +11,9 @@
 - [OIL_PROJECT_VRT_0422.md](wiki/pipeline/OIL_PROJECT_VRT_0422.md) — 0422 VRT 訓練專案：GDAL VRT 虛擬影像、動態 Patch 讀取、全場景 Mask 流程
 - [annotation_workflow.md](wiki/pipeline/annotation_workflow.md) — 標注工作流程：LabelMe JSON 在 pipeline 的角色、QGIS GPKG → JSON 橋接腳本說明
 - [add_new_data.md](wiki/pipeline/add_new_data.md) — 新增 Sen2Like 資料流程：目錄結構規範、Strip→COG 轉換、VRT 建置、fold split 重算、patch 座標重生成（含腳本指令與關鍵路徑索引）
+- [VRT_pipeline_01_前處理.md](wiki/pipeline/VRT_pipeline_01_前處理.md) — 完整前處理 Pipeline：VRT 生成、GT Mask、Patch 切分（GB1.5）、3-fold 策略、HNM、NIR-R-G 背景圖；439 場景 / 8-band
+- [VRT_pipeline_02_模型訓練.md](wiki/pipeline/VRT_pipeline_02_模型訓練.md) — 模型訓練 Pipeline：DeepLabV3+ ResNet-50（8-ch, from-scratch）、FocalLoss、class_weights=[13,1]、EMA、checkpoint/resume、fold2 基準
+- [VRT_pipeline_03_重組評估.md](wiki/pipeline/VRT_pipeline_03_重組評估.md) — Reconstruction 評估 Pipeline：全場景 Sliding Window、Cloud Mask 後處理、annot-only / JSON GT 兩組指標、prevalence 對照表、v2 效能優化、fold2 Oil IoU=39.80%
 
 ---
 
