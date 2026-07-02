@@ -38,7 +38,7 @@
 - [20260614_DeepRX_EM_v3_全場景實驗總結.md](wiki/experiments/20260614_DeepRX_EM_v3_全場景實驗總結.md) — DeepRX + EM v3 全 439 場景評估：Micro Recall=0.3712（iForest 16.4×），TP=1,698，非零場景 275/433（63.5%）；VAE latent + Mahalanobis + EM 自動門檻
 - [OSDMamba_摘要.md](wiki/papers/OSDMamba_摘要.md) — OSDMamba 論文摘要：首個基於 Mamba 的油汙偵測架構、SS2D 感受野擴張、ConvSSM 解碼器
 - [20260702_CV_358clean_gt_expand_進行中.md](wiki/experiments/20260702_CV_358clean_gt_expand_進行中.md) — GT_expand 3-fold CV 訓練進度：fold1/2 完成（2026-07-01）、fold3 進行中（epoch 43 Oil IoU≈0.30）、TODO 三份待動工、已知繼承 bug（C2/C3/C4）
-- [20260702_波段選擇消融實驗規劃.md](wiki/experiments/20260702_波段選擇消融實驗規劃.md) — 波段選擇消融實驗規劃（尚未執行）：源自 Zakzouk et al. 2024 論文，比較 Baseline 全 8 波段／Band Subset(B1,2,3,8A,11,12)／Index C／Index D 四組，確認現有 8-band 資料集波段對應、待 server 確認事項與下一步
+- [20260702_波段選擇消融實驗規劃.md](wiki/experiments/20260702_波段選擇消融實驗規劃.md) — 波段選擇消融實驗規劃：源自 Zakzouk et al. 2024 論文，比較 Baseline 全 8 波段／Band Subset(B1,2,3,8A,11,12)／Index C／Index D 四組；已釘死主指標 recon_pooled_oil_iou，組0 Baseline 3-fold 實測完成（0.332±0.026），組1 準備開跑
 
 ---
 
