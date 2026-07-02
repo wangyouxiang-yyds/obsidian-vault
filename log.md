@@ -125,3 +125,4 @@
 ## [2026-07-02] pipeline | 新增 wiki/pipeline/GT_expand_pipeline.md（GT_expand fork 版本完整 pipeline 說明：GT-centric patch 策略、與 0422 策略差異表、繼承 bug C1~C4、不繼承 A4/class_weights/TTA 分析）
 ## [2026-07-02] experiment | 新增 wiki/experiments/20260702_CV_358clean_gt_expand_進行中.md（當前 CV 實驗進度：fold1/2 完成、fold3 進行中 epoch 43、TODO 三份待動工、已知繼承 bug C2/C3/C4 對結果的影響說明）
 ## [2026-07-02] index | 更新 index.md：新增上述三份筆記的索引條目
+## [2026-07-02] update | 修正 GT_expand_pipeline.md + 20260702_CV_358clean_gt_expand_進行中.md：依 code 驗證實況更新 TODO 狀態（C1~C7 幾乎全已修、class_weights→[1,1]、patience→25、A1 pretrained backbone 已啟用；C4 刻意 revert；02 公平比較協議部分待動工）；加註 repo TODO markdown 文件已過時

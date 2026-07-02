@@ -19,15 +19,14 @@ tags: [gt-expand, deeplabv3+, 3-fold-cv, oil-detection, 358clean, gt-centric]
 | 項目 | 設定 |
 |------|------|
 | 實驗名稱 | CV_358clean_gt_expand |
-| 模型 | DeepLabV3+（ResNet-50, 8-ch, from-scratch）|
+| 模型 | DeepLabV3+（ResNet-50, 8-ch, **ImageNet pretrained**）|
 | 資料集 | 358 clean scenes，3-fold CV |
 | Patch 策略 | GT-centric（±128 bbox center，共 2,897 patches）|
 | Epochs | 300 |
-| class_weights | [13, 1]（繼承自 0422，待重校）|
+| Patience | 25（已從 0422 的 50 縮短）|
+| class_weights | **[1.0, 1.0]**（已重校：GT_expand 油汙佔比 ~42:58，無需加權）|
 | 實驗記錄格式 | per-fold run_metrics.json |
 | 結果彙整 | result_CV_358clean_gt_expand_log_restructured.xlsx |
-
-> class_weights=[13,1] 繼承自 0422，在 GT-centric 分布下（所有 patch 都含油汙）可能過度加強 Oil 的 loss 貢獻。等 fold3 完成後再評估是否需重校（見 `TODO/01_distribution_shift_recheck.md`）。
 
 ---
 
@@ -43,45 +42,39 @@ tags: [gt-expand, deeplabv3+, 3-fold-cv, oil-detection, 358clean, gt-centric]
 
 ---
 
-## 待動工 TODO 清單
+## Code Review 實況（已對照 code 驗證）
 
-| 文件（repo 內路徑）| 狀態 | 說明 |
-|--------------------|------|------|
-| `TODO/00_code_review_2026-06-25.md` | 未開始 | 動工前必修 7 項（seed、stats filter、collate None、pixel_mapping ignore、aug 過裁、eval bias 等）|
-| `TODO/01_distribution_shift_recheck.md` | 未開始 | 因 patch 分布大改，重校 class_weights / loss / aug 強度 |
-| `TODO/02_eval_protocol_comparison.md` | 未開始 | 與 0422 sliding-window 公平比較的評估協議設計 |
+> **重要**：repo 內 `TODO/` 目錄的 markdown 文件（00/01/02）撰寫後**未回頭更新，已過時**。以下以實際 code 驗證結果為準。
 
-建議執行順序：fold3 完成 → `00_code_review`（必修 bug fix）→ 評估是否重跑 3-fold → `01_distribution_shift_recheck` → `02_eval_protocol_comparison`。
-
----
-
-## 已知繼承 Bug（影響本輪結果可信度）
-
-| Bug | 說明 | 對結果的影響 |
-|-----|------|------------|
-| C2 mean/std 污染 | YAML 直接沿用 0422 的 mean/std，等於繼承從全場景（可能含 test fold）抽樣的統計 | 輕微污染，不會讓結果完全失效但不算嚴格乾淨 |
-| C3 collate None | DataLoader batch 行為可能非預期 | 不確定是否影響梯度計算，需驗證 |
-| C4 evaluation else 走 YOLO | val 階段可能未正確計算分割 IoU | 若確認有問題，目前的 val IoU 數字會有偏差 |
-
-> 以上三點尚未修正，本輪 CV 結果作為「基準觀察」使用，`00_code_review` 修完後重跑才算正式結果。
+| 項目 | 狀態 | 備註 |
+|------|------|------|
+| C1 seed | ✅ 已修 | `set_global_seed()` + 每 fold `base_seed+fold_idx`，cudnn deterministic |
+| C2 mean/std | ✅ 已修 | `_auto_calculate_stats_vrt` 從 GT_expand 座標重算，不再沿用 0422 污染版 |
+| C3 collate None | ✅ 已修 | `oil_collate_fn` 永遠掛上，加「整批皆 None → return None」防護 |
+| C4 pixel_mapping | ⚠️ 刻意 revert | YAML 標記 `[revert-C4]`，255:1 ignore 算 bg；有效 pixel 12%→100%，與 eval 對齊。**評估後刻意保留，非未做** |
+| C5 RandomResizedCrop 過裁 | ✅ 已修 | scale 收緊至 0.9，降頻率 |
+| C6 eval else 靜默丟棄 | ✅ 已修 | else 改 raise，shape 不符不再靜默跳過 |
+| C7 eval_protocol 欄位 | ✅ 已修 | `main_runner.py` 加評估協議標註 |
+| class_weights 重校 | ✅ 已做 | [13,1] → [1.0,1.0]（油汙佔比 ~42:58，無需加權）|
+| patience 調整 | ✅ 已做 | 50 → 25 |
+| A1 ImageNet backbone | ✅ 已做 | `torchvision_weights: 'DEFAULT'` |
+| 02 公平比較協議 | 部分 / 待動工 | C7 eval_protocol 欄位已加；跨版本完整比較協議尚未確認 |
 
 ---
 
 ## 初步觀察
 
-- fold3 epoch 43 的 Oil IoU ≈ 0.30，Background IoU ≈ 0.96；與 0422 sliding-window baseline（avg Oil IoU 0.24~0.28）相當，需等完整 3-fold 平均才有意義。
+- fold3 epoch 43 的 Oil IoU ≈ 0.30，Background IoU ≈ 0.96；需等完整 3-fold 平均才有意義。
 - Background IoU 高（0.96）在 GT-centric 分布下需謹慎解讀：patch 本身油汙佔比高，背景像素相對少，高 BG IoU 不等於整圖上的 BG 辨識能力。
-- 本輪數字**不可直接與 0422 比較**（評估分母不同），需等 `TODO/02_eval_protocol_comparison.md` 的公平比較協議完成後再做跨版本對比。
+- 本版本已啟用 ImageNet pretrained backbone + class_weights=[1,1] + patience=25，設定與 0422 baseline 有根本差異，數字**不可直接比較**（評估分母也不同），需等公平比較協議設計完成。
 
 ---
 
 ## 下一步
 
 - [ ] fold3 訓練完成後，補上三個 fold 的完整 metrics（val mIoU / Oil IoU / BG IoU / best epoch）
-- [ ] 執行 `TODO/00_code_review_2026-06-25.md`（7 項必修 bug fix）
-- [ ] 評估 bug fix 後是否需重跑 3-fold
-- [ ] 執行 `TODO/01_distribution_shift_recheck.md`（重校 class_weights / loss / aug）
-- [ ] 完成 `TODO/02_eval_protocol_comparison.md`（公平比較協議設計）
+- [ ] 完成跨版本公平比較協議設計（GT_expand per-patch IoU vs 0422 整圖 IoU 的可比性）
+- [ ] 視 fold3 結果決定是否需針對 C4 revert 做敏感度測試（即加回 ignore mask 後重跑一 fold 比較）
 
 ---
 
