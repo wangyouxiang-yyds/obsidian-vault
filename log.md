@@ -120,3 +120,8 @@
 ## [2026-06-24] pipeline | 新增 wiki/pipeline/VRT_pipeline_02_模型訓練.md（訓練 pipeline：DeepLabV3+ ResNet-50 from-scratch、FocalLoss(alpha=0.25,gamma=2)、class_weights=[13,1]、EMA decay=0.9997、checkpoint/resume、Docker v6 環境）
 ## [2026-06-24] pipeline | 新增 wiki/pipeline/VRT_pipeline_03_重組評估.md（重組評估 pipeline：全場景 sliding window TTA、Cloud Mask 後處理、annot-only/JSON 雙 GT 指標、prevalence 三組對照、reconstruct_v2 效能優化、fold2 Oil IoU=39.80%）
 ## [2026-06-24] index | 更新 index.md：新增三份 VRT pipeline 系列文件的索引條目
+
+## [2026-07-02] pipeline | 新增 wiki/pipeline/OIL_PROJECT_MutiBand_0422_VRT_training.md（0422 主線入口索引，解決 TODO/README 中的斷鏈 [[OIL_PROJECT_MutiBand_0422_VRT_training]]）
+## [2026-07-02] pipeline | 新增 wiki/pipeline/GT_expand_pipeline.md（GT_expand fork 版本完整 pipeline 說明：GT-centric patch 策略、與 0422 策略差異表、繼承 bug C1~C4、不繼承 A4/class_weights/TTA 分析）
+## [2026-07-02] experiment | 新增 wiki/experiments/20260702_CV_358clean_gt_expand_進行中.md（當前 CV 實驗進度：fold1/2 完成、fold3 進行中 epoch 43、TODO 三份待動工、已知繼承 bug C2/C3/C4 對結果的影響說明）
+## [2026-07-02] index | 更新 index.md：新增上述三份筆記的索引條目

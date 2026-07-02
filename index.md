@@ -14,6 +14,8 @@
 - [VRT_pipeline_01_前處理.md](wiki/pipeline/VRT_pipeline_01_前處理.md) — 完整前處理 Pipeline：VRT 生成、GT Mask、Patch 切分（GB1.5）、3-fold 策略、HNM、NIR-R-G 背景圖；439 場景 / 8-band
 - [VRT_pipeline_02_模型訓練.md](wiki/pipeline/VRT_pipeline_02_模型訓練.md) — 模型訓練 Pipeline：DeepLabV3+ ResNet-50（8-ch, from-scratch）、FocalLoss、class_weights=[13,1]、EMA、checkpoint/resume、fold2 基準
 - [VRT_pipeline_03_重組評估.md](wiki/pipeline/VRT_pipeline_03_重組評估.md) — Reconstruction 評估 Pipeline：全場景 Sliding Window、Cloud Mask 後處理、annot-only / JSON GT 兩組指標、prevalence 對照表、v2 效能優化、fold2 Oil IoU=39.80%
+- [OIL_PROJECT_MutiBand_0422_VRT_training.md](wiki/pipeline/OIL_PROJECT_MutiBand_0422_VRT_training.md) — 0422 論文主軸版本入口索引：sliding-window 策略說明、指向三份 VRT pipeline 系列文件、與 GT_expand 的關係
+- [GT_expand_pipeline.md](wiki/pipeline/GT_expand_pipeline.md) — GT_expand Fork 版本 Pipeline：GT-centric patch 策略（bbox 中心 ±128，2,897 patches）、與 0422 策略差異表、繼承 bug 清單（C1~C4）、評估協議說明
 
 ---
 
@@ -35,6 +37,7 @@
 - [20260613_iForest_LocalContrast_B4B8B11_全場景實驗總結.md](wiki/experiments/20260613_iForest_LocalContrast_B4B8B11_全場景實驗總結.md) — iForest + Local Contrast（B4/B8/B11）全 439 場景評估：Micro Recall=0.0225，TP=104，FP=24,063；非零場景僅 43/438（9.8%）
 - [20260614_DeepRX_EM_v3_全場景實驗總結.md](wiki/experiments/20260614_DeepRX_EM_v3_全場景實驗總結.md) — DeepRX + EM v3 全 439 場景評估：Micro Recall=0.3712（iForest 16.4×），TP=1,698，非零場景 275/433（63.5%）；VAE latent + Mahalanobis + EM 自動門檻
 - [OSDMamba_摘要.md](wiki/papers/OSDMamba_摘要.md) — OSDMamba 論文摘要：首個基於 Mamba 的油汙偵測架構、SS2D 感受野擴張、ConvSSM 解碼器
+- [20260702_CV_358clean_gt_expand_進行中.md](wiki/experiments/20260702_CV_358clean_gt_expand_進行中.md) — GT_expand 3-fold CV 訓練進度：fold1/2 完成（2026-07-01）、fold3 進行中（epoch 43 Oil IoU≈0.30）、TODO 三份待動工、已知繼承 bug（C2/C3/C4）
 
 ---
 
