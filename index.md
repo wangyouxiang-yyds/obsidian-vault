@@ -39,6 +39,7 @@
 - [OSDMamba_摘要.md](wiki/papers/OSDMamba_摘要.md) — OSDMamba 論文摘要：首個基於 Mamba 的油汙偵測架構、SS2D 感受野擴張、ConvSSM 解碼器
 - [20260702_CV_358clean_gt_expand_進行中.md](wiki/experiments/20260702_CV_358clean_gt_expand_進行中.md) — GT_expand 3-fold CV 訓練進度：fold1/2 完成（2026-07-01）、fold3 進行中（epoch 43 Oil IoU≈0.30）、TODO 三份待動工、已知繼承 bug（C2/C3/C4）
 - [20260702_波段選擇消融實驗規劃.md](wiki/experiments/20260702_波段選擇消融實驗規劃.md) — 波段選擇消融實驗規劃：源自 Zakzouk et al. 2024 論文，比較 Baseline 全 8 波段／Band Subset(B1,2,3,8A,11,12)／Index C／Index D 四組；已釘死主指標 recon_pooled_oil_iou，組0 Baseline 3-fold 實測完成（0.332±0.026），組1 準備開跑
+- [20260708_JM距離判別髒資料可行性診斷.md](wiki/experiments/20260708_JM距離判別髒資料可行性診斷.md) — 分支 B side study：三框架診斷（scene 級 oil-vs-bg JM AUC=0.50 / patch 級三指標 AUC≤0.65 / anomaly-JM AUC=0.64 但飽和）皆無法自動判髒資料，結論為「標籤性質 vs 工具性質」錯配非 JM 壞掉；附帶發現 SSL4EO band_map 波段錯位 bug
 
 ---
 
