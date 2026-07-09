@@ -3,10 +3,12 @@ date: 2026-07-09
 type: experiment
 stage: evaluation
 status: completed
-tags: [error-analysis, gt-quality, oil-detection, baseline, ssl4eo, extent-polygon-gt, false-negative, gt-expand]
+tags: [error-analysis, gt-quality, oil-detection, baseline, ssl4eo, extent-polygon-gt, false-negative, gt-expand, precision-recall, under-segmentation, correction]
 ---
 
 # Baseline 錯誤分析：GT 過寬是 Pooled IoU 天花板的主因，方向二 Cascade 降級
+
+> ⚠ **本篇原結論（GT 過寬為主因）已於同日被 precision/recall 量化實驗推翻，詳見文末〔2026-07-09 修正〕一節。**
 
 ## 1. 實驗背景
 
@@ -116,3 +118,26 @@ SSL4EO 預訓練三個配置（norm10k / frozen / bandfix）全部跟 from-scrat
 - [[20260702_CV_358clean_gt_expand_進行中]] — baseline 3-fold 訓練紀錄，本次分析的資料來源
 - [[20260702_波段選擇消融實驗規劃]] — 同一 baseline（組0）在波段消融實驗中的角色與指標定義
 - [[GT_expand_pipeline]] — 本次分析所在的分支 B pipeline
+
+## 10. 〔2026-07-09 修正〕結論推翻
+
+**推翻的舊結論**：原筆記依 6 張 overlay 目視，判大油汙瓶頸主因是「(b) GT 過寬 extent-polygon，把無油的水框成油，pooled 0.33 天花板大半是標註/指標假象」。
+
+**新證據（硬化量化，已跑完）**：對全 51 張大油汙 scene（oil_px>50000）重跑 baseline inference（每 scene 用所屬 fold 的 best.pt；sanity check：重算 IoU vs 原 csv 最大誤差 1e-4，完全重現），計算 oil 的 precision / recall：
+
+- precision mean 0.80 / median 0.85
+- recall mean 0.47 / median 0.42
+- 37/51 precision>0.7、28/51 recall<0.5、23/51 高準低召（典型 under-segmentation）、僅 2/51 over-fire
+- 極端例：Pacific_20211005 P0.99/R0.008、Gulf_20210607 P0.99/R0.134（模型只咬住最厚/最明顯的油，大片 diffuse 放掉）
+
+**修正後結論**：
+
+1. 大油汙 IoU 低完全是 recall 拖的，不是模型亂噴——是真實的 under-segmentation（漏抓）。
+2. 結合使用者標註證詞（大油汙一律保守框、只框看得見的明顯油 → 未被預測的 GT 是真油），判定為真漏抓 (a)，不是 (b) GT 過寬。
+3. 誠實界線：precision/recall 本身分不出 (a)/(b)（兩者都給高準低召）；(a) 的判定是靠使用者證詞，不是靠這組數字。
+4. 方向二 cascade 擱置的證據更硬（51 張僅 2 張 over-fire，砍 FP 幾乎無事可做）。
+5. 「pooled 0.33 是標註/指標假象、模型對可見油不差」一句作廢——那是真實 recall 天花板。
+6. 「extent-polygon GT 低估精準偵測器」的論文 finding 收回（與保守標註證詞矛盾）。
+7. 下一步 = recall 導向（更大 context/多尺度、沿大 slick 邊界取樣、油汙加權 loss）；Prithvi-EO-2.0（ViT 全域注意力，對大片均質 slick 的長距 context 對口）升為 live 候選。
+
+資料來源：主線 session 2026-07-09，腳本輸出 `large_scene_pr.csv`（51 scene 的 precision/recall/IoU）。
