@@ -40,6 +40,7 @@
 - [20260702_CV_358clean_gt_expand_進行中.md](wiki/experiments/20260702_CV_358clean_gt_expand_進行中.md) — GT_expand 3-fold CV 訓練進度：fold1/2 完成（2026-07-01）、fold3 進行中（epoch 43 Oil IoU≈0.30）、TODO 三份待動工、已知繼承 bug（C2/C3/C4）
 - [20260702_波段選擇消融實驗規劃.md](wiki/experiments/20260702_波段選擇消融實驗規劃.md) — 波段選擇消融實驗規劃：源自 Zakzouk et al. 2024 論文，比較 Baseline 全 8 波段／Band Subset(B1,2,3,8A,11,12)／Index C／Index D 四組；已釘死主指標 recon_pooled_oil_iou，組0 Baseline 3-fold 實測完成（0.332±0.026），組1 準備開跑
 - [20260708_JM距離判別髒資料可行性診斷.md](wiki/experiments/20260708_JM距離判別髒資料可行性診斷.md) — 分支 B side study：三框架診斷（scene 級 oil-vs-bg JM AUC=0.50 / patch 級三指標 AUC≤0.65 / anomaly-JM AUC=0.64 但飽和）皆無法自動判髒資料，結論為「標籤性質 vs 工具性質」錯配非 JM 壞掉；附帶發現 SSL4EO band_map 波段錯位 bug
+- [20260709_baseline錯誤分析_GT過寬與方向二降級.md](wiki/experiments/20260709_baseline錯誤分析_GT過寬與方向二降級.md) — SSL4EO 三配置打平 baseline 後的 error analysis：355 測試 scene dirty 命中=0（0.33 天花板與髒資料無關）、感測器無差、面積-IoU 倒 U 形（medium 0.456 最佳）、pooled 0.33 vs per-scene 0.42 落差幾乎全由 ~51 張大油汙 scene 造成；overlay 目視判定瓶頸為 FN + GT 過寬 extent-polygon（Gulf_20190428 IoU=0.753 vs Gulf_20210607 IoU=0.134 對照），判定方向二 detect-then-verify cascade 降級
 
 ---
 
