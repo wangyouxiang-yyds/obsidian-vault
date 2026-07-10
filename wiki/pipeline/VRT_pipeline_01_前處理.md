@@ -2,7 +2,7 @@
 type: pipeline
 tags: [preprocess, vrt, sen2like, patch, fold-split, hnm, 8band, oil-detection]
 project: OIL_PROJECT_MutiBand_VRT
-updated: 2026-06-24
+updated: 2026-07-10
 ---
 
 # VRT Pipeline — 01 前處理（Preprocessing）
@@ -75,6 +75,8 @@ Sen2Like 8-band TIF（每場景 8 個 ~125 MB TIF）
         {SCENE_NAME}.vrt    （5.3 KB，指向本機 TIF 絕對路徑）
 ```
 
+> ⚠️ **2026-07-10 補充**：`/home/alanyh/oil_dataset/new/full_band/MS6_sen2like_vrt/` 亦真實存在同一份輸出，兩份並存；分支 B（GT_expand）的 yaml 實際指向 `/home/alanyh` 這份。何者為 canonical 尚未確認，如實記錄待統一，不下結論。
+
 ---
 
 ## 步驟 B：GT Mask 生成（json_to_mask_tif.py）
@@ -101,6 +103,8 @@ Sen2Like 8-band TIF（每場景 8 個 ~125 MB TIF）
 ## 步驟 C：Patch 座標切分（generate_patch_coords.py）
 
 **機制**：對每個場景做 sliding window，記錄含油 patch 與背景 patch 的左上角座標到 TXT。
+
+> ⚠️ **2026-07-10 修正**：座標 TXT 的實際格式是**檔名編碼** `{SCENE_NAME}_patch_x{COL}_y{ROW}`，不是獨立的「x, y, w, h」欄位（[[VRT_pipeline_02_模型訓練]] 舊版的資料 Pipeline 段落也曾誤寫成 `x, y, w, h` 格式，已一併修正）。
 
 | 參數 | 值 |
 |------|----|
@@ -179,8 +183,8 @@ Sen2Like 8-band TIF（每場景 8 個 ~125 MB TIF）
 | 項目 | 路徑 |
 |------|------|
 | 8-band TIF | `/home/alanyh/oil_dataset/new/full_band/MS6_sen2like/` |
-| VRT 檔 | `/mnt/backup/oil_dataset/new/full_band/MS6_sen2like_vrt/` |
-| Mask TIF | 與各場景 TIF 同目錄 |
+| VRT 檔 | `/mnt/backup/oil_dataset/new/full_band/MS6_sen2like_vrt/` **與** `/home/alanyh/oil_dataset/new/full_band/MS6_sen2like_vrt/`（2026-07-10 查證：兩份皆真實存在，B 分支 yaml 用 `/home/alanyh` 這份；何者為 canonical 尚未確認，兩份並存待統一）|
+| Mask TIF | ~~與各場景 TIF 同目錄~~ 已修正：實際集中於 `/home/alanyh/oil_dataset/new/full_band/mask/` |
 | JSON 標註（flat）| `/home/alanyh/oil_dataset/new/full_band/MS6_sen2like_JSON/` |
 | Split TXT | `/mnt/backup/oil_dataset/new/full_band/data_split/` |
 | NIR-R-G 背景圖 | `/home/alanyh/oil_dataset/new/full_band/NIR_R_G_Output_png/all_ms6/` |

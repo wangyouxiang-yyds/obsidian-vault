@@ -3,6 +3,7 @@ type: dataset
 name: MS6_sen2like
 location: /home/alanyh/oil_dataset/new/full_band/
 tags: [sen2like, 8-band, multi-spectral]
+updated: 2026-07-10
 ---
 
 # MS6_sen2like 資料集
@@ -12,9 +13,9 @@ tags: [sen2like, 8-band, multi-spectral]
 
 ## 2. 關鍵路徑
 - **原始影像 (8-band TIF)**: `/home/alanyh/oil_dataset/new/full_band/MS6_sen2like/`
-- **VRT 虛擬影像**: `/home/alanyh/oil_dataset/new/full_band/MS6_sen2like_vrt/`
+- **VRT 虛擬影像**: `/home/alanyh/oil_dataset/new/full_band/MS6_sen2like_vrt/`（⚠️ 2026-07-10 查證：`/mnt/backup/oil_dataset/new/full_band/MS6_sen2like_vrt/` 亦真實存在同一份，兩份並存；何者為 canonical 尚未確認，見 [[VRT_pipeline_01_前處理]]）
 - **Mask 標籤**: `/home/alanyh/oil_dataset/new/full_band/mask/`
-- **JSON 標註**: `/home/alanyh/oil_dataset/new/full_band/JSON/`
+- **JSON 標註**: ~~`/home/alanyh/oil_dataset/new/full_band/JSON/`~~ 已修正：`/home/alanyh/oil_dataset/new/full_band/MS6_sen2like_JSON/`
 
 ## 3. 波段定義 (8 Bands)
 波段順序依波長升序排列：
@@ -39,6 +40,6 @@ tags: [sen2like, 8-band, multi-spectral]
 | 255 | Unannotated | ignore_index=255 |
 
 ## 5. 目前狀態
-- **格式**: 已轉換為 **COG (Cloud Optimized GeoTIFF)** 格式，提升 I/O 讀取效能。
-- **單位**: 數值已除以 10000 轉換為反射率 (Reflectance)。
+- **格式**: ~~已轉換為 **COG (Cloud Optimized GeoTIFF)** 格式~~ 已修正（2026-07-10）：實際已跑轉檔（tiled 256 + deflate，`cog_convert.log` 3080 檔全 OK），但**未建 overviews**，嚴格來說是 **tiled GeoTIFF**，非完整 COG 規格。
+- **單位**: ~~數值已除以 10000 轉換為反射率 (Reflectance)~~ 已修正（2026-07-10）：檔案本體是 **uint16 DN（0-10000 尺度）**，`/10000` 是 dataloader 讀取時才做的轉換（`deeplab_adapter.py` 讀 window 後 `/10000.0`，另有 nodata 歸零處理），並非儲存時就已轉好的反射率。
 - **統計值**: `mean` 與 `std` 已依 8 波段重新計算。
