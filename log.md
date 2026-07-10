@@ -128,3 +128,5 @@
 ## [2026-07-02] update | 修正 GT_expand_pipeline.md + 20260702_CV_358clean_gt_expand_進行中.md：依 code 驗證實況更新 TODO 狀態（C1~C7 幾乎全已修、class_weights→[1,1]、patience→25、A1 pretrained backbone 已啟用；C4 刻意 revert；02 公平比較協議部分待動工）；加註 repo TODO markdown 文件已過時
 ## [2026-07-02] ingest | 閱讀論文：Zakzouk et al. 2024《Novel oil spill indices for sentinel-2 imagery》，詳細總結 method details（859 波段組合窮舉、JM 距離、Index C/D 篩選流程）；判定核心相關（直接命中 Sentinel-2 油汙光譜指數，非邊緣相關）
 ## [2026-07-02] experiment | 新增 wiki/experiments/20260702_波段選擇消融實驗規劃.md：規劃 Baseline(8-band)／Band Subset(6-band)／Index C／Index D 四組消融實驗；確認現有 MS6_sen2like 資料集為 8 波段（非 CLAUDE.md 記載的 11 波段），解決波段對應疑點；列出 4 項待 server 確認事項
+
+## [2026-07-10] infra | 建立 Claude Code × Codex 雙 harness 共用制度骨架：新增 .agents/README.md（正本索引）、.agents/dispatch_to_gemini.md（Gemini 降級為雜工角色定義）、.agents/agents/paper-extractor.md（subagent 規格正本）；將 AGENTS.md 由全文複製 CLAUDE.md 改寫為薄索引，修正其中過時的 Linux git sync 路徑；把家目錄 ~/.agents/skills/ingest-paper 併入專案 .agents/skills/ 作為正本位置（核對後三處內容原本即逐字相同，無實際漂移）。任務書 C/D/E（模型調度守則、判斷力外化、prompt 範本）本輪未展開，列在 .agents/README.md 待辦。
