@@ -11,11 +11,11 @@
 - [OIL_PROJECT_VRT_0422.md](wiki/pipeline/OIL_PROJECT_VRT_0422.md) — 0422 VRT 訓練專案：GDAL VRT 虛擬影像、動態 Patch 讀取、全場景 Mask 流程
 - [annotation_workflow.md](wiki/pipeline/annotation_workflow.md) — 標注工作流程：LabelMe JSON 在 pipeline 的角色、QGIS GPKG → JSON 橋接腳本說明
 - [add_new_data.md](wiki/pipeline/add_new_data.md) — 新增 Sen2Like 資料流程：目錄結構規範、Strip→COG 轉換、VRT 建置、fold split 重算、patch 座標重生成（含腳本指令與關鍵路徑索引）
-- [VRT_pipeline_01_前處理.md](wiki/pipeline/VRT_pipeline_01_前處理.md) — 完整前處理 Pipeline：VRT 生成、GT Mask、Patch 切分（GB1.5）、3-fold 策略、HNM、NIR-R-G 背景圖；439 場景 / 8-band
-- [VRT_pipeline_02_模型訓練.md](wiki/pipeline/VRT_pipeline_02_模型訓練.md) — 模型訓練 Pipeline：DeepLabV3+ ResNet-50（8-ch, from-scratch）、FocalLoss、class_weights=[13,1]、EMA、checkpoint/resume、fold2 基準
+- [VRT_pipeline_01_前處理.md](wiki/pipeline/VRT_pipeline_01_前處理.md) — 完整前處理 Pipeline：VRT 生成、GT Mask、Patch 切分（GB1.5）、3-fold 策略、HNM、NIR-R-G 背景圖；445 場景 / 8-band；2026-07-10 更新場景數 439→445、新增 Dataset Manifest 制度章節、JSON 雙位置說明
+- [VRT_pipeline_02_模型訓練.md](wiki/pipeline/VRT_pipeline_02_模型訓練.md) — 模型訓練 Pipeline：DeepLabV3+ ResNet-50（8-ch, from-scratch）、FocalLoss、class_weights=[13,1]、checkpoint/resume、fold2 基準；2026-07-10 修正三處硬錯（EMA decay=0.0 未修 bug、best.pt 依 val_miou 非 Oil IoU、FocalLoss 無 alpha 參數）並補分支 B（GT_expand）差異表
 - [VRT_pipeline_03_重組評估.md](wiki/pipeline/VRT_pipeline_03_重組評估.md) — Reconstruction 評估 Pipeline：全場景 Sliding Window、Cloud Mask 後處理、annot-only / JSON GT 兩組指標、prevalence 對照表、v2 效能優化、fold2 Oil IoU=39.80%
 - [OIL_PROJECT_MutiBand_0422_VRT_training.md](wiki/pipeline/OIL_PROJECT_MutiBand_0422_VRT_training.md) — 0422 論文主軸版本入口索引：sliding-window 策略說明、指向三份 VRT pipeline 系列文件、與 GT_expand 的關係
-- [GT_expand_pipeline.md](wiki/pipeline/GT_expand_pipeline.md) — GT_expand Fork 版本 Pipeline：GT-centric patch 策略（bbox 中心 ±128，2,897 patches）、與 0422 策略差異表、繼承 bug 清單（C1~C4）、評估協議說明
+- [GT_expand_pipeline.md](wiki/pipeline/GT_expand_pipeline.md) — GT_expand Fork 版本 Pipeline：GT-centric patch 策略（bbox≤256 取中心 / bbox>256 用 256-grid 鋪磚，2,893 patches）、背景 patch 機制（bg_coords 3,510 筆）、3_fold_stratified_v2 split、雙 gate 評估協議（pooled_oil_iou>0.362 + Wilcoxon p<0.05）、cw31/tversky 實驗線；2026-07-10 大幅更新反映現況，並補 patch 座標腳本 SPLIT_DIR/OUT_DIR 環境變數硬化說明
 
 ---
 
@@ -53,8 +53,8 @@
 
 ## 資料集（wiki/datasets/）
 
-- [ms6_sen2like.md](wiki/datasets/ms6_sen2like.md) — MS6_sen2like 8-band 資料集：路徑、波段定義、Mask 映射與 COG 狀態
-- [dataset_split_strategy.md](wiki/datasets/dataset_split_strategy.md) — 海面油汙偵測資料集切割策略規劃：完全隨機 (K-Fold)、特定事件留出 (Leave-One-Event-Out)、時序預測切割 (Temporal Split)
+- [ms6_sen2like.md](wiki/datasets/ms6_sen2like.md) — MS6_sen2like 8-band 資料集：路徑、波段定義、Mask 映射與 COG 狀態；2026-07-10 補 Dataset Manifest 制度（445 場景，issues=0）、5 張 2026 NOAA Atlantic 新場景入庫記錄、JSON 雙位置盤點
+- [dataset_split_strategy.md](wiki/datasets/dataset_split_strategy.md) — 海面油汙偵測資料集切割策略規劃：完全隨機 (K-Fold)、特定事件留出 (Leave-One-Event-Out)、時序預測切割 (Temporal Split)；2026-07-10 補策略四（油汙面積分層 3-fold，分支 B 現行主用）
 
 ---
 

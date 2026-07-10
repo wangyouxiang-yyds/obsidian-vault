@@ -2,7 +2,7 @@
 type: pipeline
 tags: [preprocess, vrt, sen2like, patch, fold-split, hnm, 8band, oil-detection]
 project: OIL_PROJECT_MutiBand_VRT
-updated: 2026-06-24
+updated: 2026-07-10
 ---
 
 # VRT Pipeline — 01 前處理（Preprocessing）
@@ -31,7 +31,7 @@ Sen2Like 8-band TIF（每場景 8 個 ~125 MB TIF）
 
 | 項目 | 數值 |
 |------|------|
-| 場景總數 | 439（NOAA 403 + 事件 36） |
+| 場景總數 | 445（NOAA 408 + 事件 37；2026-07-10 manifest 盤點，較 2026-06-05 的 439 增加 6，其中 5 張為新入庫的 2026 NOAA Atlantic 場景，見下方 manifest 章節） |
 | 影像大小 | 10980 × 10980 像素（10m 解析度）|
 | 覆蓋範圍 | 110 × 110 km / 場景 |
 | 輸入頻段 | 8 bands（B01/02/03/04/08/8A/11/12）|
@@ -75,6 +75,8 @@ Sen2Like 8-band TIF（每場景 8 個 ~125 MB TIF）
         {SCENE_NAME}.vrt    （5.3 KB，指向本機 TIF 絕對路徑）
 ```
 
+> ⚠️ **2026-07-10 補充**：`/home/alanyh/oil_dataset/new/full_band/MS6_sen2like_vrt/` 亦真實存在同一份輸出，兩份並存；分支 B（GT_expand）的 yaml 實際指向 `/home/alanyh` 這份。何者為 canonical 尚未確認，如實記錄待統一，不下結論。manifest 盤點：220 場景 home+backup 兩份皆有，225 場景（含新入庫的 5 張 2026 場景）只有 home 份，backup 補齊為待辦。
+
 ---
 
 ## 步驟 B：GT Mask 生成（json_to_mask_tif.py）
@@ -83,7 +85,10 @@ Sen2Like 8-band TIF（每場景 8 個 ~125 MB TIF）
 
 **作用**：把人工標註的 LabelMe JSON polygon 轉成與影像同大小的 GT Mask TIF。
 
-**輸入**：`/home/alanyh/oil_dataset/new/full_band/MS6_sen2like_JSON/`（439 個 JSON，以場景資料夾名命名）
+**輸入**：LabelMe JSON，實際分佈於**兩處**（詳見 [[ms6_sen2like]] 第 2 節）：
+- 集中目錄 `/home/alanyh/oil_dataset/new/full_band/MS6_sen2like_JSON/`（163 個只在這）
+- 各場景資料夾內（6 個只在這，含 5 張新入庫的 2026 NOAA Atlantic 場景）
+- 276 個兩處都有；manifest 兩處都查（場景資料夾優先）
 
 **Mask 像素值定義**：
 
@@ -101,6 +106,8 @@ Sen2Like 8-band TIF（每場景 8 個 ~125 MB TIF）
 ## 步驟 C：Patch 座標切分（generate_patch_coords.py）
 
 **機制**：對每個場景做 sliding window，記錄含油 patch 與背景 patch 的左上角座標到 TXT。
+
+> ⚠️ **2026-07-10 修正**：座標 TXT 的實際格式是**檔名編碼** `{SCENE_NAME}_patch_x{COL}_y{ROW}`，不是獨立的「x, y, w, h」欄位（[[VRT_pipeline_02_模型訓練]] 舊版的資料 Pipeline 段落也曾誤寫成 `x, y, w, h` 格式，已一併修正）。
 
 | 參數 | 值 |
 |------|----|
@@ -130,7 +137,7 @@ Sen2Like 8-band TIF（每場景 8 個 ~125 MB TIF）
 
 **Split 目錄**：`/mnt/backup/oil_dataset/new/full_band/data_split/`
 
-目前有以下幾種切分策略（均基於 439 場景 scene-level，再產出 patch-level TXT）：
+目前有以下幾種切分策略（均基於 439 場景 scene-level，再產出 patch-level TXT；2026-07-10 新入庫的 5 張 2026 NOAA Atlantic 場景尚未加入任何 split，見下方 manifest 章節）：
 
 | 策略名稱 | 說明 | 備註 |
 |---------|------|------|
@@ -174,14 +181,27 @@ Sen2Like 8-band TIF（每場景 8 個 ~125 MB TIF）
 
 ---
 
+## 步驟 G：Dataset Manifest（build_manifest.py，2026-07-10 新增）
+
+**腳本**：`OIL_PROJECT_MutiBand_GT_expand/preprocess/build_manifest.py`
+
+**作用**：掃描整個 full_band 資料集，產出單一真相帳本 `/home/alanyh/oil_dataset/new/full_band/manifest.csv`，每場景一列（欄位含 `scene_id`/`sensor`/`date`/`tile`/`n_band_tifs`/`vrt_home`/`vrt_backup_exists`/`mask_path`/`mask_md5`/`json_exists`/`dirty`/`oil_px`/`splits_sv2`/`issues`）。8-band TIF / VRT / mask / JSON 缺一即在 `issues` 欄標記；JSON 檢查場景資料夾與集中目錄兩處（場景資料夾優先，見步驟 B）。
+
+**機制**：重跑即 diff 上一版（備份為 `manifest.prev.csv`，印出新增/移除/`mask_md5` 變更），`mask_md5` 一變即警告「該場景 patch 座標已過期，需重生 `patch_level_gt_expand`」。**場景增刪改後的標準動作＝重跑本腳本**，取代手動核對。
+
+**2026-07-10 盤點結果**：445 場景（NOAA 408 + 事件 37），8-band TIF / mask / JSON / VRT 齊全，`issues` 欄全空。dirty 85 張。VRT 220 場景 home+backup 兩份皆有、225 場景（含新入庫 5 張）只有 home。5 張新入庫的 2026 NOAA Atlantic 場景詳見 [[ms6_sen2like]] 第 7 節，尚未加入任何 split。
+
+---
+
 ## 重要路徑彙整
 
 | 項目 | 路徑 |
 |------|------|
 | 8-band TIF | `/home/alanyh/oil_dataset/new/full_band/MS6_sen2like/` |
-| VRT 檔 | `/mnt/backup/oil_dataset/new/full_band/MS6_sen2like_vrt/` |
-| Mask TIF | 與各場景 TIF 同目錄 |
-| JSON 標註（flat）| `/home/alanyh/oil_dataset/new/full_band/MS6_sen2like_JSON/` |
+| VRT 檔 | `/mnt/backup/oil_dataset/new/full_band/MS6_sen2like_vrt/` **與** `/home/alanyh/oil_dataset/new/full_band/MS6_sen2like_vrt/`（2026-07-10 查證：兩份皆真實存在，B 分支 yaml 用 `/home/alanyh` 這份；何者為 canonical 尚未確認，兩份並存待統一）|
+| Mask TIF | ~~與各場景 TIF 同目錄~~ 已修正：實際集中於 `/home/alanyh/oil_dataset/new/full_band/mask/` |
+| JSON 標註 | 集中目錄 `/home/alanyh/oil_dataset/new/full_band/MS6_sen2like_JSON/` **與**各場景資料夾內（兩處並存，見步驟 B）|
+| Dataset Manifest | `/home/alanyh/oil_dataset/new/full_band/manifest.csv`（單一真相帳本，見步驟 G）|
 | Split TXT | `/mnt/backup/oil_dataset/new/full_band/data_split/` |
 | NIR-R-G 背景圖 | `/home/alanyh/oil_dataset/new/full_band/NIR_R_G_Output_png/all_ms6/` |
 | 專案根目錄 | `/mnt/backup/alanyh/oil_IR_Fullband/OIL_PROJECT_MutiBand_0422_VRT_training/` |
@@ -193,7 +213,7 @@ Sen2Like 8-band TIF（每場景 8 個 ~125 MB TIF）
 - [[VRT_pipeline_02_模型訓練]] — 訓練架構與超參數
 - [[VRT_pipeline_03_重組評估]] — Reconstruction 與交付指標
 - [[OIL_PROJECT_VRT_0422]] — 早期版本架構說明（0422 初版，部分資訊已過時）
-- [[ms6_sen2like]] — MS6 資料集說明
+- [[ms6_sen2like]] — MS6 資料集說明（manifest 制度、2026 新場景入庫記錄）
 - [[annotation_workflow]] — LabelMe JSON 標注工作流程
 - [[20260605_資料集修正與三策略重跑]] — 場景擴充至 439 的完整紀錄
 - [[hard_negative_mining]] — HNM 概念說明

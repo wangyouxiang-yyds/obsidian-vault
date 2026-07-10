@@ -1,4 +1,10 @@
+---
+updated: 2026-07-10
+---
+
 # 海面油汙偵測資料集切割策略規劃 (Dataset Splitting Strategy)
+
+> ⚠️ 以下策略一～三為**分支 A（0422_VRT_training）視角**的規劃文件。分支 B（GT_expand，目前主力）現行主用切法是文末新增的「策略四」，見該節。
 
 ## 📌 核心原則：防止資料洩漏 (Data Leakage Prevention)
 本專案所有資料切割（Train / Val / Test）皆**嚴格遵守「大圖層級 (Scene-level)」為最小分割單位**。
@@ -49,3 +55,21 @@
 
 1.  **實驗執行順序**：建議先以「策略一」建立 Baseline 分數，隨後以「策略二」挑戰泛化極限，最後以「策略三」評估部署可行性。
 2.  **資料前處理腳本更新**：需要確保 `split_dataset.py` 支援基於「年份標籤」以及「事件名稱關鍵字」的大圖分派邏輯。
+
+---
+
+## 策略四：油汙面積分層 3-fold（3_fold_stratified_v2）（2026-07-10 補充，分支 B / GT_expand 現行主用）
+
+> 以上策略一～三皆為分支 A（0422_VRT_training）視角的規劃。分支 B（GT_expand，目前主力）現行主用的是本節描述的策略，腳本為 `preprocess/resplit_stratified_v2.py`，詳見 [[GT_expand_pipeline]] 第三節。
+
+**目標**：確保每個 fold 的 test 難度（油汙大小分佈）均衡，避免某折剛好抽到特別多大油汙或特別多小油汙場景，導致 fold 間指標波動失真。
+
+**實作邏輯**：
+1. 排除髒場景（`dirty.txt` / `blur.txt` 標記）
+2. 讀 mask 計算每個場景的 oil pixel count
+3. 依油汙面積分 3 個 tertile 作為分層依據
+4. 用 `StratifiedKFold(3)` 依 tertile 分層切 3-fold（scene-level）
+5. 每個 fold 內的 train+val 再依 80/20 同樣做分層抽樣
+6. `seed=42`
+
+**輸出目錄**：`/mnt/backup/oil_dataset/new/full_band/data_split/3_fold_stratified_v2/`
