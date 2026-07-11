@@ -85,4 +85,4 @@
 
 ## 分析輸出（outputs/）
 
-_尚無頁面_
+- [20260711_AI協作Harness現況快照.md](outputs/20260711_AI協作Harness現況快照.md) — 2026-07-11 狀態快照：雙 harness（Claude Code × Antigravity）+ institution 正本架構、研究現況（分支A/B、tversky/cw31 數字、v3plus 訓練進行中）、Claude 端 subagent 清單、Claude/agy/codex 模型角色分工與調度原則

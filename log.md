@@ -134,3 +134,5 @@
 ## [2026-07-10] ingest | 5 張 2026 NOAA Atlantic（19TDE）場景入庫：20260309_S2/20260329_S2/20260414_L9/20260425_S2/20260508_L8，gpkg→mask→VRT 全部驗證通過（mask=VRT=10980×10980，值僅 0/1/255，oil_px=13663/345/3494/2286/1884），尚未加入任何 split
 ## [2026-07-10] doc | 更新 wiki/datasets/ms6_sen2like.md（新增第 6/7 節：manifest 制度、2026 新場景入庫記錄；修正 JSON 雙位置描述）、wiki/pipeline/VRT_pipeline_01_前處理.md（場景數 439→445、新增步驟 G manifest 章節、VRT/JSON 路徑表更新）、wiki/pipeline/GT_expand_pipeline.md（補 patch 座標腳本 SPLIT_DIR/OUT_DIR 環境變數硬化說明）
 ## [2026-07-10] infra | 建立 Claude Code × Codex 雙 harness 共用制度骨架：新增 .agents/README.md（正本索引）、.agents/dispatch_to_gemini.md（Gemini 降級為雜工角色定義）、.agents/agents/paper-extractor.md（subagent 規格正本）；將 AGENTS.md 由全文複製 CLAUDE.md 改寫為薄索引，修正其中過時的 Linux git sync 路徑；把家目錄 ~/.agents/skills/ingest-paper 併入專案 .agents/skills/ 作為正本位置（核對後三處內容原本即逐字相同，無實際漂移）。任務書 C/D/E（模型調度守則、判斷力外化、prompt 範本）本輪未展開，列在 .agents/README.md 待辦。
+
+## [2026-07-11] doc | 新增 outputs/20260711_AI協作Harness現況快照.md（狀態快照：雙 harness+institution 架構、研究現況分支A/B與tversky/cw31數字、v3plus訓練進行中、Claude端subagent清單、Claude/agy/codex模型角色分工）；更新 index.md 分析輸出區塊
