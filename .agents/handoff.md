@@ -6,12 +6,12 @@
 同機接手：Claude Code 與 Codex 都在這台 Linux server 上，讀寫同一份 vault，接手不需要 commit/push。只有要讓 Windows 端的 vault checkout 看到最新狀態時才需要 commit + push。
 
 ## 目前狀態(每次更新覆蓋本節;本節只是摘要,研究細節唯一正本=institution research/oil_spill_project_status.md)
-- STATUS_AS_OF:2026-07-11 15:30 UTC(更新者:Claude Code)
+- STATUS_AS_OF:2026-07-11 16:40 UTC(更新者:Claude Code)
 - 正本路徑:/home/alanyh/.agents/institution/research/oil_spill_project_status.md
-- 最近完成事件:研究路線重排+36-scene OOD holdout 封存(共識第 3 案,GT_expand commit);baseline_v3plus fold1 完成(0.3061 單 fold 負向訊號)
-- 下一步:v3plus 完跑(~2天)後雙閘門判定;E2 時空稽核可先做(零 GPU);ignorering 待使用者明說
-- 執行中程序:nohup 串行 v3plus 訓練(fold2 進行中,log=train_log/nohup_v3plus_20260711-062825.log)
-- 更正:GT_expand 已於 2026-07-11 git init(現 2 commits)——本檔先前「未進 git」為過時資訊,該過時曾誤導本日稽核,是本次 handoff 瘦身的直接動機
+- 最近完成事件:E2 時空稽核完成——94% test scene 在 train 有同 tile 近重複,依共識觸發條件 tile-grouped sensitivity split 升為投稿必要件(analysis/spatiotemporal_audit/,GT_expand 已 commit)
+- 使用者資料計畫:5 個 2026 Atlantic 場景(現無 mask)待 v3plus 兩組跑完後加入資料集開後續實驗(=新資料版,屆時需重跑對照;ignorering 排序屆時交使用者)
+- 下一步:等 v3plus 串行訓練完跑(~2天)→雙閘門判定;之後 threshold 校準+FN 分解(零重訓)
+- 執行中程序:nohup 串行 v3plus 訓練(baseline fold2 進行中,log=train_log/nohup_v3plus_20260711-062825.log)
 
 ## 共識紀錄
 - 2026-07-11｜Codex 前處理審查 F1-F10 處置方案｜一回合全條 AGREE：F2 降 Medium（空 tile=context-negative 保留）、F4 維持 High fail-fast、三批執行順序、ignorering 用凍結資料先跑與 v2 解耦｜雙方立場各經程式碼實查
