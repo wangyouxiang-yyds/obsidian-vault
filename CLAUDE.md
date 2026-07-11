@@ -209,6 +209,8 @@ git push
 - `log.md` 只能 append，不可修改舊紀錄
 - 每次新增頁面後必須更新 `index.md`
 - 不確定的技術細節請詢問使用者後再寫入，不要猜測
+- 重大決策須與 Codex 協商取得共識，規則見 `.agents/consensus.md`。
+- 工作段落結束時更新 `.agents/handoff.md`；接手他方工作前先讀該檔。
 
 
 ## 啟動規則

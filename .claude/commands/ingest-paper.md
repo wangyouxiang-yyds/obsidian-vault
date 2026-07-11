@@ -2,7 +2,7 @@
 
 你是油汙偵測研究 Wiki 的維護者。使用者提供論文時，執行以下完整流程。
 
-**Wiki 根目錄**：`D:\LAB\obsidian-vault`
+**Wiki 根目錄**：當前 vault 根目錄（執行時自動識別；後續所有路徑（如 `wiki/papers/...`）均為相對於 vault 根的相對路徑）。
 
 ---
 
