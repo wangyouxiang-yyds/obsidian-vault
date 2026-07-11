@@ -48,3 +48,7 @@ Gemini CLI（agy）不參與共識，只接協商完成後派發的雜工（見 
 - Claude → Codex：`codex exec --skip-git-repo-check -s read-only -c tools.web_search=true -m gpt-5.6-sol "<提示詞>"`（模型由使用者 2026-07-11 指定為 gpt-5.6-sol）；多回合沿用同一 session：`codex exec resume --last "<下一輪提示詞>"`
 - Codex → Claude：`claude -p "<提示詞>"`（直接執行已驗證可用，claude v2.1.206）。
   注意：Linux server 的核心未開 unprivileged userns，codex 的 bubblewrap 沙箱建不了 namespace，`codex exec` 沙箱內喚起 claude 會失敗；互動模式下的 codex 可經使用者核准跳出沙箱執行。兩個 harness 都安裝在這台 Linux server 上，協商互叫皆在本機完成。
+
+## 試行評估附錄(2026-07-11 起;觀察機制,不構成 v2.1)
+
+不修改 v2 的協商步驟、角色權限或收斂判準。decisions/ 每案須記:首輪分歧點、收斂輪數、是否產生實際返工。累積 3–5 個代表性案例後回顧一次。review trigger(觸發才提 v2.1):連續無法收斂、主持方資訊優勢造成偏置、VERDICT 區塊無法忠實表達異議。
