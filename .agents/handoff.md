@@ -6,12 +6,12 @@
 同機接手：Claude Code 與 Codex 都在這台 Linux server 上，讀寫同一份 vault，接手不需要 commit/push。只有要讓 Windows 端的 vault checkout 看到最新狀態時才需要 commit + push。
 
 ## 目前狀態(每次更新覆蓋本節;本節只是摘要,研究細節唯一正本=institution research/oil_spill_project_status.md)
-- STATUS_AS_OF:2026-07-11 22:30 UTC(更新者:Claude Code)
+- STATUS_AS_OF:2026-07-12 01:50 UTC(更新者:Claude Code)
 - 正本路徑:/home/alanyh/.agents/institution/research/oil_spill_project_status.md
-- 最近完成事件:baseline_v3plus fold2 完成(pooled Oil IoU 0.3034,與 fold1 0.3061 同向低於 baseline 0.332;純架構切換大概率不過閘門,正式判定待 fold3);E2 稽核完成(94% 同 tile 近重複,tile-grouped sensitivity split 升必要件)
+- 最近完成事件:baseline_v3plus 3-fold 完跑+雙閘門正式判定=受控 negative result(pooled 0.3047 FAIL;per-scene vs V3 顯著更差 p=1e-10;純架構切換路線關閉,詳見狀態正本)
 - 使用者資料計畫:5 個 2026 Atlantic 場景(現無 mask)待 v3plus 兩組跑完後加入資料集開後續實驗(=新資料版,屆時需重跑對照;ignorering 排序屆時交使用者)
 - 下一步:等 v3plus 串行訓練完跑(~2天)→雙閘門判定;之後 threshold 校準+FN 分解(零重訓)
-- 執行中程序:nohup 串行 v3plus 訓練(baseline fold3 進行中,之後自動接 tversky_v3plus;log=train_log/nohup_v3plus_20260711-062825.log)
+- 執行中程序:nohup tversky_v3plus fold1 訓練中(01:13 UTC 自動接跑;判準=須顯著優於 V3+tversky 0.3915 才留 V3+;log 同前)
 
 ## 共識紀錄
 - 2026-07-11｜Codex 前處理審查 F1-F10 處置方案｜一回合全條 AGREE：F2 降 Medium（空 tile=context-negative 保留）、F4 維持 High fail-fast、三批執行順序、ignorering 用凍結資料先跑與 v2 解耦｜雙方立場各經程式碼實查
