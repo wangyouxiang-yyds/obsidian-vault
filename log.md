@@ -137,3 +137,5 @@
 
 ## [2026-07-11] doc | 新增 outputs/20260711_AI協作Harness現況快照.md（狀態快照：雙 harness+institution 架構、研究現況分支A/B與tversky/cw31數字、v3plus訓練進行中、Claude端subagent清單、Claude/agy/codex模型角色分工）；更新 index.md 分析輸出區塊
 ## [2026-07-14] ingest | 論文：SSL4EO-S12（Wang et al. 2023）——全球多模態多時相 Sentinel-1/2 SSL 預訓練資料集，四法（MoCo/DINO/MAE/data2vec）× 兩種 backbone benchmark；確認「SSL/foundation model 尚未應用於光學海面油汙偵測」研究缺口；新增 wiki/concepts/self_supervised_pretraining_遙測.md；順帶補齊 index.md 文獻摘要區塊遺漏的兩筆既有條目（Song_DeepRX、柯弈仲2008）
+
+## [2026-07-14] ingest | 論文：Tversky loss for image segmentation（Salehi et al. 2017，arXiv:1706.05721）——以 α/β 取代 Dice 對稱權重直接控制 FP/FN 懲罰，3D U-Net MS 病灶分割 α=0.3/β=0.7 全面優於 Dice loss（α=β=0.5）；新增 wiki/concepts/分割損失函數與類別不平衡.md；**重要交叉確認**：此文獻最佳超參數與 GT_expand 分支現行 tversky 實驗線設定完全一致，該實驗線已實測勝出（pooled oil IoU=0.3915，唯一通過雙 gate，優於 cw31），已回頭補記於 wiki/pipeline/GT_expand_pipeline.md 第三-c 節

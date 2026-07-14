@@ -68,6 +68,7 @@
 - [deeprx_vae_架構與運作機制.md](wiki/concepts/deeprx_vae_架構與運作機制.md) — Deep-RX 深入理解：VAE 架構（reparam trick / KL 約束）、San Diego I 完整流程、訓測同源爭議的誠實討論、論文評估方式的學術批評、Background-Only Training 洞察（v9 已實作）、v9 完整 12 步驟流程（per-scene VAE + Mahalanobis + EM + NDOI）、論文 vs 真實場景複雜度差異（one anomaly vs multi-anomaly）、v3 濫抓四大根本原因與 v9 對應解法
 - [deeplabv3plus_358clean_overfitting_改善方向.md](wiki/concepts/deeplabv3plus_358clean_overfitting_改善方向.md) — DeepLabV3+ 358-clean 訓練改善方向統整：overfitting 根本診斷（初始化+資料量錯位）、A~C 三組改善方向表（依 ROI 排序）、A1 pre-trained backbone 完整實作細節（input conv 改造 code、differential lr、兩階段 fine-tune）
 - [self_supervised_pretraining_遙測.md](wiki/concepts/self_supervised_pretraining_遙測.md) — 遙測 SSL 預訓練總覽：backbone 概念、MoCo/DINO/MAE/data2vec 四法比較、Linear Probing vs Fine-tuning 對照表、SSL4EO-S12 實測佐證 pretrained backbone 效益、「SSL 尚未用於光學油汙偵測」研究缺口
+- [分割損失函數與類別不平衡.md](wiki/concepts/分割損失函數與類別不平衡.md) — Class re-weighting / Focal 調變 / Tversky 不對稱化三種機制對照、Dice vs Tversky 公式與 α/β 意義、本專案 DeepLabV3+/OSDMamba 現行損失設計盤點與 Tversky 消融方向
 
 ---
 
@@ -78,6 +79,7 @@
 - [Song_DeepRX_Hyperspectral_Anomaly.md](wiki/papers/Song_DeepRX_Hyperspectral_Anomaly.md) — Song et al. 2023：Deep-RX 高光譜異常偵測，VAE + RX 結合，深度學習版馬氏距離異常評分
 - [柯弈仲2008_光學衛星影像海洋異常物偵測.md](wiki/papers/柯弈仲2008_光學衛星影像海洋異常物偵測.md) — 柯弈仲 2008（NCU 碩論，指導：陳繼藩）：光學衛星影像海洋異常物偵測，RX + EM + Region Growing
 - [Wang2023_SSL4EO-S12.md](wiki/papers/Wang2023_SSL4EO-S12.md) — Wang et al. 2023：全球尺度多模態多時相 Sentinel-1/2 自監督預訓練資料集（25萬地點/300萬patch），MoCo/DINO/MAE/data2vec × ResNet50/ViT 全面 benchmark；確認「SSL 尚未應用於光學海面油汙偵測」的研究缺口
+- [Salehi2017_TverskyLoss.md](wiki/papers/Salehi2017_TverskyLoss.md) — Salehi et al. 2017：Tversky loss（arXiv:1706.05721），以 α/β 取代 Dice 對稱權重直接控制 FP/FN 懲罰；3D U-Net MS 病灶分割 α=0.3/β=0.7 全面優於 Dice loss（α=β=0.5）
 
 ---
 
