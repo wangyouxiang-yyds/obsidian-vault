@@ -136,3 +136,4 @@
 ## [2026-07-10] infra | 建立 Claude Code × Codex 雙 harness 共用制度骨架：新增 .agents/README.md（正本索引）、.agents/dispatch_to_gemini.md（Gemini 降級為雜工角色定義）、.agents/agents/paper-extractor.md（subagent 規格正本）；將 AGENTS.md 由全文複製 CLAUDE.md 改寫為薄索引，修正其中過時的 Linux git sync 路徑；把家目錄 ~/.agents/skills/ingest-paper 併入專案 .agents/skills/ 作為正本位置（核對後三處內容原本即逐字相同，無實際漂移）。任務書 C/D/E（模型調度守則、判斷力外化、prompt 範本）本輪未展開，列在 .agents/README.md 待辦。
 
 ## [2026-07-11] doc | 新增 outputs/20260711_AI協作Harness現況快照.md（狀態快照：雙 harness+institution 架構、研究現況分支A/B與tversky/cw31數字、v3plus訓練進行中、Claude端subagent清單、Claude/agy/codex模型角色分工）；更新 index.md 分析輸出區塊
+## [2026-07-14] ingest | 論文：SSL4EO-S12（Wang et al. 2023）——全球多模態多時相 Sentinel-1/2 SSL 預訓練資料集，四法（MoCo/DINO/MAE/data2vec）× 兩種 backbone benchmark；確認「SSL/foundation model 尚未應用於光學海面油汙偵測」研究缺口；新增 wiki/concepts/self_supervised_pretraining_遙測.md；順帶補齊 index.md 文獻摘要區塊遺漏的兩筆既有條目（Song_DeepRX、柯弈仲2008）
