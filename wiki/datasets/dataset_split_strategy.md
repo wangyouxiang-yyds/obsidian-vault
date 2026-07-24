@@ -1,5 +1,5 @@
 ---
-updated: 2026-07-10
+updated: 2026-07-24
 ---
 
 # 海面油汙偵測資料集切割策略規劃 (Dataset Splitting Strategy)
@@ -9,6 +9,8 @@ updated: 2026-07-10
 ## 📌 核心原則：防止資料洩漏 (Data Leakage Prevention)
 本專案所有資料切割（Train / Val / Test）皆**嚴格遵守「大圖層級 (Scene-level)」為最小分割單位**。
 絕不將同一張大圖產生的不同 Patches 分散至訓練集與測試集中，以確保模型不會透過記憶特定海象、雲層形狀或海岸線特徵來「作弊」，確保測試結果真實反映模型泛化能力。
+
+> ⚠️ **2026-07-16 實測校正**：scene-level 切割本身確實沒有 patch 洩漏（train/val/test 交集為 0），但這不等於統計獨立——分支 B 的 355-scene 語料實測發現 94~98% 的 test scene 在同 fold train 中有「同事件不同日期」的近重複姊妹景，見文末「⚠️ 資料溯源洩漏補充」一節與 [[20260716_資料溯源洩漏與評估合約v1]]。
 
 ---
 
@@ -73,3 +75,16 @@ updated: 2026-07-10
 6. `seed=42`
 
 **輸出目錄**：`/mnt/backup/oil_dataset/new/full_band/data_split/3_fold_stratified_v2/`
+
+---
+
+## ⚠️ 資料溯源洩漏補充（2026-07-16 實測，校正「核心原則」小節的隱含假設）
+
+2026-07-16 對分支 B 355-scene 語料做事件層級溯源稽核（`analysis/spatiotemporal_audit/`），發現「scene-level 切割」防止的只是 patch 洩漏，並不保證統計獨立：
+
+- 全語料僅 **12 個事件群**（NOAA Atlantic 195 + NOAA GoM 120 = 89%，其餘為 9 個具名事故 + NOAA Pacific）。
+- **350/355（98.6%）test scene 在同 fold train 中有同事件姊妹景**；用 footprint IoU≥0.9 的近重複門檻仍有 **332/355（94%）**，日期差中位數 735 天。
+- 現行 3-fold CV 對 94% 的 test scene 而言，量到的其實是「同一個點位、不同日期」的**時間泛化**，不是**空間/事件泛化**。
+- 曾規劃作為外部驗證的「A-only cohort」（非正式估計約 84 景量級）實測精確組成為 90 景＝36 具名事故 Atlantic 相關景＋53 GoM 景＋1 秘魯景，**零個新事件**——語料內目前沒有乾淨的事件級 out-of-distribution 驗證集。
+
+因此「策略二：特定事件留出法」所設想的效果，在現行 3-fold（策略四）下並未真正達成；策略二式的驗證需要額外建立獨立的 holdout（見 [[GT_expand_pipeline]] 中 named-incident OOD holdout 的封存清單，`analysis/named_incident_holdout/`）。完整稽核結果、統計方法論修正（Evaluation Contract v1.0）與後續路線見 [[20260716_資料溯源洩漏與評估合約v1]]。

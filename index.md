@@ -15,7 +15,7 @@
 - [VRT_pipeline_02_模型訓練.md](wiki/pipeline/VRT_pipeline_02_模型訓練.md) — 模型訓練 Pipeline：DeepLabV3+ ResNet-50（8-ch, from-scratch）、FocalLoss、class_weights=[13,1]、checkpoint/resume、fold2 基準；2026-07-10 修正三處硬錯（EMA decay=0.0 未修 bug、best.pt 依 val_miou 非 Oil IoU、FocalLoss 無 alpha 參數）並補分支 B（GT_expand）差異表
 - [VRT_pipeline_03_重組評估.md](wiki/pipeline/VRT_pipeline_03_重組評估.md) — Reconstruction 評估 Pipeline：全場景 Sliding Window、Cloud Mask 後處理、annot-only / JSON GT 兩組指標、prevalence 對照表、v2 效能優化、fold2 Oil IoU=39.80%
 - [OIL_PROJECT_MutiBand_0422_VRT_training.md](wiki/pipeline/OIL_PROJECT_MutiBand_0422_VRT_training.md) — 0422 論文主軸版本入口索引：sliding-window 策略說明、指向三份 VRT pipeline 系列文件、與 GT_expand 的關係
-- [GT_expand_pipeline.md](wiki/pipeline/GT_expand_pipeline.md) — GT_expand Fork 版本 Pipeline：GT-centric patch 策略（bbox≤256 取中心 / bbox>256 用 256-grid 鋪磚，2,893 patches）、背景 patch 機制（bg_coords 3,510 筆）、3_fold_stratified_v2 split、雙 gate 評估協議（pooled_oil_iou>0.362 + Wilcoxon p<0.05）、cw31/tversky 實驗線；2026-07-10 大幅更新反映現況，並補 patch 座標腳本 SPLIT_DIR/OUT_DIR 環境變數硬化說明
+- [GT_expand_pipeline.md](wiki/pipeline/GT_expand_pipeline.md) — GT_expand Fork 版本 Pipeline：GT-centric patch 策略（bbox≤256 取中心 / bbox>256 用 256-grid 鋪磚，2,893 patches）、背景 patch 機制（bg_coords 3,510 筆）、3_fold_stratified_v2 split、cw31/tversky 實驗線；2026-07-10 大幅更新反映現況；**2026-07-24 更新**：舊雙 gate（pooled_oil_iou>0.362 + Wilcoxon）降為 legacy，正式判定改用 Evaluation Contract v1.0，並補 tversky 完整結果與訓練不可重現修復的 caveat
 
 ---
 
@@ -42,6 +42,8 @@
 - [20260708_JM距離判別髒資料可行性診斷.md](wiki/experiments/20260708_JM距離判別髒資料可行性診斷.md) — 分支 B side study：三框架診斷（scene 級 oil-vs-bg JM AUC=0.50 / patch 級三指標 AUC≤0.65 / anomaly-JM AUC=0.64 但飽和）皆無法自動判髒資料，結論為「標籤性質 vs 工具性質」錯配非 JM 壞掉；附帶發現 SSL4EO band_map 波段錯位 bug
 - [20260709_baseline錯誤分析_GT過寬與方向二降級.md](wiki/experiments/20260709_baseline錯誤分析_GT過寬與方向二降級.md) — SSL4EO 三配置打平 baseline 後的 error analysis：355 測試 scene dirty 命中=0（0.33 天花板與髒資料無關）、感測器無差、面積-IoU 倒 U 形（medium 0.456 最佳）、pooled 0.33 vs per-scene 0.42 落差幾乎全由 ~51 張大油汙 scene 造成；overlay 目視判定瓶頸為 FN + GT 過寬 extent-polygon（Gulf_20190428 IoU=0.753 vs Gulf_20210607 IoU=0.134 對照），判定方向二 detect-then-verify cascade 降級（結論已於同日修正，見文內〔2026-07-09 修正〕：51 張大油汙 scene precision/recall 硬化量化證實瓶頸是真實 under-segmentation，非 GT 過寬）
 - [20260724_Focal_Tversky小圖實驗可行性評估.md](wiki/experiments/20260724_Focal_Tversky小圖實驗可行性評估.md) — Claude×Codex 對 GT-centric 256px 小圖 Focal Tversky 的條件式評估：先以 deterministic plain Tversky 通過前置 gate，再給 q=0.75 一次單變因 fold1 coupon；目前僅規劃，FTL 尚未啟動
+- [20260716_資料溯源洩漏與評估合約v1.md](wiki/experiments/20260716_資料溯源洩漏與評估合約v1.md) — 355-scene 事件層級溯源稽核（僅 12 事件群、350/355 姊妹景近重複、external-84 假設作廢）、Evaluation Contract v1.0（12 事件群 cluster bootstrap 取代舊雙 gate）、grouped replay 結果（tversky 顯著、Prithvi+UPerNet 顯著、單純換骨幹打平）、非對稱閘控雙軌 backbone 政策決策
+- [20260718_訓練不可重現根因與決定性修復.md](wiki/experiments/20260718_訓練不可重現根因與決定性修復.md) — 訓練不可重現根因定位：Albumentations 2.0.8 Compose 內部 RNG 未鎖（commit ba25391 修復，370 tensor 逐 bit 相同驗收通過）；此前所有 grid/screen 掃描降為 legacy、「Dice 勝 Tversky」結論撤回；決定性正本重跑中（baseline 3-fold 完成、tversky 3-fold 訓練中，07-25 看門狗防停電）
 
 ---
 
@@ -55,7 +57,7 @@
 ## 資料集（wiki/datasets/）
 
 - [ms6_sen2like.md](wiki/datasets/ms6_sen2like.md) — MS6_sen2like 8-band 資料集：路徑、波段定義、Mask 映射與 COG 狀態；2026-07-10 補 Dataset Manifest 制度（445 場景，issues=0）、5 張 2026 NOAA Atlantic 新場景入庫記錄、JSON 雙位置盤點
-- [dataset_split_strategy.md](wiki/datasets/dataset_split_strategy.md) — 海面油汙偵測資料集切割策略規劃：完全隨機 (K-Fold)、特定事件留出 (Leave-One-Event-Out)、時序預測切割 (Temporal Split)；2026-07-10 補策略四（油汙面積分層 3-fold，分支 B 現行主用）
+- [dataset_split_strategy.md](wiki/datasets/dataset_split_strategy.md) — 海面油汙偵測資料集切割策略規劃：完全隨機 (K-Fold)、特定事件留出 (Leave-One-Event-Out)、時序預測切割 (Temporal Split)；2026-07-10 補策略四（油汙面積分層 3-fold，分支 B 現行主用）；**2026-07-24 補充**：2026-07-16 實測發現 scene-level 切割不等於統計獨立，94~98% test scene 有同事件姊妹景洩漏
 
 ---
 

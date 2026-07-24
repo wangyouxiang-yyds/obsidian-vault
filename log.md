@@ -138,3 +138,9 @@
 ## [2026-07-11] doc | 新增 outputs/20260711_AI協作Harness現況快照.md（狀態快照：雙 harness+institution 架構、研究現況分支A/B與tversky/cw31數字、v3plus訓練進行中、Claude端subagent清單、Claude/agy/codex模型角色分工）；更新 index.md 分析輸出區塊
 
 ## [2026-07-24] experiment | 新增 wiki/experiments/20260724_Focal_Tversky小圖實驗可行性評估.md：記錄 Claude×Codex 對 Focal Tversky 的條件式結論、梯度交點、前置／fold1／三折 gate 與實作驗收；FTL 尚未啟動；同步更新 index.md
+
+## [2026-07-24] doc | 補記 2026-07-16~07-24 缺口：新增 wiki/experiments/20260716_資料溯源洩漏與評估合約v1.md（12 事件群溯源稽核、350/355 姊妹景近重複、external-84 假設作廢、Evaluation Contract v1.0 取代舊雙 gate、grouped replay 結果、非對稱閘控雙軌 backbone 政策）
+## [2026-07-24] doc | 新增 wiki/experiments/20260718_訓練不可重現根因與決定性修復.md（Albumentations 2.0.8 Compose 內部 RNG 未鎖致訓練不可重現，commit ba25391 修復並經 reproC/D 逐 bit 驗收；此前所有 grid/screen 掃描降 legacy、Dice 勝 Tversky 結論撤回；決定性正本重跑中）
+## [2026-07-24] update | 更新 wiki/pipeline/GT_expand_pipeline.md：第三-c節補 tversky 完成數字＋修復前 caveat、第五節新增「五-a Evaluation Contract v1.0」小節取代舊雙 gate 描述、相關頁面補三個新連結
+## [2026-07-24] update | 更新 wiki/datasets/dataset_split_strategy.md：核心原則小節加註 2026-07-16 校正、文末新增「資料溯源洩漏補充」章節
+## [2026-07-24] index | 更新 index.md：新增兩篇新筆記索引條目，修訂 GT_expand_pipeline.md／dataset_split_strategy.md 描述反映 2026-07-24 更新
