@@ -148,3 +148,8 @@
 ## [2026-07-24] update | 更新 wiki/pipeline/GT_expand_pipeline.md：第三-c節補 tversky 完成數字＋修復前 caveat、第五節新增「五-a Evaluation Contract v1.0」小節取代舊雙 gate 描述、相關頁面補三個新連結
 ## [2026-07-24] update | 更新 wiki/datasets/dataset_split_strategy.md：核心原則小節加註 2026-07-16 校正、文末新增「資料溯源洩漏補充」章節
 ## [2026-07-24] index | 更新 index.md：新增兩篇新筆記索引條目，修訂 GT_expand_pipeline.md／dataset_split_strategy.md 描述反映 2026-07-24 更新
+
+## [2026-07-24] review | Codex 獨立審查 vault，指出失效主張未就地標記＋freshness 抬頭過期＋GT_expand_pipeline.md 重複段落；新增 .agents/decisions/20260724_Codex審查與決定性重跑優先序.md 記錄 STANCE=CONDITIONAL GO、三個最優先動作、四個盲點、制度規則建議
+## [2026-07-24] fix | 全 vault 搜尋 Wilcoxon／355／pooled／external-84／OOD／泛化／0.029／0.5-0.5 關鍵詞，逐處就地加失效標記（不改寫原文）：wiki/experiments/20260702_波段選擇消融實驗規劃.md、wiki/datasets/dataset_split_strategy.md、outputs/20260711_AI協作Harness現況快照.md、wiki/concepts/分割損失函數與類別不平衡.md、wiki/papers/Salehi2017_TverskyLoss.md
+## [2026-07-24] fix | 合併 wiki/pipeline/GT_expand_pipeline.md 第三-c節雙 checkout 各自補的 tversky 重複段落為一段連貫敘述（保留兩邊實質內容：caveat＋Evaluation Contract 連結＋文獻交叉引用）
+## [2026-07-24] fix | 修正 freshness 失真：.agents/handoff.md STATUS_AS_OF 由 2026-07-13 校正為 2026-07-24 並改寫狀態摘要；wiki/experiments/20260702_CV_358clean_gt_expand_進行中.md frontmatter status 由 running 校正為 completed 並加 freshness 說明

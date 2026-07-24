@@ -73,6 +73,8 @@ Table 1（test set 表現，數字為百分比）：
 - 目前（截至 handoff STATUS_AS_OF 2026-07-12）此 Tversky(0.3, 0.7) 設定已被**帶入下一輪架構消融**（`tversky_v3plus`，判準為須顯著優於 0.3915 才留用新架構），成為目前研究線的標竿 loss 設定
 - 這代表本論文提出的超參數在完全不同的領域（MS 病灶 MRI vs. 海面油汙光學影像）、完全不同的不平衡比例下，都收斂到相近的最適 α/β，是一個獨立於本專案之外的文獻佐證，強化了「α=0.3/β=0.7 附近是這類極端不平衡分割任務的合理起點」這個結論的可信度，而非純屬本專案調參巧合
 
+> ⚠️ [2026-07-24 失效] 上面「唯一同時通過雙 gate 判準（Wilcoxon p=9.5e-14）」的說法，基於修復前（Albumentations RNG 未鎖，訓練不可重現）、單次跑、未做事件層級修正的存檔預測，pooled/Wilcoxon 這套判準本身也已由 Evaluation Contract v1.0 取代。α=0.3/β=0.7 優於 baseline 的方向暫視為穩定（見 grouped replay 的 ΔM2 顯著），但「唯一通過雙 gate」「已勝出」這類確定性措辭已撤回，正式數字待決定性 rerun 後定案。見 [[20260718_訓練不可重現根因與決定性修復]] / [[20260716_資料溯源洩漏與評估合約v1]]。
+
 **與 [[DeepLabV3+.md]]/[[OSDMamba.md]] 現行設計的差異**：這兩個模型頁面記錄的仍是較早的 `class_weights=[13.0,1.0]` + FocalLoss / Dice+FocalLoss 設計，尚未反映 GT_expand 分支已經驗證過的 Tversky 結果——這是 wiki 內兩條記錄（models/ 舊設定 vs. pipeline/GT_expand 新實驗線）出現落差的地方，之後模型頁面若要更新為現行最佳設定，應以 [[GT_expand_pipeline.md]] 與 handoff 正本為準。
 
 ---
@@ -92,7 +94,7 @@ Table 1（test set 表現，數字為百分比）：
 
 ## 相關頁面
 
-- [[GT_expand_pipeline.md]] — **本論文 α=0.3/β=0.7 設定已在此實測並勝出**（tversky 實驗線 pooled oil IoU=0.3915，唯一通過雙 gate），目前研究線標竿 loss 設定
+- [[GT_expand_pipeline.md]] — **本論文 α=0.3/β=0.7 設定已在此實測並勝出**（tversky 實驗線 pooled oil IoU=0.3915，唯一通過雙 gate），目前研究線標竿 loss 設定；⚠️ 「唯一通過雙 gate」為修復前數字，見 [[20260718_訓練不可重現根因與決定性修復]]
 - [[DeepLabV3+.md]] — 本專案 DeepLabV3+ 工程紀錄，記錄的是較早的 class_weights=[13.0,1.0]+FocalLoss 設計，尚未反映 GT_expand 分支的 Tversky 結果
 - [[OSDMamba.md]] — 本專案 OSDMamba 工程紀錄，現行 Dice+FocalLoss 聯合損失，Dice 項可對照 Tversky(α,β) 的不對稱化設計
 - [[deeplabv3plus_358clean_overfitting_改善方向.md]] — 現行改善方向清單中列有 Tversky 選項（第3項），已被 GT_expand 分支實測驗證

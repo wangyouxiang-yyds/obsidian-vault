@@ -87,9 +87,11 @@ baseline 仍用 `[1.0, 1.0]`，但既然真實 oil 像素佔比只有 ≈0.059�
 | 實驗 | 設定 | 現況（2026-07-24 更新）|
 |------|------|------|
 | cw31 | `class_weights: [3.0, 1.0]` | 三折已跑完：pooled_oil_iou = **0.394**，三折同向勝 baseline（0.332）。細看是 **trade-off 而非全面提升**：大油汙（>50k px, n=51）顯著變好（p=0.032，recall 0.474→0.608）；tiny 油汙（<1k px）顯著變差（p=0.007）；整體 per-scene Wilcoxon p=0.643（未達顯著）。⚠️ 此為 2026-07-22 才發現的訓練不可重現 bug 修復前的單次跑結果，未來若要正式比較需在決定性管線上重跑，見 [[20260718_訓練不可重現根因與決定性修復]] |
-| tversky | region-based loss，α=0.3 / β=0.7 | 舊（修復前）三折結果：pooled_oil_iou mean=**0.3915**（vs baseline 0.332），唯一通過舊雙 gate 的組態（Wilcoxon p=9.5e-14）。2026-07-18 用 Evaluation Contract v1.0（12 事件群 cluster bootstrap）重放後 ΔM2 仍顯著（+0.053）——槓桿在事件層級修正下站得住，見 [[20260716_資料溯源洩漏與評估合約v1]]。⚠️ 但這組數字同樣是決定性修復前產出，**決定性正本重跑進行中**（baseline 3-fold 已完成 pooled=0.3447，tversky 3-fold 訓練中），正式論文數字以 rerun 後為準，見 [[20260718_訓練不可重現根因與決定性修復]] |
+| tversky | region-based loss，α=0.3 / β=0.7 | 三折已跑完（修復前）：pooled_oil_iou mean=**0.3915**（vs baseline 0.332），三個實驗線（baseline 0.332 / cw31 0.394 / tversky 0.3915）中**唯一同時通過舊雙 gate**（per-scene Wilcoxon p=9.5e-14），判定優於 cw31，已成為標竿 loss 設定並帶入下一輪架構消融（`tversky_v3plus`）。詳見下方說明。|
 
-> **2026-07-11 補充**：tversky 三折已跑完，pooled_oil_iou = **0.3915**，三個實驗線（baseline 0.332 / cw31 0.394 / tversky 0.3915）中**唯一同時通過雙 gate**（per-scene Wilcoxon p=9.5e-14），判定優於 cw31（cw31 均值雖高但 Wilcoxon 不顯著且 tiny 油汙場景顯著變差）。已成為標竿 loss 設定，帶入下一輪架構消融（`tversky_v3plus`）。α=0.3/β=0.7 這組超參數與原始文獻 [[Salehi2017_TverskyLoss]]（Salehi et al. 2017）在 MS 病灶分割任務上實測的最佳點一致，見該文獻頁與 [[分割損失函數與類別不平衡.md]] 概念頁的交叉整理。
+**補充說明**：α=0.3/β=0.7 這組超參數與原始文獻 [[Salehi2017_TverskyLoss]]（Salehi et al. 2017）在 MS 病灶分割任務上實測的最佳點一致，見該文獻頁與 [[分割損失函數與類別不平衡.md]] 概念頁的交叉整理。2026-07-18 用 Evaluation Contract v1.0（12 事件群 cluster bootstrap）重放後，tversky vs baseline 的 ΔM2 仍顯著（+0.053）——槓桿在事件層級修正下站得住，見 [[20260716_資料溯源洩漏與評估合約v1]]。
+
+> ⚠️ [2026-07-24 失效] 上面「唯一同時通過舊雙 gate（Wilcoxon p=9.5e-14）」是修復前（Albumentations RNG 未鎖，訓練不可重現）、單次跑產出的數字，且 355-scene Wilcoxon 本身已因事件層級洩漏被 Evaluation Contract v1.0 取代（見上段 grouped replay）。**決定性正本重跑進行中**（baseline 3-fold 已完成 pooled=0.3447，tversky 3-fold 訓練中），tversky 優於 baseline／cw31 的方向暫視為穩定，但「唯一通過雙 gate」「已勝出」這類確定性措辭正式數字以 rerun 後為準，見 [[20260718_訓練不可重現根因與決定性修復]]。
 
 ### 三-d：Split 策略（3_fold_stratified_v2，現行主 split，2026-07-10 補充）
 

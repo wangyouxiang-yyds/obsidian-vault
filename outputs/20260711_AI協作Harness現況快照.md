@@ -24,9 +24,11 @@ tags: [harness, ai-collaboration, institution, agent-dispatch, multi-agent, snap
 - **研究主題**：8-band 多光譜衛星影像油汙偵測（semantic segmentation）。
 - **路線**：2026-06-22 放棄非監督（F1≈0.008），轉監督式。分支 A = 0422 sliding-window repo（論文主軸）；分支 B = OIL_PROJECT_MutiBand_GT_expand（GT-centric patch：bbox 中心 ±128、2,897 patches、3-fold stratified CV）。
 - **歷史關鍵數字**（3-fold pooled oil IoU 平均）：baseline（FocalLoss+DeepLabV3）0.332；tversky（α0.3/β0.7）0.3915，唯一通過雙 gate（Wilcoxon p=9.5e-14）；cw31 均值 0.394 但 Wilcoxon 不顯著且 tiny 場景顯著變差，判定劣於 tversky。
+  > ⚠️ [2026-07-24 失效] 此雙 gate／Wilcoxon 判定基於修復前（Albumentations RNG 未鎖）、未做事件層級修正的證據，355-scene 視為獨立樣本的假設也不成立（350/355 有同事件姊妹景）。見 [[20260718_訓練不可重現根因與決定性修復]] / [[20260716_資料溯源洩漏與評估合約v1]]。
 - **目前正在跑**（2026-07-11 06:28 UTC 啟動，約 2 天）：串行兩組 3-fold 實驗——`baseline_v3plus`（架構換成 smp DeepLabV3Plus，isolate 架構效果）→ `tversky_v3plus`（最佳 loss 疊上新架構）。資料凍結、seed 42，其餘全鎖死。
 - **本日完成**：F1–F10 前處理審查（與 codex 共識）第一批工程修補——F4 fail-fast、F5 VRT 幾何契約、F7 blake2b 穩定 hash、F8 N_FOLDS 自動偵測、F9 val drop_last=False、F3 preflight 驗證器（355 場景 ALL PASS）；歷史模型 bitwise 迴歸驗證通過。
 - **驗收標準**：雙 gate（pooled_oil_iou 超 baseline 1 std（>0.362）＋ 355 場景 per-scene Wilcoxon p<0.05）＋ 51 大場景 P/R 分解。
+  > ⚠️ [2026-07-24 失效] 此驗收標準已由 Evaluation Contract v1.0 取代（M1/M2 + 12 事件群 cluster bootstrap），舊雙 gate 降為描述性 legacy。見 [[20260716_資料溯源洩漏與評估合約v1]]。
 
 ## 3. 現有 Agent（Claude 端 subagents，全域 `/root/.claude/agents/`）
 

@@ -2,11 +2,13 @@
 date: 2026-07-02
 type: experiment
 stage: training
-status: running
+status: completed
 tags: [gt-expand, deeplabv3+, 3-fold-cv, oil-detection, 358clean, gt-centric]
 ---
 
 # CV_358clean_gt_expand 訓練進度（2026-07-02）
+
+> ⚠️ [2026-07-24 freshness 校正] 本篇標題與內文停在 fold3 進行中（epoch 43），但三折其實早已完成——這批 run（`20260701-133158`／`20260701-204746`／`20260702-032032`）即後續所有筆記引用的 baseline 三折基準（pooled_oil_iou = 0.3695/0.3119/0.3157，mean=**0.332**），見 [[GT_expand_pipeline]] 第五節、[[20260702_波段選擇消融實驗規劃]]。frontmatter status 已改為 completed；下方內文保留原樣不改寫。
 
 ## 目標
 
