@@ -41,6 +41,7 @@
 - [20260702_波段選擇消融實驗規劃.md](wiki/experiments/20260702_波段選擇消融實驗規劃.md) — 波段選擇消融實驗規劃：源自 Zakzouk et al. 2024 論文，比較 Baseline 全 8 波段／Band Subset(B1,2,3,8A,11,12)／Index C／Index D 四組；已釘死主指標 recon_pooled_oil_iou，組0 Baseline 3-fold 實測完成（0.332±0.026），組1 準備開跑
 - [20260708_JM距離判別髒資料可行性診斷.md](wiki/experiments/20260708_JM距離判別髒資料可行性診斷.md) — 分支 B side study：三框架診斷（scene 級 oil-vs-bg JM AUC=0.50 / patch 級三指標 AUC≤0.65 / anomaly-JM AUC=0.64 但飽和）皆無法自動判髒資料，結論為「標籤性質 vs 工具性質」錯配非 JM 壞掉；附帶發現 SSL4EO band_map 波段錯位 bug
 - [20260709_baseline錯誤分析_GT過寬與方向二降級.md](wiki/experiments/20260709_baseline錯誤分析_GT過寬與方向二降級.md) — SSL4EO 三配置打平 baseline 後的 error analysis：355 測試 scene dirty 命中=0（0.33 天花板與髒資料無關）、感測器無差、面積-IoU 倒 U 形（medium 0.456 最佳）、pooled 0.33 vs per-scene 0.42 落差幾乎全由 ~51 張大油汙 scene 造成；overlay 目視判定瓶頸為 FN + GT 過寬 extent-polygon（Gulf_20190428 IoU=0.753 vs Gulf_20210607 IoU=0.134 對照），判定方向二 detect-then-verify cascade 降級（結論已於同日修正，見文內〔2026-07-09 修正〕：51 張大油汙 scene precision/recall 硬化量化證實瓶頸是真實 under-segmentation，非 GT 過寬）
+- [20260724_Focal_Tversky小圖實驗可行性評估.md](wiki/experiments/20260724_Focal_Tversky小圖實驗可行性評估.md) — Claude×Codex 對 GT-centric 256px 小圖 Focal Tversky 的條件式評估：先以 deterministic plain Tversky 通過前置 gate，再給 q=0.75 一次單變因 fold1 coupon；目前僅規劃，FTL 尚未啟動
 
 ---
 

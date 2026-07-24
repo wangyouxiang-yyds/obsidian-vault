@@ -136,3 +136,5 @@
 ## [2026-07-10] infra | 建立 Claude Code × Codex 雙 harness 共用制度骨架：新增 .agents/README.md（正本索引）、.agents/dispatch_to_gemini.md（Gemini 降級為雜工角色定義）、.agents/agents/paper-extractor.md（subagent 規格正本）；將 AGENTS.md 由全文複製 CLAUDE.md 改寫為薄索引，修正其中過時的 Linux git sync 路徑；把家目錄 ~/.agents/skills/ingest-paper 併入專案 .agents/skills/ 作為正本位置（核對後三處內容原本即逐字相同，無實際漂移）。任務書 C/D/E（模型調度守則、判斷力外化、prompt 範本）本輪未展開，列在 .agents/README.md 待辦。
 
 ## [2026-07-11] doc | 新增 outputs/20260711_AI協作Harness現況快照.md（狀態快照：雙 harness+institution 架構、研究現況分支A/B與tversky/cw31數字、v3plus訓練進行中、Claude端subagent清單、Claude/agy/codex模型角色分工）；更新 index.md 分析輸出區塊
+
+## [2026-07-24] experiment | 新增 wiki/experiments/20260724_Focal_Tversky小圖實驗可行性評估.md：記錄 Claude×Codex 對 Focal Tversky 的條件式結論、梯度交點、前置／fold1／三折 gate 與實作驗收；FTL 尚未啟動；同步更新 index.md
