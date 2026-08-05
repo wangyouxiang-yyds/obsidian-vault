@@ -2,13 +2,13 @@
 date: 2026-07-24
 type: experiment
 stage: training
-status: planned
+status: completed
 tags: [focal-tversky, tversky-loss, oil-detection, gt-expand, deeplabv3, experiment-design]
 ---
 
 # Focal Tversky 小圖實驗可行性評估
 
-> **狀態：條件式規劃，尚未啟動。** 本次只完成 Claude×Codex 方法論協商與實驗 gate 設計；沒有新增或修改 Focal Tversky 程式碼，也沒有啟動 Focal Tversky 訓練。
+> **狀態：已結案（2026-07-28 判定 null，保留 Tversky）。** 本篇原始第 1–6 節記錄的是啟動前的可行性協商與 gate 設計，內容保留不動；實際執行與判定結果見文末「判定結果（2026-07-27～07-28）」章節。
 
 ## 1. 實驗背景
 
@@ -175,9 +175,28 @@ Claude×Codex 的共同結論是：**Focal Tversky 值得保留為一個低成�
 | Canonical Tversky 結果根目錄 | `/mnt/backup/alanyh/oil_IR_Fullband/OIL_PROJECT_MutiBand_GT_expand/result-seg/CV_358clean_gt_expand_tversky` |
 | 內部決策正本 | `/home/alanyh/obsidian-vault/.agents/decisions/20260724_Focal_Tversky小圖實驗可行性.md` |
 
+## 8. 判定結果（2026-07-27～07-28，null，保留 Tversky）
+
+> 本節記錄第 1–7 節規劃通過前置 gate 之後的實際執行與判定；前述章節的可行性論述維持不動，僅補記後續結果。
+
+2026-07-27 啟動，3 折乾淨跑完，code commit `f36e421`；run＝`result-seg/CV_358clean_gt_expand_ftl/20260727-104558, 20260727-170323, 20260728-021821`，per-fold recon pooled_oil_iou 0.4541/0.3760/0.3277，**mean 0.3859**。⚠此線為 **ResNet-50 線**（`deeplabv3_resnet50` + ImageNet），**非 Prithvi**；run_metrics.json 的 `architecture` 欄位兩線同為字串 `"deeplabv3+"` 會騙人，實際要看 `Experiment_name`／config yaml（本線為 `..._ftl_deeplabv3+_fold{1,2,3}`，不含 `prithvi300m`）。
+
+2026-07-28 grouped replay 判定（`analysis/p2_focal_tversky/p2_grouped_replay.py`）：三 arm S＝baseline 0.3975 / tversky 0.4512 / ftl 0.4524。
+
+**主對比 FTL vs Tversky：ΔS=+0.0011，95% CI [−0.0087,+0.0168]** → ΔS<0.02 且 CI 跨 0 → **保留 Tversky**。ΔM1 +0.0035 / ΔM2 −0.0012 皆跨 0；Wilcoxon p=0.891；win/loss/tie=177/169/9。整條 CI 夾在 ±0.02 內＝prereg 預寫的「**實質等價**」結局（是接近零，不是測不出）。
+
+佐證：FTL vs baseline ΔS=+0.0549 顯著（95% CI [+0.0347,+0.0692]），與 Tversky 贏 baseline 同量級 → **能力全來自 Tversky 骨幹，加的指數 q 幾乎沒動針**。LOGO ΔM1∈[−0.0038,+0.0087]，無單一事件群主導；唯一受害群＝希臘 Agia Zoni（tiny-oil, n=4）−0.042。
+
+**結論：loss 家族的槓桿在 Focal→Tversky（+0.058）已經吃完，Tversky 上再加 focal 指數空轉；loss 分支確認枯竭，真正槓桿不在 loss（→架構／資料／操作點）**。Phase 2 SAR 組合技（prereg 條件式）因 FTL 隔離非正向 → 不觸發。與同一時期的 [[20260731_ASPP_rate適配實驗|ASPP rate 適配實驗]]（rate 槓桿同樣判定 negative）合看：**loss 與 rate 兩條槓桿皆已枯竭，精進要換地方找**。
+
+γ 陷阱備註：Abraham & Khan 2019 論文寫 `(1−TI)^(1/γ)`、γ=4/3 → 實際指數 0.75（倒數），作者 code 實作 0.75，後人常反寫成 4/3，兩者曲率相反。本專案一律用「直接指數 q」表述（`L_FT=(1-TI)^q`，不取倒數）。
+
+**⚠️ 與第 2–3 節規劃的落差（需明確記錄）**：第 2、3 節（2026-07-24 可行性評估當時）討論的候選是 `q=0.75`（sub-linear，第 5 節據此推導出「抑制早期高誤差 batch」的解讀）。但 2026-07-27 正式凍結的 prereg（`analysis/p2_focal_tversky/preregistration.md`）改登記候選為 **`q=4/3=1.3333...`（direct exponent，super-linear，「focus on hard batch」）**，且 prereg 原文明寫「非 Abraham 倒數 1/γ」——即刻意選了與第 2–3 節不同的指數方向，並非疏漏。實際執行的 config（`main/experiments_CV_358clean_gt_expand_ftl.yaml` `loss.gamma: 1.3333333333333333`）與程式碼（`deeplab_adapter.py` `TverskyLoss.focal_gamma`）跟 07-27 prereg 一致，`main/test_focal_tversky.py` 5/5 PASS 亦針對 `q=4/3` 驗證。**上方「判定結果」的數字（mean 0.3859、ΔS=+0.0011 等）皆為 07-27 prereg 凍結的 `q=4/3` 執行結果，不是第 2–3 節（07-24）討論的 `q=0.75`**——兩者曲率方向相反（`q=4/3` 加強高誤差 batch 梯度，`q=0.75` 才是抑制），第 5 節的梯度交點推導僅適用於 `q=0.75` 這個未被採用的候選，不適用於實際執行的 `q=4/3`。
+
 ## 相關頁面
 
 - [[GT_expand_pipeline]] — 小圖分支的資料、patch 與評估流程
 - [[DeepLabV3+]] — 模型與 loss 工程背景；現行主軌實際使用 torchvision DeepLabV3
 - [[20260709_baseline錯誤分析_GT過寬與方向二降級]] — recall／under-segmentation 問題的量化背景
 - [[20260702_CV_358clean_gt_expand_進行中]] — 早期 GT_expand 三折訓練紀錄
+- [[20260731_ASPP_rate適配實驗]] — 同時期的另一條槓桿測試（decoder rate 適配），同樣判定 negative
