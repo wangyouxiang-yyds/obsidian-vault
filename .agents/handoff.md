@@ -15,7 +15,11 @@
 - **執行中程序**:**無訓練在跑**,GPU 閒置(RTX5090,137 MiB / 0%)。唯一在跑的是 2026-08-05 09:40 啟動的 headless `claude -p`(Opus 5/high)Claude×codex 共識案,題目＝**mask / prediction artifact 的 JSON RLE 序列化 schema 跨兩 repo 重構**(codec 放哪、checksum/run manifest、GT JSON parity、dual-write 分階段遷移、10980² mask 的 RAM 問題),尚未收斂。
 - **環境/資料異動**:(a) 2026-08-03 `result-seg/CV_358clean_gt_expand/` 與 `_tversky/` 的舊世代 run 目錄已清除,各只留決定性正本 3 個 run(舊世代 per_scene_iou.csv 一併消失,不能再重算舊世代對照,但「靠 timestamp 分辨世代」的誤抓陷阱同時解除)。**同批清理誤刪了 P3 prereg 要求保留的失敗殘骸**`result-seg/CV_358clean_gt_expand_prithvi300m_dlv3_aspp246/_ABORTED_reboot_20260731/`(2026-07-31 05:06 系統重開機打斷候選 fold3 約 epoch 32 時的殘骸;補跑本身合法且已留 log,但殘骸目錄已於 08-03 09:50 隨同批清理消失,provenance 現只存在於 auto-memory)——**制度教訓:清理 result-seg 前必須先確認沒有 prereg 要求保留的 artifact**。(b) 2026-08-04 `Docker/run.sh` 新掛 `-v /mnt/oil:/mnt/oil`(21T NAS,92% 滿),內含 `IR/OIL_PROJECT_dataset/full_band/` 與**兩個空的 `SAR/`、`UAV/`**,用途未文件化。
 - **Git 狀態**:GT_expand HEAD 仍是 `f36e421`(2026-07-27)。**P3 全部產出未 commit**:`main/prithvi_deeplab.py`(ASPP rate 預註冊允許集)、3 個 config yaml、`main/test_prithvi_aspp_rates.py`、整個 `analysis/p3_aspp_rate/`、`analysis/p2_focal_tversky/` 的 replay 腳本與報告,以及 `Docker/run.sh` 的 /mnt/oil 掛載。
-- **下一步待使用者裁決**:①`/mnt/oil` 的 SAR/UAV 是否要開新軸;②序列化共識案跑完後的裁決;③**Prithvi+UPerNet(現行主線)至今仍未做決定性 3-fold**——主線那個 mean 0.4498 依然是 ba25391 修復前的 legacy 數字,這是目前最大的一塊未償技術債。
+- **下一步(2026-08-05 使用者裁決後更新)**:
+  1. **`/mnt/oil` — 已澄清,不是新研究軸。** 使用者說明:這只是一個 **share folder(放檔案用)**,底下的 `SAR/`、`UAV/` 空目錄純粹是分類佔位。→ 接手的 harness 不要據此推論要開多模態新方向,也不要把它列成待辦。
+  2. **Prithvi+UPerNet 決定性 3-fold — 已裁決暫不排跑。** 使用者判斷「大致上不會出太大問題」(即決定性重跑預期不會翻盤結論),且這條線的價值定位是**大圖(全景 / sliding-window 分支 A)的開端**,不是現在要補的數字。→ 本項從「最大未償技術債」降為**已知且已接受的 caveat**:引用 0.4498 時必須註明「pre-fix legacy、單跑」,不得無前綴稱顯著;真要寫進投稿時再補跑。
+  3. **(仍未定)** 2026-08-05 09:40 啟動的 mask / prediction artifact JSON RLE 序列化 schema 共識案,跑完後的裁決仍待使用者決定。
+- **2026-08-05 新增 Stop hook(Claude 端 harness 層強制)**:`/root/.claude/hooks/check_writeback_staleness.sh`,於每次 session 結束時比對 `result-seg/*/` 最新 run 目錄 mtime vs institution `research/oil_spill_project_status.md` mtime,有 run 比現況檔新就顯示回寫缺口警告。等同把 `30_maintenance.md` §4 季檢第 4 條自動化。**原因**:回寫規則本來就存在,但寫在「按需引用檔」`30_maintenance.md` 裡,觸發條件被鎖在只有決定要回寫時才會打開的檔案中,所以長期不會被觸發(本次 vault 落後 12 天即為此)。**注意這是 Claude 端專屬基礎設施,Codex 沒有**——Codex 接手時要靠人工自查同一條件。
 
 ## Harness continuity
 - PARITY_AS_OF:2026-07-12 12:28 UTC(更新者:Codex)
