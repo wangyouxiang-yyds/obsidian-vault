@@ -164,3 +164,17 @@
 ## [2026-08-06] experiment | 新增 wiki/experiments/20260806_P4操作點決策閾值_實質null.md：P4 結案，prereg v1.0 四輪收斂凍結（ACCEPT/BLOCKING=[]）；使用者裁決計畫任務以 pooled Oil IoU 評成敗（解除卡住的 BLOCKING #8）；判定 Δpooled=−0.0011 CI[−0.0067,+0.0034]＝實質 null，決策閾值槓桿正式關閉；H2a「模型過度保守」假說被推翻（GT-positive 像素可救回機率質量僅 2.1%，模型是有信心地判錯非保守）；estimand 標籤更正（招牌數字 0.4399＝逐折 pooled 再平均，非全語料 pooled 0.4335，兩者不同估計量）；§7 盲化標註稽核證實兩大巨景 GT 品質尚可、Pacific 20211005 一景輸入端無動態範圍；記錄兩則撤回聲明（「299/355 景逐位元相同」誤稱撤回、判準量綱教訓）；下一步槓桿轉向方向 C（重訓：面積加權/上限採樣、多層 tap 餵 ASPP，須另立 prereg）
 ## [2026-08-06] index | 更新 index.md：新增 P4 結案筆記索引條目
 ## [2026-08-06] update | 更新 .agents/handoff.md「目前狀態」：P4 操作點實驗由「進行中」改為「已結案」，記錄結案結論摘要與 estimand 標籤更正；「下一步」新增剩餘槓桿=方向 C（面積加權/上限採樣重訓 或 多層 tap 餵 ASPP，兩者皆須重訓+另立 prereg）為下一棒接手點
+
+## [2026-08-21] ingest | 論文：CBF-CNN（Du et al. 2022）——HY-1C VIS+NIR 與 class-balanced loss；確認多區域實驗仍使用各區域當地標註訓練，不是 source-only target-blind transfer
+## [2026-08-21] ingest | 論文：中解析度光學油污分割（Sun et al. 2024）——S2/L8/L9 共同六波段、全球十事件與 sun-glint feature；目前最接近 Sen2Like，但未證明台灣封存 zero-shot
+## [2026-08-21] ingest | 論文：PlanetScope CNN/Transformer（Kang et al. 2024）——Swin-UPerNet 在 random patch CV 優於 DeepLabV3+；不能外推跨事件／跨海域能力
+## [2026-08-21] ingest | 論文：中國海多感測器油污製圖（Wang et al. 2024）——七感測器 operational mapping；完整 bands、split 與模型指標標待全文補完
+## [2026-08-21] ingest | 論文：MS3OSD（Du et al. 2025）——HY-1C/D UV–VIS–NIR 融合、四海域與 sunglint 分層；未證明 leave-one-region-out
+## [2026-08-21] ingest | 論文：成大光學 U-Net 碩論（周芷蘭 2021）——確認正式題名沒有 Transfer Learning，摘要僅支持 RGB supervised U-Net 台灣先例
+## [2026-08-21] concept | 新增 wiki/concepts/跨海域_source-only_zero-shot油污偵測.md；定義台灣 target-blind protocol、第一輪六篇文獻矩陣與建議閱讀順序；更新 acolite_vs_sen2like.md 波段對照
+
+## [2026-08-22] ingest | 論文初讀：Chang et al. 2024《Marine Oil Pollution Monitoring Based on a Morphological Attention U-Net Using SAR Images》——完成 Abstract／Introduction 拆解；主 gap 是 SAR mask 碎裂與孔洞，台灣事件只可先標 application verification，是否為海外 source-only→台灣 target-blind 待 Section 2–3 判定
+
+## [2026-08-22] update | Chang et al. 2024 Methods 統整：extended MKLab 1239張 Sentinel-1 VV／五類，FA-MobileUNet=MobileNetV3+CBAM+ASPP+full-scale aggregation，Stages 1–2 以 learnable morphological closing attention 取代 SAM，label smoothing α=0.1；判定最值得借的是嚴格 source/target protocol、early shape-aware feature 與 explicit lookalike，label smoothing 不宜當主要不平衡解法
+
+## [2026-08-25] cleanup | 全場景 OOF baseline v1 產物經使用者裁決刪除：使用者以「主軸已於 2026-08-12 轉為海外 source-only→台灣 sealed 的小圖 patch 路線、全場景這條路未來不會再走」為由，裁決刪除 repo 外的 `/mnt/backup/alanyh/oil_IR_Fullband/OIL_PROJECT_MutiBand_Alan_outputs/`（203 MB），並明示只留一份紀錄、不保留二進位產物。刪除前已寫成自足決策紀錄 `OIL_PROJECT_MutiBand_Alan/docs/decisions/20260825_fullscene_oof_v1_退役與刪除.md`。被刪內容＝`alan_prithvi300m_dlv3_fullscene_oof_v1`：355 景（fold 119/118/118，三份 manifest 皆 complete: true、failed/skipped 皆 0）10980×10980 全場景 OOF 推論，每景 120,560,400 px、coverage mode=full，感測器 S2 283／L8 51／L9 21；執行 2026-08-08T09:53Z→08-11T06:32Z，合計 247,027 秒 ≈ 68.6 GPU-h；1,443 個檔案中 181 M 是兩份代表景 float16 機率 npz。關鍵事實：run_metrics.json／per_scene_metrics_v1_2.csv／threshold_curve_v1_2.csv 從未生成，這 68.6 GPU-h 從未產出任何可報告指標，刪除不推翻任何已成立結論。權重（三 fold best.pt）、split（3_fold_stratified_v2/scene_level/test_fold*.txt）、程式碼皆未刪，技術上可重建但須重新 finalize launch gate 並從第 1 景重算。2026-08-06 條目所引的 launch_gate 工件路徑即日起不存在，其關鍵數值（18 個閾值 tie 表、0.5 平手 44,149、gate checks 全過、決定性重跑 changed_px=0）已逐項抄錄於決策紀錄 §3。本次裁決作廢兩份相反的既有指示：archive/fullscene_v1_2/README.md 的「Do not delete the external 203 MB output」與 docs/OUTPUTS.md §6 遷移計畫（前者已加註 SUPERSEDED banner）。institution 正本 oil_spill_project_status.md 已同步追加同內容條目。

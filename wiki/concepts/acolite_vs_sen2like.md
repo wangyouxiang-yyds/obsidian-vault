@@ -30,6 +30,13 @@ Sen2Like 用 uint16 × 10000 是為了同時節省儲存空間（float32 → uin
 | 為何少三個 | — | 為了跨衛星一致性（Landsat 沒有紅邊波段），B05/06/07 不在 harmonization 範圍內 |
 | 訓練 in_channels | 11 | **8** |
 
+### 與近期光學油污文獻的波段對照（2026-08-21 補）
+
+- [[Sun2024_中解析度光學油污分割]] 使用 S2/L8/L9 共同的六波段：Blue、Green、Red、NIR、SWIR1、SWIR2，是目前與 Sen2Like 設定最接近的油污分割文獻。
+- 本專案八波段比該文獻多 B01（coastal aerosol）與 B08（broad NIR），同時保留 B8A、B11、B12。
+- [[Du2022_CBF-CNN_HY1C]]、[[Kang2024_PlanetScope_CNN_Transformer]] 與 [[Du2025_MS3OSD]] 雖使用 NIR，但不含本專案的 SWIR1/SWIR2，不能視為完全相同的光譜輸入。
+- 上述光學論文的 IR 多指 NIR／SWIR，不是 thermal infrared（TIR）。Sen2Like 的 S2/L8/L9 harmonization 也不包含 Landsat TIRS 熱紅外線。
+
 ---
 
 ## 3. 空間解析度

@@ -75,6 +75,7 @@
 - [deeplabv3plus_358clean_overfitting_改善方向.md](wiki/concepts/deeplabv3plus_358clean_overfitting_改善方向.md) — DeepLabV3+ 358-clean 訓練改善方向統整：overfitting 根本診斷（初始化+資料量錯位）、A~C 三組改善方向表（依 ROI 排序）、A1 pre-trained backbone 完整實作細節（input conv 改造 code、differential lr、兩階段 fine-tune）
 - [self_supervised_pretraining_遙測.md](wiki/concepts/self_supervised_pretraining_遙測.md) — 遙測 SSL 預訓練總覽：backbone 概念、MoCo/DINO/MAE/data2vec 四法比較、Linear Probing vs Fine-tuning 對照表、SSL4EO-S12 實測佐證 pretrained backbone 效益、「SSL 尚未用於光學油汙偵測」研究缺口
 - [分割損失函數與類別不平衡.md](wiki/concepts/分割損失函數與類別不平衡.md) — Class re-weighting / Focal 調變 / Tversky 不對稱化三種機制對照、Dice vs Tversky 公式與 α/β 意義、本專案 DeepLabV3+/OSDMamba 現行損失設計盤點與 Tversky 消融方向
+- [跨海域_source-only_zero-shot油污偵測.md](wiki/concepts/跨海域_source-only_zero-shot油污偵測.md) — 嚴格海外 source-only、台灣 target-blind 問題定義；區分 zero-shot／UDA／few-shot，整理第一輪六篇光學文獻的 protocol 證據與閱讀順序
 
 ---
 
@@ -86,6 +87,13 @@
 - [柯弈仲2008_光學衛星影像海洋異常物偵測.md](wiki/papers/柯弈仲2008_光學衛星影像海洋異常物偵測.md) — 柯弈仲 2008（NCU 碩論，指導：陳繼藩）：光學衛星影像海洋異常物偵測，RX + EM + Region Growing
 - [Wang2023_SSL4EO-S12.md](wiki/papers/Wang2023_SSL4EO-S12.md) — Wang et al. 2023：全球尺度多模態多時相 Sentinel-1/2 自監督預訓練資料集（25萬地點/300萬patch），MoCo/DINO/MAE/data2vec × ResNet50/ViT 全面 benchmark；確認「SSL 尚未應用於光學海面油汙偵測」的研究缺口
 - [Salehi2017_TverskyLoss.md](wiki/papers/Salehi2017_TverskyLoss.md) — Salehi et al. 2017：Tversky loss（arXiv:1706.05721），以 α/β 取代 Dice 對稱權重直接控制 FP/FN 懲罰；3D U-Net MS 病灶分割 α=0.3/β=0.7 全面優於 Dice loss（α=β=0.5）
+- [Du2022_CBF-CNN_HY1C.md](wiki/papers/Du2022_CBF-CNN_HY1C.md) — Du et al. 2022：HY-1C VIS+NIR、class-balanced CNN；多區域但各區域重新訓練，不是 target-blind transfer
+- [Sun2024_中解析度光學油污分割.md](wiki/papers/Sun2024_中解析度光學油污分割.md) — Sun et al. 2024：S2/L8/L9 六波段、全球十事件、U-Net／DeepLabV3+／BiSeNetV2；感測器最接近本專案，但未證明 sealed-region zero-shot
+- [Kang2024_PlanetScope_CNN_Transformer.md](wiki/papers/Kang2024_PlanetScope_CNN_Transformer.md) — Kang et al. 2024：PlanetScope RGB+NIR；Swin-UPerNet 優於 DeepLabV3+，但採 random patch CV
+- [Wang2024_中國海多感測器油污製圖.md](wiki/papers/Wang2024_中國海多感測器油污製圖.md) — Wang et al. 2024：七種光學感測器的中國海長期製圖；split、完整波段與指標待全文補完
+- [Du2025_MS3OSD.md](wiki/papers/Du2025_MS3OSD.md) — Du et al. 2025：HY-1C/D UV–VIS–NIR 多感測器融合與 spatial-spectral 模型；四海域但未證明 leave-one-region-out
+- [Chou2021_U-Net光學海上油污.md](wiki/papers/Chou2021_U-Net光學海上油污.md) — 周芷蘭 2021：成大光學 RGB U-Net 碩論；正式題名與摘要未證實 transfer learning，作為台灣 prior art
+- [Chang2024_MorphologicalAttention_UNet_SAR.md](wiki/papers/Chang2024_MorphologicalAttention_UNet_SAR.md) — Chang et al. 2024：Morphological Attention FA-MobileUNet 的 SAR 油污分割；已讀 Abstract／Introduction，台灣事件為應用驗證但 target-blind protocol 待 Methods 判定
 
 ---
 
