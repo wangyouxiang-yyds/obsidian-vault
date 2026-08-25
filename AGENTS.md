@@ -1,31 +1,27 @@
 # AGENTS.md — Codex 專屬薄索引（勿在此複製長內容，正本見下方連結）
 
-你是 Codex，在這個油汙偵測研究 Wiki repo 裡工作。你和 Claude Code 地位對等，都是這個研究的主要協作
-harness；Gemini CLI 不是對等 harness，只做雜工（見 `.agents/dispatch_to_gemini.md`）。
+你是 Codex，在這個油汙偵測研究 Wiki repo 裡工作。你和 Claude Code 地位對等，都是主要協作
+harness；agy/Antigravity 提供搜尋、初篩與第二意見，不參與正式共識。
 
 ## 先讀這些檔案，不要用記憶猜規則
 1. `CLAUDE.md` — Wiki 結構、頁面格式、操作規則、波段/Mask/Patching/HNM 技術知識的完整正本。
    內容雖然是寫給 Claude 看的，但規則本身跟 harness 無關，Codex 一樣要照做，不要因為抬頭寫 Claude 就跳過。
 2. `index.md` — 目前 wiki 有哪些頁面。
-3. `.agents/README.md` — Claude Code 與 Codex 共用的跨 harness 制度正本（skills、subagent 對照、Gemini 派工規則）。
+3. `.agents/README.md` — vault 內協商、agent 規格、skills 與 handoff 索引。
 4. `.agents/handoff.md` — 目前工作階段交接檔；接手或繼續工作前必讀。
 
-## Codex 專屬事項（其餘 harness 中立規則一律去上面三份找，不要在這裡重複寫）
-- 子代理：`.codex/agents/paper-extractor.toml`（規格正本見 `.agents/agents/paper-extractor.md`；改動先改正本再同步這份）
-- Codex 設定是**每台機器各自的** `~/.codex/config.toml`，不隨 repo 走，以下按機器分列：
-  - **Windows（d:\lab\obsidian-vault）**：trust_level = trusted；已啟用外掛 documents / pdf / spreadsheets / presentations / visualize / browser；model／reasoning effort 未查到明確設定，待實測回填。
-  - **Linux server（/home/alanyh/obsidian-vault）**：config 僅三項（2026-07-10 核對）：`model = "gpt-5.6-sol"`、`model_reasoning_effort = "high"`、trusted 專案只有 `/mnt/backup/alanyh`；**vault 路徑不在信任清單**，所以在 vault 內非互動呼叫 codex 需加 `--skip-git-repo-check`。codex-cli 版本 0.144.1，實測 exec 生效值即上述 model/effort。
-- 重大決策協商制度見 `.agents/consensus.md`；喚起 Claude 用 `claude -p "<提示詞>"`（沙箱內會失敗，需經核准跳出沙箱執行）。
+## Codex 專屬事項
+- Custom agents：`.codex/agents/` 四份 TOML；行為正本見 `.agents/agents/`。
+- Shared skills：`.agents/skills/`，Linux runtime 以 `~/.codex/skills/<name>` symlink 載入。
+- 政策正本：`/home/alanyh/.agents/institution/README.md`；Claude 不可用時讀 `40_harness_continuity.md`。
+- 重大決策見 `.agents/consensus.md`；對手不可用時不得假冒共識，由使用者仲裁。
 
 ## Git 同步
-```bash
-git add .
-git commit -m "wiki: [說明更新內容]"
-git push
-```
-vault 根目錄依機器而異（Windows：`d:\lab\obsidian-vault`；Linux server：`/home/alanyh/obsidian-vault`），直接在當前 vault 根目錄操作即可，不要寫死絕對路徑。
+NaN
+NaN
 
 ## 啟動規則
-每次 Codex 在此目錄啟動時：
-1. 讀 `CLAUDE.md` → `index.md` → `.agents/README.md` → `.agents/handoff.md`
-2. 等待使用者指令，不要主動修改任何檔案
+NaN
+NaN
+NaN
+NaN

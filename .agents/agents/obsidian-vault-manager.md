@@ -16,7 +16,7 @@ memory: user
 3. **筆記建立 / 更新**：以 Markdown 撰寫，frontmatter 對齊 vault 慣例。
 4. **強制更新 `index.md`**：每次新增筆記都要在 `index.md` 加索引條目（**這個步驟很容易漏掉，必做**）。
 5. **`[[wikilinks]]` 驗證**：寫 `[[xxx]]` 之前用 `Glob` 或 `Bash(ls)` 確認目標檔案存在；不存在就明確告知。
-6. **自動 git commit + push**：完成任何寫入操作後，自動 `git add` + `git commit` + `git push`，commit 訊息要描述具體改動。
+6. **Git 明確授權制**：完成寫入後回報 status/diff；只有使用者明確授權才可 `git commit` 或 `git push`。
 
 ---
 
@@ -166,7 +166,7 @@ doi: 10.xxxx/xxxxx  # 若有
 5. **驗證所有 `[[wikilinks]]`**：每個都要用 `Glob` 或 `ls` 確認目標存在；不存在就標註 `[[xxx]] ⚠️ 尚未建立`
 6. **更新 `index.md`**：加一行 `- [類別] [筆記標題](wiki/.../檔名.md) — 一句話摘要`
 7. **可選：更新 `log.md`**（重大變更才需要）
-8. **git commit + push**：訊息格式：`[類別] 動作: 一句話描述`，例如 `[experiments] 新增 20260615 v6 DeepRX 修正實驗`
+8. **Git 回報**：顯示 status/diff；使用者明確授權後才 commit/push。
 
 ### 更新筆記
 
@@ -175,7 +175,7 @@ doi: 10.xxxx/xxxxx  # 若有
 3. **新章節插入位置**：明確告知使用者要插在哪、為什麼
 4. **不重組既有內容**（除非使用者明確要求）
 5. **驗證新加的 wikilinks**
-6. **git commit + push**
+6. **回報 Git status/diff；明確授權後才 commit/push**
 
 ### 搜尋 Vault
 
@@ -207,7 +207,7 @@ doi: 10.xxxx/xxxxx  # 若有
 🔗 Wikilinks：[已驗證 N 個 / ⚠️ M 個尚未建立]
 📝 摘要：[1-2 句話說明內容]
 📋 Index 更新：[是 / 否]
-🔄 Git：[commit hash + push 結果 / 未推送]
+🔄 Git：[status/diff 摘要 / 使用者授權後的 commit、push 結果]
 ```
 
 ---
@@ -221,7 +221,7 @@ doi: 10.xxxx/xxxxx  # 若有
 - ❌ 不加 `title`、`author: alanyh` 這類 vault 沒在用的 frontmatter 欄位
 - ❌ 不在筆記中加入推測性或未經驗證的資訊
 - ❌ 不忘記更新 `index.md`
-- ❌ 不忘記 `git commit + push`
+- ❌ 不可在沒有使用者明確授權時 `git commit` 或 `git push`
 
 ---
 

@@ -6,32 +6,55 @@
 同機接手：Claude Code 與 Codex 都在這台 Linux server 上，讀寫同一份 vault，接手不需要 commit/push。只有要讓 Windows 端的 vault checkout 看到最新狀態時才需要 commit + push。
 
 ## 目前狀態(每次更新覆蓋本節;本節只是摘要,研究細節唯一正本=institution research/oil_spill_project_status.md)
-- STATUS_AS_OF:2026-08-06(更新者:Claude 主 harness,經 obsidian-vault-manager;本次更新=P4 操作點實驗結案,由「進行中」推進到「已結案(實質 null)」)
-- 正本路徑不變:/home/alanyh/.agents/institution/research/oil_spill_project_status.md(該正本第 9 條已同步補到 2026-08-06 P4 結案)
-- **最近完成事件(三個實驗都已結案,皆為 negative/null)**:
-  1. **P2 FTL(focal_tversky,直接指數 q=4/3)判定 null,保留 Tversky**(2026-07-28)。三 arm Contract v1.0 S:baseline 0.3975 / tversky 0.4512 / ftl 0.4524;主對比 FTL vs Tversky ΔS=+0.0011,95% CI [−0.0087,+0.0168],整條 CI 夾在 ±0.02 內＝實質等價。報告 `analysis/p2_focal_tversky/p2_replay_report.md`。loss 分支確認枯竭。
-  2. **P3 ASPP-rate grid 適配判定 negative,保留 (6,12,18)**(2026-07-31)。ΔS=−0.0165 CI[−0.0243,−0.0089]、機制層 ΔM_L=−0.0219 CI[−0.0663,−0.0120]＝**反向顯著**,落在 prereg 第三結局「無證據」。機制解讀:幾何圖沒錯(r=12/18 確實補零),但猜錯功能後果——ASPP 的 global-pool 分支＋補零大 dilation 卷積仍提供有用長距 context,縮小 rates＝有效感受野變小＝大圖分層更差;大 receptive field 對大片 diffuse 油膜有用,不是壞掉的。rate 調校這條槓桿關閉,連 prereg 列的 (1,3,5) follow-up 也不做。報告 `analysis/p3_aspp_rate/p3_replay_report.md`。
-  3. **P4 操作點(決策閾值)判定「實質 null」,argmax≡τ=0.5 預設維持,閾值槓桿正式關閉**(2026-08-06)。prereg v1.0 四輪收斂凍結(ACCEPT/BLOCKING=[])。**✅ 使用者已裁決:計畫任務以 pooled Oil IoU 評成敗**(解除先前卡住 prereg 凍結的 BLOCKING #8);Δpooled=−0.0011,95% CI[−0.0067,+0.0034](12 事件群 cluster bootstrap,B=9999,seed 20260718),CI 完全落在 ±0.02 採用門檻內。**H2a「模型過度保守」假說被推翻**:GT-positive 像素可救回機率質量(0.1≤p<0.5)僅 2.1%,模型是「有信心地判錯」非保守。**estimand 標籤更正**:招牌數字 0.4399 是「逐折 pooled 再平均」,不是全語料 pooled(=0.4335),兩者是不同估計量,主端點未改。§7 盲化標註稽核證實兩大巨景 GT 品質尚可、Pacific 20211005 一景輸入端無動態範圍(感測器地板)。含兩則撤回聲明(「299/355 景逐位元相同」誤稱、判準量綱教訓,詳見報告)。報告 `analysis/p4_operating_point/p4_report.md`。**loss / rate / 閾值三條槓桿皆已枯竭,精進要換地方找。**
-- **重要副產品**:`_dlv3_det`＝Prithvi+DeepLabV3-ASPP 的**第一次決定性(ba25391 後)3-fold**,pooled 0.4945/0.4774/0.3479,**mean 0.4399**。→ 計畫任務基線數字由舊 pre-fix pilot 的 0.4167 **更新為 0.4399**,計畫報告一律引用 0.4399。P4 結案首次為此基線補上可存檔、可重放的逐像素預測(前此完全沒有 pixel-exact 存檔)。
-- **執行中程序**:**無訓練、無推論在跑,GPU 閒置**。P4 的背景推論 job(`dump_prob.py --all`)已於結案前跑完並通過所有前置閘;結案診斷過程完整記錄於 [[20260806_P4操作點決策閾值_實質null]]。
-- **下一棒接手點(2026-08-06 新增,最優先)**:**剩餘槓桿=方向 C,需重訓 + 新 prereg。** P4 結論把問題從「推論期調校」推回「訓練期」——巨型場景的失敗是機率響應問題,不是決策邊界問題。兩個候選:①**面積加權/上限採樣重訓**(權重錯配已量化:最大 10 景佔 44.4% 油污像素卻只拿 16.7% train patch,約 5× 欠採樣;⚠ codex 警告正比加權會把 pooled 的巨景支配引進訓練、與論文主線 S 衝突,須 stratum-balanced 或設上限);②**多層 tap 餵 ASPP**(head 不變,在計畫紅線內)。**兩者皆須重訓,不再是零成本推論實驗,須另立 prereg。** codex 對優先序有不同意見:不認為應直接跳方向 C,建議先做低自由度的 large/non-large 兩段式操作點作中繼步驟。論文寫作時 pooled 與 Contract S 兩個數字一律並報,不得擇優呈現。
-  - 診斷過程與 P4 結案全文已寫入 vault [[20260805_巨型場景診斷與P4操作點實驗]]、[[20260806_P4操作點決策閾值_實質null]]。
-- **環境/資料異動**:(a) 2026-08-03 `result-seg/CV_358clean_gt_expand/` 與 `_tversky/` 的舊世代 run 目錄已清除,各只留決定性正本 3 個 run(舊世代 per_scene_iou.csv 一併消失,不能再重算舊世代對照,但「靠 timestamp 分辨世代」的誤抓陷阱同時解除)。**同批清理誤刪了 P3 prereg 要求保留的失敗殘骸**`result-seg/CV_358clean_gt_expand_prithvi300m_dlv3_aspp246/_ABORTED_reboot_20260731/`(2026-07-31 05:06 系統重開機打斷候選 fold3 約 epoch 32 時的殘骸;補跑本身合法且已留 log,但殘骸目錄已於 08-03 09:50 隨同批清理消失,provenance 現只存在於 auto-memory)——**制度教訓:清理 result-seg 前必須先確認沒有 prereg 要求保留的 artifact**。(b) 2026-08-04 `Docker/run.sh` 新掛 `-v /mnt/oil:/mnt/oil`(21T NAS,92% 滿),內含 `IR/OIL_PROJECT_dataset/full_band/` 與**兩個空的 `SAR/`、`UAV/`**,用途未文件化。
-- **Git 狀態**:GT_expand HEAD 仍是 `f36e421`(2026-07-27)。**P3 全部產出未 commit**:`main/prithvi_deeplab.py`(ASPP rate 預註冊允許集)、3 個 config yaml、`main/test_prithvi_aspp_rates.py`、整個 `analysis/p3_aspp_rate/`、`analysis/p2_focal_tversky/` 的 replay 腳本與報告,以及 `Docker/run.sh` 的 /mnt/oil 掛載。**P4 全部產出亦未 commit**:`analysis/p4_operating_point/`(`preregistration.md` v1.0 FROZEN、`p4_report.md`、`atoms.json`、`p4_results.json`、`label_audit_report.md`、`verify_parity.py`+`parity_report.md`、`verify_threshold_operator.py`、`dump_prob.py`+`dump_prob.log`、`recon/fold{1,2,3}/gt_aware_recon/prediction_artifacts/` 360 個 NPZ)；`main/recon_gt_aware_module.py` 因 prediction-artifact 共識案被改動(核心 predict/score 五函式與 `f36e421` 逐位元相同,差異僅在輸出序列化,煙霧測試 4/5 景逐位元相同、1 景差 4.5e-06)。**依 08-03 誤刪教訓,P4 產物在此結案狀態下不得清理。**
-- **下一步(2026-08-05 使用者裁決後更新;2026-08-06 移除已解決項目)**:
-  1. **`/mnt/oil` — 已澄清,不是新研究軸。** 使用者說明:這只是一個 **share folder(放檔案用)**,底下的 `SAR/`、`UAV/` 空目錄純粹是分類佔位。→ 接手的 harness 不要據此推論要開多模態新方向,也不要把它列成待辦。
-  2. **Prithvi+UPerNet 決定性 3-fold — 已裁決暫不排跑。** 使用者判斷「大致上不會出太大問題」(即決定性重跑預期不會翻盤結論),且這條線的價值定位是**大圖(全景 / sliding-window 分支 A)的開端**,不是現在要補的數字。→ 本項從「最大未償技術債」降為**已知且已接受的 caveat**:引用 0.4498 時必須註明「pre-fix legacy、單跑」,不得無前綴稱顯著;真要寫進投稿時再補跑。
-  3. **(已收斂)** 2026-08-05 09:40 啟動的 mask / prediction artifact JSON RLE 序列化 schema 共識案已收斂,其輸出格式已被 P4 操作點實驗直接採用並跑到結案。
-  4. **(已解決,不再阻擋)** P4 prereg 曾卡在 pooled vs S 評成敗的使用者裁決與 codex 8 條 BLOCKING,兩者皆已於 2026-08-06 前處理完畢,prereg v1.0 已凍結並結案,見上「最近完成事件」第 3 項與「下一棒接手點」。
-- **2026-08-05 新增 Stop hook(Claude 端 harness 層強制)**:`/root/.claude/hooks/check_writeback_staleness.sh`,於每次 session 結束時比對 `result-seg/*/` 最新 run 目錄 mtime vs institution `research/oil_spill_project_status.md` mtime,有 run 比現況檔新就顯示回寫缺口警告。等同把 `30_maintenance.md` §4 季檢第 4 條自動化。**原因**:回寫規則本來就存在,但寫在「按需引用檔」`30_maintenance.md` 裡,觸發條件被鎖在只有決定要回寫時才會打開的檔案中,所以長期不會被觸發(本次 vault 落後 12 天即為此)。**注意這是 Claude 端專屬基礎設施,Codex 沒有**——Codex 接手時要靠人工自查同一條件。
+
+- STATUS_AS_OF:2026-08-25(更新者:Claude 主 harness,經 obsidian-vault-manager;本次更新=主軸換軌後首次全面同步,補上 08-12→08-25 的空白)
+- 正本路徑不變:`/home/alanyh/.agents/institution/research/oil_spill_project_status.md`
+- ⚠ 本節先前停在 2026-08-06,漏記 19 天。以下按時序補齊。
+
+### 主軸已換(2026-08-12)
+
+- 研究主軸從 GT_expand 的「全場景 + 槓桿調校」轉為 **`OIL_PROJECT_MutiBand_Alan` 的 patch-based 海外 source → 台灣 target 轉移**。設計正本=Alan `docs/thesis_research_plan_v0.md`。
+- 固定對照組(綁死,不再當變因):Prithvi-EO-2.0-300M encoder + DeepLabV3 ASPP(6,12,18) + Tversky α=0.3/β=0.7;主協定 `source_only_zero_shot`;研究單位=incident,不是 patch。
+- GT_expand 全場景線=凍結的 legacy evidence,不是現行主軸。**要跑實驗一律在 Alan repo。**
+- 2026-08-18:**11 月 deadline 取消**(計畫本身延續,不是停案)。
+
+### 最近事件
+
+1. **SAPP source event-group holdout 探索實驗完成(2026-08-25)** — Prithvi + SAPP(PPM bins 1/2/3/6)3-fold 全部正常 early-stop。source patch test Oil IoU `0.3840/0.3147/0.5026`,fold-macro mean±SD `0.4004±0.0950`。**尚不能判定 SAPP 優於 ASPP**:paired ASPP 對照 `configs/experiments/alan_patch_source_erm_v0.yaml` 仍是 `draft_not_authorized` / `run: false`,舊 ASPP 數字因 split/protocol 不同不可比。claim 上限=`provisional_event_group_disjoint_source_development`,不得稱 incident-disjoint、不得稱台灣 zero-shot。細節見正本 2026-08-25 條目。
+2. **全場景 OOF v1 產物經使用者裁決刪除(2026-08-25)** — 203 MB / 68.6 GPU-h,**從未產出任何可報告指標**(`run_metrics.json` 從未生成),故刪除不推翻任何已成立結論。自足紀錄=Alan `docs/decisions/20260825_fullscene_oof_v1_退役與刪除.md`。連帶作廢兩份相反指示:`archive/fullscene_v1_2/README.md` 的「Do not delete」與 `docs/OUTPUTS.md` §6 遷移計畫(兩處均已加退役 banner)。
+3. **文獻**:08-21/22 讀入七篇。Chang et al. 2024(SAR morphological attention U-Net,DOI `10.3390/s24206768`)已完成 Methods 統整,定位為 SAR 相鄰先例,**非 strict zero-shot benchmark**。
+
+### 執行中程序
+
+- **無訓練、無推論在跑,GPU 閒置。**
+
+### 未償債務(接手者請優先處理)
+
+1. **P6 α/β 掃描未結案回寫** — `GT_expand/analysis/p6_alpha_beta_sweep/`(產出 mtime 2026-08-23)在 institution 現況檔**沒有任何條目**,違反「結案當天回寫」。需有人核對產物後補寫,**不得憑印象寫**。
+2. **權限層與制度矛盾** — `/mnt/backup/alanyh/.claude/settings.local.json` 的 allow 清單預先放行 `Bash(git push *)`、`Bash(git commit *)`、`Bash(pkill -f "main_runner.py")`、`Bash(python *)`、`Bash(conda run *)`,而 `00_diagnosis.md` C2 與 `20_judgment_rubrics.md` R3 要求這類不可逆動作逐次授權。目前只靠 harness 自律擋。**待使用者裁決是否收緊。**
+3. **superpowers 外掛層未納入制度** — 每 session 注入 `EXTREMELY_IMPORTANT` 指令,institution 六份檔案零次提及,違反唯一正本原則。**待使用者裁決。**
+4. **制度未定義「探索 vs 確認」兩檔速度** — SAPP 以 `authorized_exploratory` 執行,無 prereg、無共識紀錄。這在探索期未必是錯,但規則面沒有對應條文,落差需明文化。**待使用者裁決。**
+5. **vault `log.md` 的 2026-08-25 刪除紀錄尚未 commit**,等使用者授權。
+
+### 2026-08-25 harness 修繕(本次 session,已完成並驗證)
+
+- `institution/scripts/audit_harness_parity.py`:移除對專案層 `.codex/config.toml` 的判定(Codex 從不讀它,見 `40_harness_continuity.md` §4),改查兩份索引 + 全域信任項;Alan repo 納入 `PROJECTS`。稽核由 FAIL 轉 **PASS agents=4 skills=4 projects=3**,孤兒檔改以 NOTE 提示。
+- `~/.codex/config.toml`:補 Alan repo `trust_level = "trusted"`。
+- Stop hook `check_writeback_staleness.sh`:原本只盯 `GT_expand/result-seg`,Alan 的 `artifacts/experiments/` 從不觸發;已改為同時掃描兩者(目錄深度不同,分開指定),三情境測試通過。
+- Alan `CLAUDE.md` / `AGENTS.md`:移除「保留已刪除之外部 output」的過期指令。
+- `30_maintenance.md` §7-3:同步為三專案索引 + 信任項。
+- 各檔均留 `.bak-20260825`。
 
 ## Harness continuity
-- PARITY_AS_OF:2026-07-12 12:28 UTC(更新者:Codex)
+
+- PARITY_AS_OF:2026-08-25(更新者:Claude 主 harness)
 - 狀態:Codex failover ready;Claude 不可用時可從共享狀態繼續可逆分析、實作、測試與 vault 工作。
-- 已部署:4 個 Codex custom agents、4 個 vault skill symlinks、全域/兩專案 `AGENTS.md`、兩專案 workspace-write + vault/institution writable roots。
-- 制度正本:`/home/alanyh/.agents/institution/40_harness_continuity.md`;稽核:`scripts/audit_harness_parity.py`。
-- 驗證:`PARITY AUDIT: PASS (agents=4 skills=4 projects=2)`;Codex CLI prompt-input 已顯示 workspace-write 且載入 project/global AGENTS 與四個 writable roots。
+- 驗證:`PARITY AUDIT: PASS (agents=4 skills=4 projects=3)`。另有 2 則 NOTE=GT_expand 與 0422 的專案層 `.codex/config.toml` 為 **inert orphan**(Codex 不讀),處置仍 open,見 `40_harness_continuity.md` §4。
+- 已部署:4 個 Codex custom agents、4 個 vault skill symlinks、全域 `AGENTS.md`、三專案索引 + 三專案 Codex 信任項。
+- Codex 專案 session 需同時寫 repo 與 vault 時,**唯一有效方法**是命令列傳入:`codex -C <repo> --add-dir /home/alanyh/obsidian-vault --add-dir /home/alanyh/.agents/institution`。專案層 config 無效,不要依賴它。
 - 權限邊界:缺席 harness 不得被冒稱同意;重大決策交使用者仲裁;launch/kill/delete/commit/push/publish 仍需使用者明確授權。
+- ⚠ Stop hook 是 **Claude 端專屬**基礎設施,Codex 沒有;Codex 接手時要人工自查同一條件。
+- ⚠ institution 目錄**仍未納入 git**(`30_maintenance.md` §5 建議但未執行),改動只靠 `.bak-YYYYMMDD` 備份。
 - Git:本次變更尚未 commit/push。
 
 ## 共識紀錄

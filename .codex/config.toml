@@ -1,0 +1,14 @@
+approval_policy = "never"
+sandbox_mode = "danger-full-access"
+
+[agents]
+max_threads = 4
+max_depth = 1
+
+[sandbox_workspace_write]
+writable_roots = [
+  "/home/alanyh/.agents/institution",
+  "/mnt/backup/alanyh/oil_IR_Fullband/OIL_PROJECT_MutiBand_GT_expand",
+  "/mnt/backup/alanyh/oil_IR_Fullband/OIL_PROJECT_MutiBand_0422_VRT_training",
+]
+network_access = false
