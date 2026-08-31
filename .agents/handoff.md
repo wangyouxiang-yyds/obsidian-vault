@@ -7,7 +7,8 @@
 
 ## 目前狀態(每次更新覆蓋本節;本節只是摘要,研究細節唯一正本=institution research/oil_spill_project_status.md)
 
-- STATUS_AS_OF:2026-08-25(更新者:Claude 主 harness,經 obsidian-vault-manager;本次更新=主軸換軌後首次全面同步,補上 08-12→08-25 的空白)
+- STATUS_AS_OF:2026-08-31(更新者:Claude 主 harness,Windows 端 vault checkout;本次更新=**僅 vault 文件層同步**,新增 Prithvi-EO-2.0 論文摘要頁+index+log,並結清債務 #5。**研究狀態未變**,下方「最近事件/執行中程序」仍停在 2026-08-25,若需最新研究進度請以 Linux 端 institution 正本為準)
+- 前次全面同步:2026-08-25(主軸換軌後首次,補上 08-12→08-25 的空白)
 - 正本路徑不變:`/home/alanyh/.agents/institution/research/oil_spill_project_status.md`
 - ⚠ 本節先前停在 2026-08-06,漏記 19 天。以下按時序補齊。
 
@@ -34,7 +35,7 @@
 2. **權限層與制度矛盾** — `/mnt/backup/alanyh/.claude/settings.local.json` 的 allow 清單預先放行 `Bash(git push *)`、`Bash(git commit *)`、`Bash(pkill -f "main_runner.py")`、`Bash(python *)`、`Bash(conda run *)`,而 `00_diagnosis.md` C2 與 `20_judgment_rubrics.md` R3 要求這類不可逆動作逐次授權。目前只靠 harness 自律擋。**待使用者裁決是否收緊。**
 3. **superpowers 外掛層未納入制度** — 每 session 注入 `EXTREMELY_IMPORTANT` 指令,institution 六份檔案零次提及,違反唯一正本原則。**待使用者裁決。**
 4. **制度未定義「探索 vs 確認」兩檔速度** — SAPP 以 `authorized_exploratory` 執行,無 prereg、無共識紀錄。這在探索期未必是錯,但規則面沒有對應條文,落差需明文化。**待使用者裁決。**
-5. **vault `log.md` 的 2026-08-25 刪除紀錄尚未 commit**,等使用者授權。
+5. ~~**vault `log.md` 的 2026-08-25 刪除紀錄尚未 commit**,等使用者授權。~~ **已結(2026-08-31)**:該紀錄已隨 commit `1d765fa`/`e982f07` 進入 master 並推送至 origin。
 
 ### 2026-08-25 harness 修繕(本次 session,已完成並驗證)
 
@@ -55,7 +56,7 @@
 - 權限邊界:缺席 harness 不得被冒稱同意;重大決策交使用者仲裁;launch/kill/delete/commit/push/publish 仍需使用者明確授權。
 - ⚠ Stop hook 是 **Claude 端專屬**基礎設施,Codex 沒有;Codex 接手時要人工自查同一條件。
 - ⚠ institution 目錄**仍未納入 git**(`30_maintenance.md` §5 建議但未執行),改動只靠 `.bak-YYYYMMDD` 備份。
-- Git:本次變更尚未 commit/push。
+- Git:2026-08-25 的 vault 變更已 commit 並推送(`1d765fa`/`e982f07` 等);2026-08-31 的 vault 文件層變更亦已 commit+push(使用者授權)。⚠ institution 目錄不在 git 內,不受此同步涵蓋。
 
 ## 共識紀錄
 - 2026-07-11｜Codex 前處理審查 F1-F10 處置方案｜一回合全條 AGREE：F2 降 Medium（空 tile=context-negative 保留）、F4 維持 High fail-fast、三批執行順序、ignorering 用凍結資料先跑與 v2 解耦｜雙方立場各經程式碼實查

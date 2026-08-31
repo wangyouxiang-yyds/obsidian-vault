@@ -94,6 +94,7 @@
 - [Du2025_MS3OSD.md](wiki/papers/Du2025_MS3OSD.md) — Du et al. 2025：HY-1C/D UV–VIS–NIR 多感測器融合與 spatial-spectral 模型；四海域但未證明 leave-one-region-out
 - [Chou2021_U-Net光學海上油污.md](wiki/papers/Chou2021_U-Net光學海上油污.md) — 周芷蘭 2021：成大光學 RGB U-Net 碩論；正式題名與摘要未證實 transfer learning，作為台灣 prior art
 - [Chang2024_MorphologicalAttention_UNet_SAR.md](wiki/papers/Chang2024_MorphologicalAttention_UNet_SAR.md) — Chang et al. 2024：Morphological Attention FA-MobileUNet 的 SAR 油污分割；已讀 Abstract／Introduction，台灣事件為應用驗證但 target-blind protocol 待 Methods 判定
+- [Szwarcman2026_PrithviEO2.md](wiki/papers/Szwarcman2026_PrithviEO2.md) — Szwarcman et al. 2024（arXiv:2412.02732v3）：Prithvi-EO-2.0 地理空間基礎模型，HLS 4.2M 樣本 MAE 預訓練、3D 時空 embedding + 時間/地理 metadata bias，300M/600M 兩規模；GEO-Bench 較前代 +8%，小樣本（Landslide4Sense 50 張）優勢最明顯，SAR 早期融合無效；**本專案固定對照組所用 encoder 的來源論文**，並記錄假設殺手（預訓練刻意降採樣 Sea/同質水體，可能不利油膜細微紋理表徵）
 
 ---
 
