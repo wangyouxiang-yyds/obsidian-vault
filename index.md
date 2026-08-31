@@ -79,6 +79,7 @@
 - [self_supervised_pretraining_遙測.md](wiki/concepts/self_supervised_pretraining_遙測.md) — 遙測 SSL 預訓練總覽：backbone 概念、MoCo/DINO/MAE/data2vec 四法比較、Linear Probing vs Fine-tuning 對照表、SSL4EO-S12 實測佐證 pretrained backbone 效益、「SSL 尚未用於光學油汙偵測」研究缺口
 - [分割損失函數與類別不平衡.md](wiki/concepts/分割損失函數與類別不平衡.md) — Class re-weighting / Focal 調變 / Tversky 不對稱化三種機制對照、Dice vs Tversky 公式與 α/β 意義、本專案 DeepLabV3+/OSDMamba 現行損失設計盤點與 Tversky 消融方向
 - [跨海域_source-only_zero-shot油污偵測.md](wiki/concepts/跨海域_source-only_zero-shot油污偵測.md) — 嚴格海外 source-only、台灣 target-blind 問題定義；區分 zero-shot／UDA／few-shot，整理第一輪六篇光學文獻的 protocol 證據與閱讀順序
+- [尺度自適應_Global-Local分割.md](wiki/concepts/尺度自適應_Global-Local分割.md) — GeoAgent 的 global–local 雙分支與動態尺度路由；整理 fixed／oracle／supervised router／contextual bandit／A2C 階梯，提出 10m local + 20/30m context 的 Prithvi 尺度對齊假說
 
 ---
 
@@ -99,6 +100,7 @@
 - [Chang2024_MorphologicalAttention_UNet_SAR.md](wiki/papers/Chang2024_MorphologicalAttention_UNet_SAR.md) — Chang et al. 2024：Morphological Attention FA-MobileUNet 的 SAR 油污分割；已讀 Abstract／Introduction，台灣事件為應用驗證但 target-blind protocol 待 Methods 判定
 - [Szwarcman2026_PrithviEO2.md](wiki/papers/Szwarcman2026_PrithviEO2.md) — Szwarcman et al. 2024（arXiv:2412.02732v3）：Prithvi-EO-2.0 地理空間基礎模型，HLS 4.2M 樣本 MAE 預訓練、3D 時空 embedding + 時間/地理 metadata bias，300M/600M 兩規模；GEO-Bench 較前代 +8%，小樣本（Landslide4Sense 50 張）優勢最明顯，SAR 早期融合無效；**本專案固定對照組所用 encoder 的來源論文**，並記錄假設殺手（預訓練刻意降採樣 Sea/同質水體，可能不利油膜細微紋理表徵）
 - [Lee2025_NFINDR_SAM_小型油污.md](wiki/papers/Lee2025_NFINDR_SAM_小型油污.md) — Lee et al. 2025：Sentinel-2 land/cloud/ship masks + N-FINDR（p=2）+ SAM；高同景 proxy F1 不構成跨事件低誤警證據，最適合作 oil-specific verifier
+- [Liu2023_GeoAgent_尺度自適應分割.md](wiki/papers/Liu2023_GeoAgent_尺度自適應分割.md) — Liu et al. 2023（ICCV）：以 A2C Scale Control Agent 為各 patch 選 context 倍率，再由共享權重 global–local 雙分支分割；本專案最可借為 10m local + 30m Prithvi-aligned context，RL 應在 fixed/oracle 驗證後才導入
 
 ---
 

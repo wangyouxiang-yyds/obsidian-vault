@@ -187,3 +187,5 @@
 ## [2026-08-31] doc | 更新 .agents/handoff.md：未償債務 #5（vault log.md 08-25 刪除紀錄未 commit）標記為已結（該紀錄已於 commit 1d765fa／e982f07 進入 master 並推送），並補記本次 08-31 vault 文件同步；本次僅動 vault 文件層，研究狀態（GPU 閒置、SAPP 探索實驗 claim 上限）未變
 
 ## [2026-08-31] experiment | 週結：背景 patch 配額三部曲 P7→P8→P9。新增 wiki/experiments/20260831_P9油背像素比例bracket_inconclusive與凹性發現.md（訓練語料油汙:背景像素比例 ρ 首次敏感度檢驗，ρ∈{15, 23.0187, 30} 不等距 bracket、六道建構閘全過、29.6 GPU-h；主判定 inconclusive，S₃₀−S₂₃=−0.0201 與曲率 C=+0.0174 兩項達統計顯著未達 ±0.02 實質門檻，反應面呈凹形；現行 ρ=23.02 三水位中 S 最高但因 protocol continuity 暫留、不得稱最優）；新增 wiki/experiments/20260831_週結_背景patch配額三部曲P7P8P9.md（時間軸整合 + 三個方法論教訓）；更新 wiki/experiments/20260827_P7背景patch配額政策實驗_r12_null與機制發現.md（§8/§10 標記兩階段分配方案與 P8 已全線砍除、§9 已關閉槓桿總表新增 P9 一列、新增 §12 逐 size 四格拆解回顧）；更新 .agents/handoff.md（P9 已結案 inconclusive、現行 ρ 暫留、待辦論文段落須改寫與不得追加水位/seed）
+
+## [2026-08-31] ingest | 論文：GeoAgent（Liu et al., ICCV 2023）——完成 PDF 全文研讀與九步分析，建立 `wiki/papers/Liu2023_GeoAgent_尺度自適應分割.md` 與 `wiki/concepts/尺度自適應_Global-Local分割.md`；釐清 RL 只選 context 尺度、分割與 reward 仍需 GT，並提出本專案 `10m local + 20/30m context + shared Prithvi` 尺度對齊假說。先前同日 raw-only 登錄至此升級為完整 ingest；未啟動實驗。
