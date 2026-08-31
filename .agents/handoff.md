@@ -7,10 +7,20 @@
 
 ## 目前狀態(每次更新覆蓋本節;本節只是摘要,研究細節唯一正本=institution research/oil_spill_project_status.md)
 
-- STATUS_AS_OF:2026-08-31(更新者:Claude 主 harness,Windows 端 vault checkout;本次更新=**僅 vault 文件層同步**,新增 Prithvi-EO-2.0 論文摘要頁+index+log,並結清債務 #5。**研究狀態未變**,下方「最近事件/執行中程序」仍停在 2026-08-25,若需最新研究進度請以 Linux 端 institution 正本為準)
+- STATUS_AS_OF:2026-08-31(更新者:Claude 主 harness;本日兩處更新已合併——(a) Windows 端 vault checkout:新增 Prithvi-EO-2.0 論文摘要頁+index+log,並結清債務 #5;(b) Linux 端經 obsidian-vault-manager:背景 patch 配額三部曲 P7→P8→P9 週結回寫,**研究狀態已更新至 08-31**)
 - 前次全面同步:2026-08-25(主軸換軌後首次,補上 08-12→08-25 的空白)
 - 正本路徑不變:`/home/alanyh/.agents/institution/research/oil_spill_project_status.md`
-- ⚠ 本節先前停在 2026-08-06,漏記 19 天。以下按時序補齊。
+- ⚠ 本節先前停在 2026-08-25,漏記 P7 結案(08-26)、P8 中止(08-28)、P9 結案(08-29~31)。以下補齊。
+
+### P9 油背像素比例 bracket 敏感度實驗結案(2026-08-31)
+
+- **已結案,判定 inconclusive**。ρ∈{15, 23.0187, 30} 不等距 bracket,29.6 GPU-h,rc=0。S₃₀−S₂₃=−0.0201(simultaneous CI[−0.0328,−0.0074] 排除 0 但跨 −0.02 實質門檻);曲率 C=+0.0174(CI[+0.0065,+0.0284] 排除 0 但跨 +0.02),反應面呈凹形。現行 ρ=23.0187 三個受測水位中 S 最高(0.4606),**因 protocol continuity 暫留,不得稱經驗最佳或全域 optimum**。exposure audit 判定 NOT_CENSORED(九折皆乾淨早停),故曲率/等價詮釋未被禁止,但 rho15 只拿到 rho23 的 58% optimizer 更新,估計混有訓練預算效應。詳見 vault [[20260831_P9油背像素比例bracket_inconclusive與凹性發現]]。
+- 連帶:P7(背景配額分佈)已於 08-26 判定不予採用(ΔS=−0.0197 CI 全負);P8(擴充候選池)08-28 因 container 磁碟配額故障於 fold3 中止,使用者裁決**全線砍除**(訓練結果已刪除),僅保留其凍結候選池 `bg_coords.tsv` 供 P9 上臂沿用。三者合稱週結,詳見 vault [[20260831_週結_背景patch配額三部曲P7P8P9]]。
+
+### P9 待辦(接手者請留意)
+
+1. **論文等價段落須改寫為 inconclusive 版本** — 決議 `.agents/decisions/20260828_油背像素比例敏感度研究設計.md` §論文措辭 的等價版前提(all pairwise differences 落在 ±0.02 內、無實質偏離 log-linear)兩者皆不成立,**該段落不得使用**。
+2. **不得事後追加水位、seed、單臂延長或重跑** — 除非使用者另行明確授權;決議 §9 明文禁止,不得沿用本決議自行延伸。
 
 ### 主軸已換(2026-08-12)
 
@@ -71,3 +81,5 @@
 - 2026-07-24｜Focal Tversky 小圖實驗可行性｜兩回合同 session 收斂：R1 conditional worth、BLOCKING[plain Tversky 先完成/FTL 必須直接對 plain Tversky]→Codex 撤除未驗證的 soft-TI attenuation 推算→R2 雙方 ACCEPT/BLOCKING=[]；FTL 僅在 canonical Tversky 前置 gate 通過後取得一張 q=0.75 單變因 coupon，fold1 失敗即停、不掃 q｜詳見 decisions/20260724_Focal_Tversky小圖實驗可行性.md
 - 2026-07-24｜Codex 獨立審查 vault + 決定性重跑優先序｜STANCE=CONDITIONAL GO（vault AMBER、研究方向 GREEN、里程碑 AMBER）：三個最優先動作（①安全跑完/等價重跑 0.3/0.7 三折 ②用決定性正本重做 Contract/LOGO、舊 grouped 全降 legacy single-run ③修 freshness+全 vault 撤回舊主張，之後只排固定 0.3/0.7 的 Prithvi+UPerNet deterministic 3-fold，P2/0.5-sweep/Focal-Tversky 延後）+ 四個盲點（grouped 須在決定性正本上整組重做、grouped 不修洩漏、僅 ~12 事件群需 per-event+LOGO、Prithvi+UPerNet 舊優勢同受 augmentation bug 污染）+ 制度規則建議（單一 checkout 為 vault main 唯一 writer、push 前先 fetch、main 只收 fast-forward、validity-changing finding 當天寫 stub）｜詳見 decisions/20260724_Codex審查與決定性重跑優先序.md
 - 2026-07-27｜Claude Opus 5 正式共識路由升級｜三回合同 session 收斂：R1 REVISE(B1–B3)→R2 REVISE(B2)→R3 ACCEPT/BLOCKING=[]；一般諮詢維持 Sonnet 5、正式共識升級 Opus 5/high、fallback=Opus 5→Opus 4.8→Sonnet 5（Sonnet 結論 PROVISIONAL）、歷史 provenance 不回寫｜詳見 decisions/20260727_Claude_Opus_5正式共識路由升級.md
+- 2026-08-27｜P8 背景座標池擴充（expanded-pool）實驗設計，接續 P7 r=1.2 判定不予採用｜四回合收斂：R1 盲提案雙方獨立收斂同一原則→R2 REVISE(codex 撤回 pool 鎖死 10、改 expanded-pool 為首選)→R3 REVISE(Claude 認錯 F=6 無依據與配額式不守恆)→R4 ACCEPT/BLOCKING=[]；最終政策=既有 355 景 `min(C_s,10)` 不變、新景以 water-filling 分配並標記 `RATIO_INFEASIBLE_*`；P8 實驗=fixed-exposure expanded-pool k=22、non-inferiority 雙 co-primary gate、3 折、S2 未過不啟動 S6｜僅完成設計協商，未跑任何訓練、GPU 未啟動，S2/S6 均須另行授權｜詳見 decisions/20260827_P8背景座標池擴充實驗設計.md
+- 2026-08-28｜油汙:背景**像素**曝光比例 ρ₀=23.0187 未經驗證,如何處置｜四回合收斂:雙方 ACCEPT/BLOCKING=[];決議做預註冊敏感度研究 ρ∈{15, 23.0187, 30}(以 ln ρ 建模的不等距 bracket,包住 1:20 與 1:25 但不直接測),巢狀以現行 3,510 張為不可變軸心、中臂重用正典三折,約 41.5 GPU-h、硬上限 45 h;ρ₀ 定位為採樣規則的衍生曝光統計,不主張最優;實驗未啟動,待使用者授權｜codex 原提窄設計 20/23.02/25 直接回答審稿人,被主持方以「同預算買到 3.1 倍 ln ρ 跨距、且窄設計在 MDE≈0.022 下先驗保證回傳 null」推翻;codex 的巢狀構造與 launch gate 被主持方採納;codex 保留少數意見(零 GPU 限制性陳述仍是合理替代,若撤回政策定位則實驗必要性消失)｜詳見 decisions/20260828_油背像素比例敏感度研究設計.md
