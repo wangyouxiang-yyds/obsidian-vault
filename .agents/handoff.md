@@ -7,9 +7,16 @@
 
 ## 目前狀態(每次更新覆蓋本節;本節只是摘要,研究細節唯一正本=institution research/oil_spill_project_status.md)
 
-- STATUS_AS_OF:2026-08-31(更新者:Claude 主 harness;本日兩處更新已合併——(a) Windows 端 vault checkout:新增 Prithvi-EO-2.0 論文摘要頁+index+log,並結清債務 #5;(b) Linux 端經 obsidian-vault-manager:背景 patch 配額三部曲 P7→P8→P9 週結回寫,**研究狀態已更新至 08-31**)
-- 前次全面同步:2026-08-25(主軸換軌後首次,補上 08-12→08-25 的空白)
+- STATUS_AS_OF:2026-09-01(更新者:Claude 主 harness 經 obsidian-vault-manager:P10 油背比例細格研究設計已授權、檔案已就緒,**尚未啟動訓練**)
+- 前次全面同步:2026-08-31((a) Windows 端 vault checkout:新增 Prithvi-EO-2.0 論文摘要頁+index+log,並結清債務 #5;(b) Linux 端:背景 patch 配額三部曲 P7→P8→P9 週結回寫)
 - 正本路徑不變:`/home/alanyh/.agents/institution/research/oil_spill_project_status.md`
+
+### P10 油背像素比例細格研究設計(2026-09-01,已授權、尚未啟動訓練)
+
+- 使用者於 2026-09-01 明示要求在 P9 的 15~23 bracket 內加測 ρ=17/19/21,細化為 6 點格 ρ∈{15,17,19,21,23.0187,30}(15/23.0187/30 沿用 P9 不重跑)。**依 P9 決議 §後續驗證點 2,任何額外水位須重新取得使用者授權**——授權已取得,故另立決議 `.agents/decisions/20260901_P10油背比例細格研究設計.md`,不沿用 P9 決議。
+- 主持 harness 已完整告知使用者功效不足:P9 三點配適 ln ρ 二次式,頂點雖落在 15~23 之間(ρ≈20.54),但 vertex 不確定性極大(掃四角範圍 18.19~23.63,涵蓋 23.0187 本身),**頂點增益上限僅 +0.0020**,比單一對比 sim CI 半寬 ±0.0139、P7 seed noise floor ~0.019 都小一個量級。使用者被完整告知後仍重申決定執行。本實驗**預期不會找到實質更優比例**,價值在於把「ρ 槓桿已耗盡」從 3 點升級為 6 點格支撐的結論。
+- 本批次只訓練 rho17/19/21 三臂,背景座標已建構並通過七道建構閘(canonical 連續性、全鏈逐景單調性、新臂純前綴不觸 P8 k22 池、中臂身分閘、集合包含無重複、比例反推複核、P9 舊臂磁碟一致性)。三個新 config(`main/experiments_P10_rho{17,19,21}.yaml`)與預註冊主分析 `primary_analysis.py`、詮釋閘 `exposure_audit.py` 均已就緒。
+- 預估成本 ~43 GPU-h(worst case ~61 h)。**尚未啟動任何訓練,待使用者另行明確授權啟動。**
 - ⚠ 本節先前停在 2026-08-25,漏記 P7 結案(08-26)、P8 中止(08-28)、P9 結案(08-29~31)。以下補齊。
 
 ### P9 油背像素比例 bracket 敏感度實驗結案(2026-08-31)
@@ -69,6 +76,7 @@
 - Git:2026-08-25 的 vault 變更已 commit 並推送(`1d765fa`/`e982f07` 等);2026-08-31 的 vault 文件層變更亦已 commit+push(使用者授權)。⚠ institution 目錄不在 git 內,不受此同步涵蓋。
 
 ## 共識紀錄
+- 2026-08-31｜GeoAgent Global–Local 油污分割應用設計｜三回合同一 Claude Opus 5/high session 收斂：R1 REVISE（借 shared global-local、拒絕直接照搬 A2C）→R2 REVISE（fusion 18.9M→context-only、封印 outer-test 設計重用、30m 降為 physical-scale prior）→R3 ACCEPT/BLOCKING=[]；首臂=`256@10m local + 768→256 context + shared Prithvi + FixedROIResample(center 1/3) + 1024-channel zero-init gated add + 原 ASPP`，RL 預設 out of scope；僅概念設計，未改 code／prereg、未跑 CPU/GPU，所有後續 Stage 執行仍須使用者明確授權｜詳見 decisions/20260831_GeoAgent_GlobalLocal油污分割應用設計.md
 - 2026-07-11｜Codex 前處理審查 F1-F10 處置方案｜一回合全條 AGREE：F2 降 Medium（空 tile=context-negative 保留）、F4 維持 High fail-fast、三批執行順序、ignorering 用凍結資料先跑與 v2 解耦｜雙方立場各經程式碼實查
 - 2026-07-11｜DeepLabV3+ 架構切換實作方案｜二回合收斂：smp DeepLabV3Plus + model_family 切換鍵 + M1 預訓公平性 + rates(6,12,18) + dropout 維持出廠 0.5（Claude OBJECT Codex 的 0.1 成立）+ EMA 移除｜歷史 V3 checkpoint 逐位元回歸通過
 - 2026-07-11｜協商制度升級 v2（收斂驅動：VERDICT 區塊、5 回合檢查點+10 回合硬上限、停滯偵測、反方終審限不可逆決策）｜兩回合收斂，雙方 ACCEPT｜詳見 decisions/20260711_收斂驅動協商制度升級.md
