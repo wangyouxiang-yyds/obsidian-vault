@@ -191,3 +191,5 @@
 ## [2026-08-31] ingest | 論文：GeoAgent（Liu et al., ICCV 2023）——完成 PDF 全文研讀與九步分析，建立 `wiki/papers/Liu2023_GeoAgent_尺度自適應分割.md` 與 `wiki/concepts/尺度自適應_Global-Local分割.md`；釐清 RL 只選 context 尺度、分割與 reward 仍需 GT，並提出本專案 `10m local + 20/30m context + shared Prithvi` 尺度對齊假說。先前同日 raw-only 登錄至此升級為完整 ingest；未啟動實驗。
 
 ## [2026-09-01] decision | 新增 `.agents/decisions/20260901_P10油背比例細格研究設計.md`：P10 油背像素比例細格研究設計成立，6 點格 ρ∈{15,17,19,21,23.0187,30}（15/23.0187/30 沿用 P9 不重跑），本批次三臂 rho17/19/21 背景座標已建構並通過七道建構閘（連續性/單調性/純前綴/中臂身分閘/集合包含/比例複核/P9 舊臂磁碟一致性），三個新 config 與預註冊分析、詮釋閘腳本均已就緒；使用者在被完整告知功效不足（頂點增益上限僅 +0.0020，小一個量級於單一對比 sim CI 半寬 ±0.0139）後仍明示重申要求執行；**尚未啟動訓練，待使用者另行授權啟動**
+
+## [2026-09-01] ingest | raw/papers/ 收錄兩篇 CVPR 論文 PDF，**尚未閱讀、尚未建立 wiki/papers/ 摘要頁**，此處僅登錄檔案入庫，不得視為已 ingest：(1) Astruc et al.《AnySat: One Earth Observation Model for Many Resolutions, Scales, and Modalities》(CVPR 2025)；(2) Cao et al.《CrossEarth-Gate: Fisher-Guided Adaptive Tuning Engine for Efficient Adaptation of Cross-Domain ...》(CVPR 2026，檔名於此截斷，完整標題待讀全文後補)。兩篇皆與現行主軸（跨域/跨海域 source-only 遷移、多解析度多模態 EO 基礎模型）表面相關，但相關程度未經 triage 判定。
