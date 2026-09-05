@@ -193,3 +193,5 @@
 ## [2026-09-01] decision | 新增 `.agents/decisions/20260901_P10油背比例細格研究設計.md`：P10 油背像素比例細格研究設計成立，6 點格 ρ∈{15,17,19,21,23.0187,30}（15/23.0187/30 沿用 P9 不重跑），本批次三臂 rho17/19/21 背景座標已建構並通過七道建構閘（連續性/單調性/純前綴/中臂身分閘/集合包含/比例複核/P9 舊臂磁碟一致性），三個新 config 與預註冊分析、詮釋閘腳本均已就緒；使用者在被完整告知功效不足（頂點增益上限僅 +0.0020，小一個量級於單一對比 sim CI 半寬 ±0.0139）後仍明示重申要求執行；**尚未啟動訓練，待使用者另行授權啟動**
 
 ## [2026-09-01] ingest | raw/papers/ 收錄兩篇 CVPR 論文 PDF，**尚未閱讀、尚未建立 wiki/papers/ 摘要頁**，此處僅登錄檔案入庫，不得視為已 ingest：(1) Astruc et al.《AnySat: One Earth Observation Model for Many Resolutions, Scales, and Modalities》(CVPR 2025)；(2) Cao et al.《CrossEarth-Gate: Fisher-Guided Adaptive Tuning Engine for Efficient Adaptation of Cross-Domain ...》(CVPR 2026，檔名於此截斷，完整標題待讀全文後補)。兩篇皆與現行主軸（跨域/跨海域 source-only 遷移、多解析度多模態 EO 基礎模型）表面相關，但相關程度未經 triage 判定。
+
+## [2026-09-05] doc | 新增 `wiki/pipeline/GT_expand_workflow_onboarding.md` 新人導覽草稿；依使用者決定把原始 11-band／Sen2Like 列為外部上游，現行文件從整理後 8-band 場景開始，首輪記錄資料層級、VRT 邏輯對齊、Mask 原始語意、資料池與 355-scene 實驗語料邊界，以及 `nodata=0` 與 `Oil=0` 衝突的 metadata 風險；未修改資料、writer、訓練設定或既有 `GT_expand_pipeline.md`

@@ -16,6 +16,7 @@
 - [VRT_pipeline_03_重組評估.md](wiki/pipeline/VRT_pipeline_03_重組評估.md) — Reconstruction 評估 Pipeline：全場景 Sliding Window、Cloud Mask 後處理、annot-only / JSON GT 兩組指標、prevalence 對照表、v2 效能優化、fold2 Oil IoU=39.80%
 - [OIL_PROJECT_MutiBand_0422_VRT_training.md](wiki/pipeline/OIL_PROJECT_MutiBand_0422_VRT_training.md) — 0422 論文主軸版本入口索引：sliding-window 策略說明、指向三份 VRT pipeline 系列文件、與 GT_expand 的關係
 - [GT_expand_pipeline.md](wiki/pipeline/GT_expand_pipeline.md) — GT_expand Fork 版本 Pipeline：GT-centric patch 策略（bbox≤256 取中心 / bbox>256 用 256-grid 鋪磚，2,893 patches）、背景 patch 機制（bg_coords 3,510 筆）、3_fold_stratified_v2 split、cw31/tversky 實驗線；2026-07-10 大幅更新反映現況；**2026-07-24 更新**：舊雙 gate（pooled_oil_iou>0.362 + Wilcoxon）降為 legacy，正式判定改用 Evaluation Contract v1.0，並補 tversky 完整結果與訓練不可重現修復的 caveat
+- [GT_expand_workflow_onboarding.md](wiki/pipeline/GT_expand_workflow_onboarding.md) — 逐段維護的新人導覽；目前完成範圍界定與 8-band 資料特性，後續將沿 VRT/Mask、patch、訓練、推論與評估逐段補寫
 
 ---
 
