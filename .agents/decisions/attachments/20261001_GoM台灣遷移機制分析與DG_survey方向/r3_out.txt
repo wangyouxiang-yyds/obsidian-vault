@@ -1,0 +1,70 @@
+## 1. 澄清 R2 的 BLOCKING
+
+R2 的 `BLOCKING: [1,2,3]` 指的是我當時認為 v1 尚待修正的三個新問題，不是 R1 原 blocker，也不是「v2 最小修改清單」的第 1–3 項。我的編號沒有明文定義，是表達疏漏。
+
+三項內容原本是：
+
+1. **主要距離尚未完全操作化**  
+   encoder、embedding unit、PCA、MMD bandwidth、oil/water 合成及階層加權仍有分析自由度。
+
+2. **Phase 2c 的獨立單位與可識別性未確定**  
+   collection 不可任意拆成獨立事件；union-find 可能虛增樣本數，LOEO 又會同時改變訓練量與組成。
+
+3. **Phase 2b 的介入參照不適當**  
+   只將 NonGoM 配成 GoM，不能乾淨區分候選共變數與 source identity；應以共同支持域 \(Q\) 為主要介入，target matching 另列 target-aware diagnostic。
+
+v2 已分別由 M2–M3、M7、M6 解決。就這份「survey 方向＋分析計畫骨架」而言，目前沒有仍然 blocking 的項目。
+
+## 2. 對 C1 的意見
+
+我同意，而且 C1 是非常重要的現實修正。
+
+### 應保留的核心結論
+
+- Phase 2c 不得再被描述成預期能完成驗證的主要路徑。
+- 只有兩個資料量較足的 source supergroups，無法可靠估計「來源距離改變是否預測 transfer utility」。
+- 小事件即使有 30 個含油 patch，仍只是同一事件中的巢狀觀測，不會把有效事件數增加成 30。
+- transfer matrix 最多是 feasibility/exploratory appendix；若 eligible domains 太少，不應硬算相關係數。
+
+### 建議再加兩個 stop rules
+
+Phase 2c 執行前先做純算術 feasibility gate：
+
+1. **Cell-level gate**：target supergroup 至少 30 個含油 patch，且有效 patch 不能全部來自同一個重疊 acquisition；30 只是模型評估穩定度門檻，不是獨立樣本數。
+
+2. **Relation-level gate**：若不足至少 3 個可訓練 source supergroups，或 eligible target supergroups 少到無法合理估計跨事件關聯，就只報描述性 transfer matrix，不計 Spearman／迴歸、不作距離—表現主張。
+
+不必把「至少幾個 target」寫成普遍統計定理；可在設計卡根據預期效果與 permutation 可行性設定。以目前算術，預期結論就是「無法估計」，而不是期待通過 gate。
+
+### confirmatory 路徑需區分主張範圍
+
+- 新增獨立**台灣事件**：可以確認或反駁「對台灣事件的遷移」主張。
+- 新增其他海域事件：可檢驗一般性的 representation distance–transfer mechanism，但不能單獨確認台灣母體主張。
+
+因此 C1 的「新增獨立台灣（或其他）事件」可保留，但論文應把兩者的 confirmatory scope 分開寫。
+
+## 3. 對 C2 的意見
+
+完全同意。
+
+這輪共識沒有授權執行 Phase 1，也沒有授權任何 GPU 工作；交付物應明確標成：
+
+> survey taxonomy、主張邊界、分析計畫骨架與待凍結設計卡規格。
+
+Phase 1 動工前的設計卡還應補齊幾個實作細節：
+
+- MMD 使用 biased 或 unbiased estimator。
+- 每個 block 的最大 embedding 數、抽樣 seed。
+- kNN coverage 的 \(k\)、reference radius 與 class balancing。
+- water vector 缺失時，日期／cluster 是否排除及缺失率如何報告。
+- cloud/shadow/invalid=255 的實際資料語意驗證。
+- acquisition-cluster 的確切 union-find edge 規則。
+
+這些是「執行前必須凍結」的細節，但不阻礙接受目前的研究骨架。Phase 2 的任何訓練、重加權訓練或 transfer-matrix 建模，仍須另行取得使用者授權。
+
+---VERDICT---
+STANCE: ACCEPT
+BLOCKING: []
+RESTATE: Claude 目前最強的論點是：現有資料足以做一個鎖定式、事件階層化的機制稽核，但不足以驗證普遍的距離—遷移關係，因此論文主張必須停在 05-22 特定優勢，直到新增真正獨立事件為止。
+CONFIDENCE: HIGH
+---END---

@@ -1,0 +1,238 @@
+整體判斷：v1 已經把問題從「海域相似故事」提升成可執行、可反駁的機制分析；方向上我接受。但若要直接成為 preregistration／論文分析計畫，還有三處必須收緊：主要距離的完整操作定義、LOEO 的獨立單位，以及介入分析的共同參照分布。
+
+## 1. R1 的 BLOCKING [1,2,3] 是什麼
+
+我在 R1 沒把編號逐條對應寫清楚，這是我的疏漏。當時 intended meaning 是：
+
+| 編號 | 原本的 blocker | v1 狀態 |
+|---|---|---|
+| 1 | 把單一或少數事件的結果預設成「GoM 對台灣普遍較好」，並尋找事後解釋 | **已解決。** 第 0、1 節已改成解釋 05-22 特定優勢與天使輪反例。 |
+| 2 | 目標端有效 \(n=2\)，其中 05-22 實質一次觀測；patch/pixel pseudoreplication 無法支持台灣事件母體推論 | **只能管理，不能解決。** v1 的事件／日期 block、LOEO、主張邊界都正確；但只有新增獨立台灣事件才能真正解除限制。 |
+| 3 | GoM–NonGoM 同時混雜 collection、標註來源、事件組成與取樣；再加上 GT-centered patch selection，無法直接歸因於海域 | **部分解決。** exact manifest、標註擾動、來源介入與 limitation 已涵蓋，但 observational comparison 仍不能完全去混雜；Phase 2b 需再修正。 |
+
+因此，v1 已解除「題目提法」層面的主要問題，剩下的是無法靠文字消除的證據限制，以及分析操作尚未完全鎖定。
+
+## 2. 對候選稿 v1 的修改意見
+
+### 2.1 先改一個定位：這是 retrospective preregistration
+
+P16 performance 已經看過，H1 又是針對 05-22 優勢形成，因此 2.2–2.5 應稱：
+
+> 鎖定式事後分析計畫／retrospective preregistration
+
+它確實能防止接下來挑距離、挑變數、挑分層，但不能把 H1 對既有兩事件的檢驗變成獨立 confirmatory evidence。真正 confirmatory 的部分是：
+
+- 未使用於形成假設的新台灣事件；或
+- Phase 2c 預先鎖定的 overseas pseudo-target 結果。
+
+這個措辭值得寫進 Methods，會讓論證更可信。
+
+---
+
+### 2.2 2.3 選單一主要距離：方向合理，但尚未真正「只有一個」
+
+選 frozen Prithvi embedding、source-only PCA、class-conditional MMD 作主要距離，我認為合理，前提是把 H1 改名為：
+
+> **H1：Prithvi representation-support hypothesis**
+
+它不是純粹的「光譜／背景支持」檢驗；最後層 embedding 同時編碼光譜、形態、背景與空間上下文。逐波段 contrast 才比較接近光學機制。
+
+目前仍有下列未鎖定自由度：
+
+- frozen Prithvi 是原始共用 pretrained checkpoint，還是 GoM／NonGoM fine-tuned encoder？
+- 取哪種 embedding：patch token、pixel-aligned feature、CLS/global pooling？
+- PCA 保留幾維？
+- MMD kernel 與 bandwidth 怎麼選？
+- oil 與 local-water 兩個 MMD 如何合成「一個」主要距離？
+- 一個景有大量 token，如何避免再次把 token 當獨立樣本？
+- local water 的環帶寬度、陸地／雲／其他油膜排除規則為何？
+
+我建議直接把 primary statistic 寫成：
+
+\[
+D(S,T)=\frac{1}{2}D_{\mathrm{oil}}(S,T)+
+       \frac{1}{2}D_{\mathrm{water}}(S,T)
+\]
+
+其中：
+
+1. **Encoder**：使用同一個、未經 GoM 或 NonGoM fine-tuning 的 Prithvi pretrained checkpoint。若各用自己的 fine-tuned encoder，兩組距離不在同一表徵座標系，無法直接比較。
+
+2. **Embedding unit**：由最後層 spatial tokens／feature map 做 class-mask-weighted pooling，每個 patch、每個 class 最多產生一個向量；不要把所有 pixel/token 當獨立樣本。
+
+3. **Local water**：預先固定油膜外擴環帶、排除油 mask、陸地、雲／陰影及無效值；若環帶有效水像素不足則整個 patch 排除，而非臨時改環帶。
+
+4. **PCA**：只在合併的 P16 GoM+NonGoM source embeddings 上 fit。可固定保留前 32 或 64 維；「解釋 95% 變異、上限 64 維」也可以，但要事前寫死。
+
+5. **MMD**：使用一個預先指定的 multi-kernel RBF MMD；bandwidth 由 source-only pairwise distance 的固定倍數決定，例如 \(0.5m,m,2m\)，其中 \(m\) 是 source median distance，三者等權。這仍是一個 MMD statistic，但比單一 bandwidth 穩健。
+
+6. **階層加權**：先算 source acquisition-cluster ↔ target-date 的距離，再做事件等權、日期等權平均。patch 只是估計各 block 分布的計算樣本。
+
+7. **oil/water 合成**：兩個 class-specific MMD 等權平均，形成唯一的 \(D\)。兩個 component 仍須報告，但不得用 component 結果推翻 primary \(D\) 的預先決策。
+
+於是 H1 可明確寫成：
+
+\[
+D(\mathrm{GoM},T_{0522}) <
+D(\mathrm{NonGoM},T_{0522})
+\]
+
+方向不符即拒絕；天使輪無方向性假設，只作異質性對照。
+
+另外，05-22 只有一個獨立日期，這個距離只能是描述性診斷，不能用 token permutation 產生看似很小的 \(p\)-value。kNN coverage 很適合保留，因為 MMD 小不表示 target 落在 source support 內。
+
+---
+
+### 2.3 Cox–Munk glint 指標可以保留，但只當 exposure proxy
+
+v1 將它列為次要變數是正確的。建議避免稱為「glint 機率」，改成：
+
+> Cox–Munk water-surface normalized glint proxy／facet-slope glint likelihood
+
+並註明：
+
+- 使用實際太陽、觀測與相對方位角。
+- ERA5 風場尺度遠粗於油膜。
+- Cox–Munk 描述的是水面風致坡度分布；油會改變粗糙度，因此它不是油膜自身 glint 的直接真值。
+- Sun & Hu 的門檻由 MODIS/VIIRS 建立，不宜直接套成 S2/Landsat 的硬門檻。[Sun & Hu, 2016, GRL](https://pure.lib.usf.edu/en/publications/sun-glint-requirement-for-the-remote-detection-of-surface-oil-fil-2/)
+
+因此它適合解釋成像條件，不適合作為 primary domain-distance component。
+
+---
+
+### 2.4 2.6 是否保留：保留，但降級成 appendix behavioral audit
+
+建議保留，因為它免費且可能幫助建立錯誤分類。但「來源端難度歸因」這個名稱太強，應改成：
+
+> **既有 OOF 預測的影像條件—錯誤關聯稽核**
+
+原因是 350/355 景有同群姊妹景進入該折訓練，這不是 event-disjoint OOF。random effect 不能修復訓練洩漏；若姊妹景數量又和地點、油膜大小或影像品質相關，迴歸係數也可能偏誤。
+
+建議限制：
+
+- 不作 Phase 2 啟動與否的 gate。
+- 不稱為 transferability 或 generalization evidence。
+- 不使用 patch/pixel-level 顯著性。
+- 報告每景在訓練折中的 sibling count／same-group exposure，至少檢查它是否與 recall 有關。
+- A–E 變數仍必須沿用 2.2 的凍結版本。
+- 優先作事件／acquisition-cluster 等權的描述圖；12 個左右上層群組不足以支撐包含大量固定效果與多層 random effects 的穩健模型。
+
+若篇幅有限，2.6 可以完全移到 supplement，不影響主論證。
+
+---
+
+### 2.5 Phase 2b 的介入需要改：不要只把 NonGoM 配成 GoM
+
+「將 NonGoM 重加權成 GoM」有一個問題：它只能說明模仿 GoM 組成是否有幫助，不能乾淨分離 source identity 與候選機制。
+
+建議改成兩種明確不同的診斷：
+
+1. **共同支持域介入，作主要機制檢驗**  
+   將 GoM 與 NonGoM 都匹配／重加權到相同的 common-support distribution \(Q\)，固定 patch 數、update 數與有效樣本量。若差距消失，支持候選共變數解釋 source-group gap。
+
+2. **台灣目標匹配，作次要 target-aware diagnostic**  
+   將兩組各自重加權到 05-22 的候選共變數分布。這使用了 target 資訊，必須明確標成 target-aware explanatory intervention，不能作為 source-only final method。
+
+兩者都應報 effective sample size、最大權重與被丟棄比例。若只有極少數 NonGoM 樣本落在共同支持域，結論應是「缺乏 overlap，無法識別」，而不是強行配對。
+
+---
+
+### 2.6 Phase 2c 子聚類：保守 supergroup 為主，union-find 只能作敏感度分析
+
+不建議直接將 tile×日期 union-find cluster 稱為「事件」，因為：
+
+- 同一油污事件可跨數日。
+- 同一海域背景或固定 seep 可跨月重複出現。
+- 相鄰 tile 同日只是同一次 acquisition 的切片，不是新的獨立事件。
+- 把 collection 拆成許多 pseudo-events 會虛增有效 \(n\)。
+
+建議兩層定義：
+
+- **Primary grouping**：最大已知 provenance supergroup。GoM collection、NOAA Atlantic collection、各具名船難事件分別視為一個 supergroup。LOEO 應在這層留出。
+- **Secondary grouping**：用不看 mask、不看模型輸出的時空規則建立 acquisition clusters，僅用於資料平衡與敏感度分析；所有 inference 仍 cluster 在 primary supergroup。
+
+Union-find 可以用，但要事前固定 edge：
+
+- 同一已知 incident；或
+- footprint 重疊／相鄰且屬同一 acquisition；
+- 對重複地點跨日期的資料，不能僅因日期不同就自動視為獨立。
+
+此外，單純 pooled LOEO 有一個額外混雜：留出 GoM 時，訓練資料量與組成都會劇烈改變。每個 fold 必須固定：
+
+- source patch budget；
+- source-supergroup sampling rule；
+- update 數；
+- 感測器與前景／背景比例；
+- 至少數個 paired seeds，或先用確定性的 frozen encoder + shallow head。
+
+若目標真的是估「距離是否預測 transfer utility」，比 pooled LOEO 更直接的低成本設計是：
+
+> 對資料量足夠的 source supergroups，各訓練一個等預算 shallow head，交叉測試其他 supergroups，形成 source→target transfer matrix；再用 source 與 target crossed effects／受限 permutation 分析距離與表現。
+
+LOEO 可作 robustness check。這比每折訓練組成不同的 pooled model 更容易解釋，但小事件資料不足時須設定最低樣本門檻。
+
+---
+
+### 2.7 TTA 應納入，但要成為獨立的「相鄰部署範式」
+
+我同意納入，因為使用者的「沒有再訓練資料集」可能包含「只有當下待測影像」。但不要把它和 source-only DG 並列成同一方法族，建議 survey taxonomy 明列：
+
+1. **Source-only DG**：目標影像不參與訓練或模型選擇。
+2. **Test-time augmentation**：目標影像作多種變換、集成預測，不更新參數。
+3. **Episodic single-image test-time adaptation**：用當張無標註影像更新，之後 reset。
+4. **Online／continual TTA**：狀態跨目標影像累積。
+5. **Source-free domain adaptation**：在整批無標註 target dataset 上離線適應。
+
+Tent 使用測試批次做 entropy minimization；MEMO 可只用單一 test sample 的增強版本，但兩者都已經利用 target input 做 adaptation。[Tent, ICLR 2021](https://openreview.net/pdf/4de0af9691a5dcc52de7de756676fded33d037ef.pdf)；[MEMO, NeurIPS 2022](https://proceedings.neurips.cc/paper_files/paper/2022/hash/fc28053a08f59fccb48b11f2e31e81c7-Abstract-Conference.html)。遙測 segmentation 也已有 source-free online TTA 工作。[Niloy et al., ICASSP 2024](https://pure.skku.edu/en/publications/source-free-online-domain-adaptive-semantic-segmentation-of-satel/)
+
+本案特別要加三個警告：
+
+- Prithvi ViT 主要使用 LayerNorm，不能直接假設依賴 BatchNorm affine update 的 Tent 可原樣套用。
+- 油像素稀少時，entropy minimization 很容易朝「全部背景且非常有信心」崩塌。
+- 若同一事件的相鄰／重疊 patch 連續適應，後一張已經間接利用前一張 target，必須區分 episodic 與 continual protocol，並在事件間 reset。
+
+所以 TTA 值得 survey，但目前不應混入 source-only 主實驗。
+
+---
+
+### 2.8 新增油污文獻錨點的分類修正
+
+這幾篇書目大致可核對，但用途需區分：
+
+- **MORP-Synth**：已核對為 2025 arXiv preprint，屬 SAR、地中海→秘魯的 morphology/synthetic augmentation；可放「油污 cross-domain augmentation」，但標成 preprint，且在讀完整 protocol 前不要斷言為嚴格 source-only DG。[MORP-Synth](https://arxiv.org/abs/2512.02290)
+- **Yan et al. 2026**：已核對為 *Frontiers in Environmental Science* 14:1909612；DARTIS+CSIRO 訓練、中國沿海獨立 scene-level validation，適合作「source-only cross-sea evaluation」案例，但不是標準 DG algorithm benchmark。[論文](https://www.frontiersin.org/journals/environmental-science/articles/10.3389/fenvs.2026.1909612/full)
+- **Cui et al. 2025**：已核對為 *International Journal of Applied Earth Observation and Geoinformation* 139, 104479；它使用 target pseudo-label refinement，屬 inter-event UDA，不可放在嚴格 DG 主類。[DOI/書目頁](https://doi.org/10.1016/j.jag.2025.104479)
+- **Sun & Hu 2016**：適合 Phase 1 glint 物理錨點，不是 DG 文獻。
+- **Sun et al. 2024**：已核對為 *Marine Pollution Bulletin* 206, 116777，使用 S2/L8/L9 並發現加入 sun-glint feature 可降低 false positives；適合 A/B 與 feature-engineering 背景，不是跨域方法證據。[論文](https://www.sciencedirect.com/science/article/pii/S0025326X24007549)
+
+因此 survey 最好分成「正式 DG 方法」「相鄰 UDA/TTA」「油污跨區域實證」「油污成像物理」四欄，避免 SAR、光學、DG、UDA 混成一條證據鏈。
+
+## 3. Outline 的一處重要修正
+
+第 5 節把 inference input 寫成「台灣事件影像，依通報位置取範圍」是合理的最終任務定義，但目前評估使用 GT-centered 含油 patches，兩者尚未對齊。
+
+建議明確拆成：
+
+- **Operational target task**：通報位置／時間定義 ROI，輸出整個 ROI 的 probability map。
+- **Current controlled evaluation task**：在 oracle GT-centered、已知含油 patches 上評估 segmentation quality。
+- **未被本研究充分驗證者**：ROI-level oil search、false-positive rate、無油景 rejection。
+
+否則讀者可能認為現有實驗已驗證從通報範圍找油的完整流程。
+
+## 建議的 v2 最小修改清單
+
+1. 把 Phase 1 稱為 retrospective preregistered audit。
+2. 完整寫死 common pristine encoder、embedding extraction、PCA、kernel bandwidth、local-water 規則與 oil/water 合成式。
+3. 將 H1 改名為 representation-support hypothesis。
+4. 2.6 降級為 supplement behavioral audit。
+5. Phase 2b 改為兩來源對共同 \(Q\)；target matching 另列 target-aware diagnostic。
+6. LOEO primary 使用 conservative provenance supergroups；union-find acquisition clusters 僅作巢狀敏感度分析。
+7. TTA 獨立成相鄰部署範式，與 source-only DG、test-time augmentation、SFDA 分開。
+8. Outline 區分 operational ROI task 與目前 oracle-patch evaluation。
+
+---VERDICT---
+STANCE: REVISE
+BLOCKING: [1,2,3]
+RESTATE: Claude 目前最強的論點是：GoM 優勢不能由「海域相似」直接推出，而應以凍結的 class-conditional 表徵距離、事件級錯誤機制、共同支持域介入與獨立 pseudo-target 驗證，判斷 05-22 特定 recall 優勢能否跨事件重現。
+CONFIDENCE: HIGH
+---END---

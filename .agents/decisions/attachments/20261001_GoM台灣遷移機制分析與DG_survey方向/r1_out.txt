@@ -1,0 +1,233 @@
+先給結論：目前最科學的研究問題不是「為什麼 GoM 模型對台灣比較好」，而應改成：
+
+> 在固定 P16 協定下，哪些可觀測的資料生成因素，能解釋 GoM 訓練集對 2026-05-22 事件產生很大的 recall 優勢，卻沒有改善天使輪？這些因素能否在其他獨立事件上預測 transfer performance？
+
+P16 的 event-macro 差異是 \(0.4554-0.2812=+0.1742\)，但它是由 05-22 的 \(+0.367\) 與天使輪的 \(-0.019\) 合成；所以目前證據支持的是「特定事件條件下的優勢」，不是「GoM 對台灣海域普遍較適合」。
+
+本輪因本地終端 sandbox 無法初始化，未能讀取 `.agents/consensus.md` 與附列檔案；以下依題面所載事實、盲提案要求與指定 verdict 格式獨立作答。文獻均以網路資料核對。
+
+## 1. 建議的分析框架：從地理故事改成資料生成鏈
+
+我建議用以下因果／機制框架：
+
+\[
+\text{事件與環境 }Z
+\rightarrow
+\text{觀測影像 }X
+\rightarrow
+\text{模型表徵 }H
+\rightarrow
+\hat Y
+\]
+
+同時還有：
+
+\[
+\text{標註流程 }A\rightarrow Y,\qquad
+\text{取樣規則 }S\rightarrow (X,Y)\text{ 的可見分布}
+\]
+
+「GoM／台灣」只是多個變數的代理標籤，不能直接當作機制。應逐層問：
+
+1. GoM 是否真的比較接近 05-22？
+2. 接近的是海況、背景水色、油膜外觀、感測器、取樣，還是標註規則？
+3. 這種接近是否與模型錯誤模式一致？
+4. 控制或匹配該因素後，GoM 優勢是否縮小？
+5. 相同關係能否在未參與假設形成的其他事件重現？
+
+### 第一優先：建立 event/date-level manifest
+
+所有統計單位以「事件」為最高層、「同日 mosaic」為次層。patch、pixel 都只能是事件內重複量測，不能當獨立樣本。
+
+每景至少整理：
+
+- event、日期、tile、感測器、產品層級、解析度、重疊／姊妹景關係。
+- 太陽天頂角／方位角、觀測角、相對方位角、cloud/aerosol flags、處理版本。
+- 油像素數、油佔 patch 比、連通區數、邊界／面積比。
+- 標註者／標註來源、標註方法、是否由同一 scene 衍生多個 patch。
+- 是否進入 P16 訓練、驗證、台灣測試；必須使用 P16 的實際清單，而非全語料粗統計。
+
+### 第二優先：五個變數區塊
+
+| 區塊 | 建議變數 | 資料來源與用途 |
+|---|---|---|
+| 海氣條件 | 10 m 風速／風向、顯著波高、波週期、降雨、雲量、下行短波輻射 | 取影像時刻及前 6/24/48 小時摘要。ERA5 提供逐時風、波浪、SST、降雨與輻射等變數。[ERA5 官方資料頁](https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels?tab=download) |
+| 海洋背景 | SST、表層流速／流向、流速剪切、海表高度、混合層深度、鹽度 | Copernicus Marine GLORYS12V1 有約 1/12° 日資料；尺度較影像粗，只能代表背景場，不能冒充油膜局地狀態。[Copernicus Marine 官方頁](https://data.marine.copernicus.eu/product/GLOBAL_MULTIYEAR_PHY_001_030/services) |
+| 水色與地形 | chlorophyll-a、濁度／懸浮物、CDOM 或吸收代理、距岸距離、水深、陸源羽流 | MODIS/OLCI 品質旗標合格的最近日期；GEBCO 可給全球 15 arc-second 地形。[GEBCO 官方頁](https://www.gebco.net/data_and_products/gridded_bathymetry_data/) |
+| 影像可觀測量 | 六波段 surface reflectance 分位數、band ratios、oil–local-water contrast、spectral angle、局部紋理、梯度、sun-glint proxy | 分別在 oil、鄰近水體、遠端背景計算。油在光學影像沒有固定且唯一的光譜特徵，反差會隨油種、乳化、照明、海面粗糙度及背景而變，因此「油與附近水的條件式反差」比全景平均更重要。[Hu et al., 2021, Journal of Remote Sensing](https://repository.library.noaa.gov/view/noaa/58969)；[Fingas & Brown, 2014, Marine Pollution Bulletin](https://www.sciencedirect.com/science/article/abs/pii/S0025326X14002021) |
+| 油膜／標註形態 | 面積、連通區、elongation、compactness、fragmentation、邊界密度、距 mask 邊界分層、patch occupancy | 檢驗 05-22 的優勢是不是「大片、連續、內部像素多」造成，而非海域相似；另外做 mask erosion/dilation 與 boundary-tolerance 敏感度，檢查標註尺度是否影響排名。 |
+
+油種、油齡、乳化程度、洩漏量與標註者判斷通常不可由 ERA5 推回，應列為未觀測混雜因子，不能拿「海域」替代。
+
+### 第三優先：把距離連到錯誤機制
+
+對 GoM checkpoint 與 NonGoM checkpoint，逐事件、逐日期輸出：
+
+- Recall、precision、IoU。
+- oil interior、oil boundary、small component、large component 的 recall。
+- 依 oil fraction、oil–water spectral contrast、背景濁度／glint proxy 分層的表現。
+- false negative 是否集中在淡油膜、碎片、邊界或特定背景。
+- frozen Prithvi 各層的 oil/background embedding 分布與 segmentation head margin。
+
+若 GoM 只在 05-22 的大連通區內部提高 recall，而對邊界、淡膜或天使輪無改善，最合理的機制會是 morphology／contrast support，不是籠統的「GoM 與台灣海況相似」。
+
+## 2. 兩個台灣事件下，哪些主張站得住
+
+### 可以主張
+
+- 在固定 P16、seed 42、指定的兩個台灣事件與 GT-centered 含油 patch 上，GoM 的 event-macro Oil IoU 較高。
+- 此差異高度 event-dependent，主要由 05-22 的 recall 提升造成。
+- 結果沒有通過「兩事件各至少 +0.02」的事前一致性判準，因此對跨台灣事件的穩健優勢屬 inconclusive。
+- 05-22 的差異雖大於所報 GoM seed SD，但單臂 seed SD 不能取代 GoM–NonGoM 的 paired multi-seed 比較。
+
+### 不能主張
+
+- GoM 與「台灣海域整體」比較相似。
+- GoM-only 普遍比海外多事件資料更能泛化到台灣。
+- 海況、季節、感測器或大片油膜「造成」優勢。
+- 模型可用於全景油污搜尋。測試 patch 是以 GT 為中心且全部含油，無法估計實際全景 prevalence 下的 false-positive burden。
+- 137 個 patch 是 137 次獨立證據。有效目標事件數是 2，而 05-22 實質只有一次觀測。
+- NonGoM 較差等於「地理多樣性有害」。NonGoM 同時混合 NOAA Atlantic、多個小事件、不同樣本量與可能不同標註規則。
+
+### 可證偽的假設
+
+建議在看完整結果前寫死三個假設與拒絕條件：
+
+1. **光譜／背景支持假設**  
+   05-22 的 class-conditional spectral/Prithvi distance 應為 GoM < NonGoM；天使輪則不一定。若五個合理距離定義大多不呈現這個方向，拒絕。
+
+2. **形態與 occupancy 假設**  
+   GoM 優勢主要出現在高 oil fraction、大連通區、低邊界比 patch。若在這些變數分層後差異仍一致，或小淡油膜也同樣改善，拒絕。
+
+3. **標註／邊界假設**  
+   若 GoM 與台灣標註尺度較一致，mask erosion、dilation 或 tolerant boundary evaluation 應系統性改變 GoM–NonGoM 差距。若排名對標註擾動完全穩定，這個機制不受支持。
+
+真正的 confirmation 應來自新增台灣事件；目前資料只能生成機制假設與做 case-study falsification。任何事件抽樣的不確定區間都無法靠 pixel bootstrap 補救。seed CI 只表示優化隨機性，不表示對未來台灣事件的泛化不確定性。
+
+## 3. 適合目前規模的 domain-shift 量化
+
+### 推薦的最小組合
+
+1. **低維物理／metadata：Wasserstein-1 或 energy distance**  
+   先用 source-event variation 標準化，再做 event-equal aggregation。Energy distance 可處理多變量分布並刻畫分布相等性。[Székely & Rizzo, 2013, Journal of Statistical Planning and Inference](https://www.sciencedirect.com/science/article/pii/S0378375813000633)
+
+2. **六波段與 oil–water contrast：class-conditional MMD**  
+   分開比較 oil、local water、background，不能只比混合 marginal \(P(X)\)。MMD 的標準文獻是 [Gretton et al., 2012, JMLR](https://jmlr.org/papers/v13/gretton12a.html)。抽樣／置換必須以日期或事件為 block。
+
+3. **Prithvi embedding：MMD + sliced Wasserstein + coverage**  
+   以 frozen encoder 多層 embedding，先用 source-only PCA 降維；除平均距離外，報告 target 到 source kNN radius、coverage 與 target 落在 source support 外的比例。這比單一 FID 更適合小樣本。
+
+4. **可分辨性：domain-classifier AUC**  
+   訓練簡單正則化 logistic classifier 分辨 source/target，cross-validation 按事件／日期分組。高 AUC 表示容易分辨，但不等於 transfer 必差；理論上 domain divergence 只是 target error bound 的一部分。[Ben-David et al., 2010, Machine Learning](https://link.springer.com/article/10.1007/s10994-009-5152-4)
+
+5. **transferability score：僅作次要分析**  
+   LEEP 與 LogME 原本主要用於有 target labels 的模型／representation ranking，不是無標註 dataset distance；若改成 pixel sampling，必須處理空間群聚。[LEEP, ICML 2020](https://proceedings.mlr.press/v119/nguyen20b/nguyen20b.pdf)；[LogME, ICML 2021](https://proceedings.mlr.press/v139/you21b.html)
+
+### 如何真的把距離連到表現
+
+台灣只有兩點，不能算「距離—性能相關」。應把 12 個海外事件輪流當 pseudo-target：
+
+- 以其他事件訓練，held-out 一整個事件。
+- 計算 pooled-source 到 held-out event 的預先指定距離。
+- 以 held-out event IoU／Recall 為結果。
+- 使用 event-level Spearman、permutation 或簡單階層模型；\(n\approx12\) 仍只宜視為探索性。
+- 為節省 GPU，第一階段可固定 Prithvi encoder，只訓練輕量 head；有訊號後再用完整模型與至少三個 paired seeds 確認。
+
+應避免高維 FID、t-SNE/UMAP 圖上量距離、pixel-level p-value，以及把 source/target marginal 很接近解讀成 \(P(Y\mid X)\) 相同。分布接近本身不足以保證可遷移，這一點也有正式的不可能性結果。[Ben-David et al., 2010, AISTATS](https://proceedings.mlr.press/v9/david10a.html)
+
+## 4. Source-only domain generalization 的 survey 優先順序
+
+這裡的 source-only 應嚴格定義為：台灣影像不參與訓練、augmentation 設計、超參數選擇、early stopping 或 source subset 選擇。若用台灣無標註影像對齊、pseudo-label 或更新 BN，那是 UDA／test-time adaptation，不再是本題的 DG。
+
+### 第一層：強 ERM 與正確 protocol
+
+這應是 survey 與實驗的第一基準，而不是附帶項：
+
+- event-balanced ERM。
+- source-event-disjoint validation。
+- 多 seed、固定 update 數、相同資料量。
+- SWA/SWAD、weight decay、early stopping。
+- 報平均事件與 worst-event，而非 pooled patch。
+
+DomainBed 顯示在公平 model selection 下，許多 DG 方法未穩定勝過 ERM；這對小型油污語料尤其重要。[Gulrajani & Lopez-Paz, 2021, ICLR](https://openreview.net/pdf?id=lQdXeXDoWtI)；[SWAD, NeurIPS 2021](https://openreview.net/pdf?id=zkHlu_3sJYU)
+
+### 第二層：物理合理的 domain randomization／style augmentation
+
+這是最值得先試的方法族：
+
+- 每波段 radiometric gain/offset、noise、blur、resampling。
+- band dropout 或 sensor-response 擾動。
+- 在合理範圍內改變水體背景、低頻亮度與 glint-like gradient。
+- augmentation consistency loss。
+- MixStyle／feature-statistics mixing，但要確認不破壞多光譜物理關係。
+
+相關錨點包括 [MixStyle, ICLR 2021](https://openreview.net/pdf?id=6xHJ37MVxxp)、[RobustNet, CVPR 2021](https://openaccess.thecvf.com/content/CVPR2021/html/Choi_RobustNet_Improving_Domain_Generalization_in_Urban-Scene_Segmentation_via_Instance_Selective_CVPR_2021_paper.html)、[WildNet, CVPR 2022](https://openaccess.thecvf.com/content/CVPR2022/html/Lee_WildNet_Learning_Domain_Generalized_Semantic_Segmentation_From_the_Wild_CVPR_2022_paper.html)。遙測較直接的 [CCDR, IEEE TGRS 2024](https://ieeexplore.ieee.org/document/10476506/) 用 domain randomization 與 category consistency 做 single-domain RS segmentation DG。
+
+### 第三層：多來源不變性與 worst-domain learning
+
+將 event、collection、sensor 或其交叉組合作為 source domains：
+
+- GroupDRO／worst-event risk。
+- Fishr 的 gradient-variance alignment。
+- feature covariance／MMD alignment。
+- event-balanced contrastive learning。
+
+其中 Fishr 是較適合納入 survey 的代表，但只有 12 個高度不平衡事件，domain 定義與 batch 內事件數會直接決定成敗。[Fishr, ICML 2022](https://proceedings.mlr.press/v162/rame22a.html)
+
+### 第四層：meta-learning
+
+MLDG 類方法在訓練時模擬 source-domain train/test split，概念上很符合「留一事件」；但對事件數少、事件內姊妹景多的資料，meta-split 很容易學到 collection identity，且計算較高，優先度低於 augmentation 與 group-aware ERM。[Li et al., 2018, AAAI](https://ojs.aaai.org/index.php/AAAI/article/view/11596)
+
+### 第五層：foundation model 與 PEFT
+
+Foundation model 不是自動的 DG 方法；值得 survey 的問題是：
+
+- frozen encoder、full fine-tuning、partial unfreezing、adapter/LoRA 誰較穩健？
+- 多波段／跨感測器預訓練是否保留 oil–water contrast？
+- full fine-tuning 是否抹除預訓練的廣域不變性？
+- 不同 encoder layer 的 domain distance 與 segmentation performance 是否一致？
+
+錨點：
+
+- [SatMAE, NeurIPS 2022](https://proceedings.neurips.cc/paper_files/paper/2022/hash/01c561df365429f33fcd7a7faa44c985-Abstract-Conference.html)：多時相、多光譜 masked pretraining。
+- [Prithvi-EO-2.0, NASA NTRS technical preprint, 2024](https://ntrs.nasa.gov/citations/20240015391)：以全球 HLS 預訓練的 300M／600M EO model。
+- [Luo et al., 2025, ISPRS Journal of Photogrammetry and Remote Sensing](https://www.sciencedirect.com/science/article/pii/S0924271625003569)：比較 frozen、full fine-tuning 與 adapter/style augmentation 的遙測 segmentation DG。
+- [CrossEarth, 2024 arXiv preprint](https://arxiv.org/abs/2410.22629)：直接針對遙測 domain-generalizable semantic segmentation；此處按可核對的 preprint 書目引用，未以 IEEE 官方頁核對其後續期刊版本。
+
+另有一篇直接可作 survey 入口的 [Domain generalization for semantic segmentation: a survey, Artificial Intelligence Review, 2024](https://doi.org/10.1007/s10462-024-10817-z)，以及 2026 年的遙測專門 survey：[Toward generalizing to unseen domains in remote sensing, Neurocomputing, 2026](https://www.sciencedirect.com/science/article/abs/pii/S092523122601636X)。
+
+## 5. 最大陷阱
+
+最大的陷阱是把「一個大片油事件的成功」敘述成「GoM 海域與台灣海域相似」。
+
+尤其需要防止：
+
+1. **有效樣本數幻覺**：137 patches／數十萬 pixels 不能取代兩個事件。
+2. **post-hoc 海洋故事**：看到結果後從風、波浪、水色、季節中挑一個看起來合理的因素。
+3. **collection／annotation confounding**：GoM 是單一 NOAA collection，NonGoM 是 Atlantic 加多個小事件，地理、標註、事件規模與資料品質不能分離。
+4. **目標資料洩漏**：用台灣距離挑 source、augmentation 或 checkpoint 後，不能再稱為嚴格 source-only DG；只能稱 target-aware diagnostic 或 transductive selection。
+5. **foundation-model 語意過度宣稱**：若 Prithvi 的全球 HLS 預訓練涵蓋台灣，論文可以說「downstream fine-tuning 未使用台灣資料」，但不能說模型從未看過台灣影像。
+6. **GT-centered evaluation selection**：目前結論只適用於已知含油區附近的 segmentation，不是實際事件搜尋或全景部署能力。
+
+## 6. 如果只能先做一件事
+
+我會先做一份完全不需重新訓練的：
+
+> **P16 exact-manifest、event/date-equal、class-conditional domain-shift 與 error audit。**
+
+具體只做預先指定的三個 primary blocks：
+
+1. 六波段 oil–local-water contrast；
+2. 油膜 morphology／patch occupancy；
+3. frozen Prithvi embedding MMD／coverage。
+
+然後逐一對照 GoM、NonGoM、05-22、天使輪，以及兩 checkpoint 的 FN/recall 分層。
+
+這件事成本最低，卻能立刻淘汰「感測器」「月份」「大片油」「水色」「標註邊界」等互相競爭的故事，並決定下一個昂貴實驗究竟應是 morphology-matched retraining、event-LOEO，還是 paired multi-seed。若連 GoM 對 05-22 的 class-conditional support 都不較近，就應停止寫「海域相似性」解釋，轉向標註、取樣或優化偶然性。
+
+---VERDICT---
+STANCE: REVISE
+BLOCKING: [1,2,3]
+RESTATE: 使用者需要把目前由單一台灣事件主導的 GoM 遷移優勢，改造成以事件為獨立單位、可量化 domain shift、可反駁機制假設，並嚴格區分 source-only DG 與 target-aware 分析的論文論證。
+CONFIDENCE: HIGH
+---END---
