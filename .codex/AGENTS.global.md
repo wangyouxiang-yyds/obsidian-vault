@@ -10,7 +10,7 @@ For work under the oil-spill research repositories or Obsidian vault:
 Available custom agents:
 - code-reviewer: explicit read-only reviews.
 - obsidian-vault-manager: vault search and writes.
-- antigravity-consultant: agy web research and second opinions.
+- (antigravity-consultant: DISABLED 2026-09-17 by user decision. Do not dispatch. Adapter renamed *.toml.disabled-20260917; revival procedure in institution 10_model_dispatch.md.)
 - paper-extractor: fact-only literature extraction.
 
 Claude Code and Codex are peer primary harnesses. Never block reversible work solely because the other harness is unavailable. Never claim consensus from an unavailable harness. Kill/launch, deletion, commit/push, publication, and irreversible dataset/method changes require explicit user authorization.

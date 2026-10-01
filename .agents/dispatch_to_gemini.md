@@ -1,5 +1,7 @@
 # Gemini CLI 的角色：雜工，不是第三個 harness
 
+> ⚠ 本檔自 2026-09-17 起整份暫停適用（agy/Antigravity 使用者裁決停用）：不得依此交辦任何工作。內文保留供復活參照，復活程序見 institution `10_model_dispatch.md`「agy 停用」節。
+
 Gemini 與 Claude Code / Codex 地位不對等。Gemini 不參與架構判斷、方法論選擇、除錯根因判斷，
 只執行「範圍已鎖死、不需要判斷力」的低價值任務。
 
