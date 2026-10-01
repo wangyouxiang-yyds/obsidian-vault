@@ -22,6 +22,7 @@
 
 ## 實驗紀錄（wiki/experiments/）
 
+- [P16 GoM 等 patch 單 seed 設計](.agents/decisions/20260920_P16_GoM等patch單seed設計.md) — 2026-09-20 事前凍結：GoM／NonGoM 各 584 GT＋1,180 BG，seed42，等更新預算；input/config 與 report runtime gates 通過；首次送跑（20:17:47 啟動）於 21:07 遭 SIGINT 中斷（Epoch 15/300），經使用者授權刪除，21:12:40 由 epoch 0 重跑中（詳見 handoff.md「目前狀態」），尚無可報告結果
 - [20260429_OSDMamba整合至0420.md](wiki/experiments/20260429_OSDMamba整合至0420.md) — OSDMamba 整合至 0420 專案：移植工作、與 0422 版差異、下一步
 - [20260430_訓練效能優化.md](wiki/experiments/20260430_訓練效能優化.md) — OSDMamba 訓練效能優化：CPU-GPU 同步瓶頸、向量化 Loss、EMA 調整
 - [20260501_大圖重組效能優化.md](wiki/experiments/20260501_大圖重組效能優化.md) — 大圖重組效能優化：NAS I/O 瓶頸、GPU 側重組、Batch Size 提升
@@ -49,8 +50,12 @@
 - [20260827_P7背景patch配額政策實驗_r12_null與機制發現.md](wiki/experiments/20260827_P7背景patch配額政策實驗_r12_null與機制發現.md) — 背景 patch 配額槓桿（capacity-capped r=1.2 vs 每景固定10張）結案：計畫任務終點 null（Δ=−0.0047）、Contract S 顯著變差（ΔS=−0.0197 CI 全負），prereg 雙端損失預測逐項命中；三項機制知識——全域 FP 逐 size 拆解會反向（tiny +34.3% vs large −14.6%）、負樣本傷害來自每景覆蓋深度塌縮非像素總量、「固定10張」實為有效海域面積比例規則的偽裝（C_s CV=0.37 vs G_s CV=1.82）；**2026-08-31 更新**：後繼兩階段分配方案／P8 已全線砍除（不再推進），改走 P9 全域水位路線；補逐 size 四格回顧（劑量-反應單調關係、small 須用 ΔIoU 不能用 ΔFP、FPR 跨分層由遞增翻轉為遞減但代價是全距 +60%）
 - [20260831_P9油背像素比例bracket_inconclusive與凹性發現.md](wiki/experiments/20260831_P9油背像素比例bracket_inconclusive與凹性發現.md) — 訓練語料油汙:背景像素比例 ρ 首次敏感度檢驗（ρ∈{15, 23.0187, 30} 不等距 bracket、嚴格巢狀、六道建構閘全過、29.6 GPU-h）：主判定 inconclusive，但 S₃₀−S₂₃=−0.0201（CI 排除 0 但跨 −0.02）與曲率 C=+0.0174（CI 排除 0 但跨 +0.02，反應面呈凹形）兩項達統計顯著未達實質門檻；機制對照——1:15 虛警爆（FP+7.0%）、1:30 漏檢爆（FN+3.1%），precision 隨背景單調變好但 recall 於 rho23 達峰；現行 ρ=23.02 三水位中 S 最高，因 protocol continuity 暫留但不得稱最優；exposure audit 判定 NOT_CENSORED 但 rho15 少拿 42% optimizer 更新
 - [20260831_週結_背景patch配額三部曲P7P8P9.md](wiki/experiments/20260831_週結_背景patch配額三部曲P7P8P9.md) — **週結**（08-24~08-31）：P7（分佈）不予採用 → P8（擴充候選池）因磁碟配額故障被裁決全砍 → P9（水位）inconclusive 的完整時間軸；三個方法論教訓——加權會製造雜訊假象、顯著≠實質、exposure audit 是詮釋閘門非附錄
+- [20260904_P10油背像素比例六點格_峰位辨識但增益不足.md](wiki/experiments/20260904_P10油背像素比例六點格_峰位辨識但增益不足.md) — P9 bracket {15,23.0187,30} 細化為六點格 {15,17,19,21,23.0187,30}（本批次真訓練 rho17/19/21，各 3 折，2026-09-01~03，9 run 全過建構閘與回歸閘）：E1 峰位 ρ*=19.751（bootstrap CI [18.873,21.091] 排除正典）、E3 選擇機率 0.9255＝峰位「有」被辨識，但 E2 峰增益 G=+0.0064（同時 CI 跨 0 且未過 ±0.02）與六臂預註冊換值規則全不合格，判定 `RETAIN_23.0187_protocol_continuity`；事前功效分析（ρ≈20.54/+0.0020）與事後（ρ*=20.565/+0.0023）幾乎完全命中；待使用者裁決 ρ 軸是否正式結案為已耗盡的槓桿
 - [20260716_資料溯源洩漏與評估合約v1.md](wiki/experiments/20260716_資料溯源洩漏與評估合約v1.md) — 355-scene 事件層級溯源稽核（僅 12 事件群、350/355 姊妹景近重複、external-84 假設作廢）、Evaluation Contract v1.0（12 事件群 cluster bootstrap 取代舊雙 gate）、grouped replay 結果（tversky 顯著、Prithvi+UPerNet 顯著、單純換骨幹打平）、非對稱閘控雙軌 backbone 政策決策
 - [20260718_訓練不可重現根因與決定性修復.md](wiki/experiments/20260718_訓練不可重現根因與決定性修復.md) — 訓練不可重現根因定位：Albumentations 2.0.8 Compose 內部 RNG 未鎖（commit ba25391 修復，370 tensor 逐 bit 相同驗收通過）；此前所有 grid/screen 掃描降為 legacy、「Dice 勝 Tversky」結論撤回；決定性正本重跑中（baseline 3-fold 完成、tversky 3-fold 訓練中，07-25 看門狗防停電）
+- [20260913_P13海域來源敏感度_只部分回答.md](wiki/experiments/20260913_P13海域來源敏感度_只部分回答.md) — P13 patch-balanced 台灣 source-group sensitivity 8 arms（A/B×G1/G2/G3/Mixed）結案：判定「只部分回答」，不得稱純海域效應，只能稱 source-group composition association；2026-09-18 依新制「實驗九步驟卡」事後補寫，1-6/7-9 分別重排自 `.agents/decisions/` 兩份決議正本
+- [20260915_P14_GoM_vs_NonGoM_full_ablation_主端點未計.md](wiki/experiments/20260915_P14_GoM_vs_NonGoM_full_ablation_主端點未計.md) — P14 GoM-only vs NonGoM-only full-source 兩臂訓練與 Taiwan post-test 已完成，但正式主端點 event-macro Oil IoU 尚未計算；2026-09-18 事後補寫九步驟卡，第7-9步留白待計算
+- [20260925_P18_台灣holdout比例19_21_23_不可判定.md](wiki/experiments/20260925_P18_台灣holdout比例19_21_23_不可判定.md) — P18 台灣 holdout × 背景配額比例 ρ∈{19,21,23} 結案九步驟卡（第7-9步）：best.pt 三組 pairwise event-macro Oil IoU 皆不可判定，且對 checkpoint 規則敏感（last.pt 19−21 支持19）；不收線、不採用新比例
 
 ---
 
@@ -78,6 +83,7 @@
 - [deeprx_vae_架構與運作機制.md](wiki/concepts/deeprx_vae_架構與運作機制.md) — Deep-RX 深入理解：VAE 架構（reparam trick / KL 約束）、San Diego I 完整流程、訓測同源爭議的誠實討論、論文評估方式的學術批評、Background-Only Training 洞察（v9 已實作）、v9 完整 12 步驟流程（per-scene VAE + Mahalanobis + EM + NDOI）、論文 vs 真實場景複雜度差異（one anomaly vs multi-anomaly）、v3 濫抓四大根本原因與 v9 對應解法
 - [deeplabv3plus_358clean_overfitting_改善方向.md](wiki/concepts/deeplabv3plus_358clean_overfitting_改善方向.md) — DeepLabV3+ 358-clean 訓練改善方向統整：overfitting 根本診斷（初始化+資料量錯位）、A~C 三組改善方向表（依 ROI 排序）、A1 pre-trained backbone 完整實作細節（input conv 改造 code、differential lr、兩階段 fine-tune）
 - [self_supervised_pretraining_遙測.md](wiki/concepts/self_supervised_pretraining_遙測.md) — 遙測 SSL 預訓練總覽：backbone 概念、MoCo/DINO/MAE/data2vec 四法比較、Linear Probing vs Fine-tuning 對照表、SSL4EO-S12 實測佐證 pretrained backbone 效益、「SSL 尚未用於光學油汙偵測」研究缺口
+- [parameter_efficient_fine_tuning_遙測.md](wiki/concepts/parameter_efficient_fine_tuning_遙測.md) — 遙測基礎模型 PEFT 概念：Frozen／Full fine-tuning／PEFT 差異、LoRA／Adapter／Prompt 方法家族，以及與 Prithvi 油污分割和 source-only protocol 的關係；目前僅完成 Abstract／Introduction 層級整理
 - [分割損失函數與類別不平衡.md](wiki/concepts/分割損失函數與類別不平衡.md) — Class re-weighting / Focal 調變 / Tversky 不對稱化三種機制對照、Dice vs Tversky 公式與 α/β 意義、本專案 DeepLabV3+/OSDMamba 現行損失設計盤點與 Tversky 消融方向
 - [跨海域_source-only_zero-shot油污偵測.md](wiki/concepts/跨海域_source-only_zero-shot油污偵測.md) — 嚴格海外 source-only、台灣 target-blind 問題定義；區分 zero-shot／UDA／few-shot，整理第一輪六篇光學文獻的 protocol 證據與閱讀順序
 - [尺度自適應_Global-Local分割.md](wiki/concepts/尺度自適應_Global-Local分割.md) — GeoAgent 的 global–local 雙分支與動態尺度路由；整理 fixed／oracle／supervised router／contextual bandit／A2C 階梯，提出 10m local + 20/30m context 的 Prithvi 尺度對齊假說
@@ -100,6 +106,7 @@
 - [Chou2021_U-Net光學海上油污.md](wiki/papers/Chou2021_U-Net光學海上油污.md) — 周芷蘭 2021：成大光學 RGB U-Net 碩論；正式題名與摘要未證實 transfer learning，作為台灣 prior art
 - [Chang2024_MorphologicalAttention_UNet_SAR.md](wiki/papers/Chang2024_MorphologicalAttention_UNet_SAR.md) — Chang et al. 2024：Morphological Attention FA-MobileUNet 的 SAR 油污分割；已讀 Abstract／Introduction，台灣事件為應用驗證但 target-blind protocol 待 Methods 判定
 - [Szwarcman2026_PrithviEO2.md](wiki/papers/Szwarcman2026_PrithviEO2.md) — Szwarcman et al. 2024（arXiv:2412.02732v3）：Prithvi-EO-2.0 地理空間基礎模型，HLS 4.2M 樣本 MAE 預訓練、3D 時空 embedding + 時間/地理 metadata bias，300M/600M 兩規模；GEO-Bench 較前代 +8%，小樣本（Landslide4Sense 50 張）優勢最明顯，SAR 早期融合無效；**本專案固定對照組所用 encoder 的來源論文**，並記錄假設殺手（預訓練刻意降採樣 Sea/同質水體，可能不利油膜細微紋理表徵）
+- [MartiEscofet2025_PEFT_GeoFM.md](wiki/papers/MartiEscofet2025_PEFT_GeoFM.md) — Marti Escofet et al. 2025（arXiv:2504.17397v2）：比較 GeoFM 的參數高效率微調，聚焦適配成本、預訓練表徵保留與未見地理區域泛化；目前只完成 Abstract／Introduction 部分研讀，方法與結果待確認
 - [Lee2025_NFINDR_SAM_小型油污.md](wiki/papers/Lee2025_NFINDR_SAM_小型油污.md) — Lee et al. 2025：Sentinel-2 land/cloud/ship masks + N-FINDR（p=2）+ SAM；高同景 proxy F1 不構成跨事件低誤警證據，最適合作 oil-specific verifier
 - [Liu2023_GeoAgent_尺度自適應分割.md](wiki/papers/Liu2023_GeoAgent_尺度自適應分割.md) — Liu et al. 2023（ICCV）：以 A2C Scale Control Agent 為各 patch 選 context 倍率，再由共享權重 global–local 雙分支分割；本專案最可借為 10m local + 30m Prithvi-aligned context，RL 應在 fixed/oracle 驗證後才導入
 

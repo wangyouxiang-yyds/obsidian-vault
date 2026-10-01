@@ -194,4 +194,41 @@
 
 ## [2026-09-01] ingest | raw/papers/ 收錄兩篇 CVPR 論文 PDF，**尚未閱讀、尚未建立 wiki/papers/ 摘要頁**，此處僅登錄檔案入庫，不得視為已 ingest：(1) Astruc et al.《AnySat: One Earth Observation Model for Many Resolutions, Scales, and Modalities》(CVPR 2025)；(2) Cao et al.《CrossEarth-Gate: Fisher-Guided Adaptive Tuning Engine for Efficient Adaptation of Cross-Domain ...》(CVPR 2026，檔名於此截斷，完整標題待讀全文後補)。兩篇皆與現行主軸（跨域/跨海域 source-only 遷移、多解析度多模態 EO 基礎模型）表面相關，但相關程度未經 triage 判定。
 
+## [2026-09-02] decision | 新增 `.agents/decisions/20260902_GeoAgent_A2C尺度配置實驗設計與建碼.md`：記錄 Codex×Claude 六輪方法協商 Round 6 ACCEPT、程式初審 REVISE 後聚焦複審 ACCEPT/NONE；P11 採 NOAA319-only development／named-event36 sealed，分為 Track A fixed local/3×/5× + supervised atom regressor/Dinkelbach 與 Track B hard-budget A2C + fixed/random/supervised/oracle；程式只寫入隔離 worktree，CPU synthetic selftest 16/16 與 py_compile 通過，pytest 未安裝故未跑；未做真資料 audit、Prithvi、GPU、training、commit 或 push。同步最小更新 `.agents/handoff.md`；institution 研究現況正本位於 vault 外，依本次僅可修改 vault 的範圍未動。
+
+## [2026-09-03] partial-ingest | 論文：Fine-tune Smarter, Not Harder（Marti Escofet et al. 2025，arXiv:2504.17397v2）——本次僅研讀 Abstract＋Introduction，建立部分論文頁與 PEFT 概念頁；Methods／Experiments／Results／Supplementary Material 尚未研讀，效能數字、方法細節與全文結論皆待確認
+
 ## [2026-09-05] doc | 新增 `wiki/pipeline/GT_expand_workflow_onboarding.md` 新人導覽草稿；依使用者決定把原始 11-band／Sen2Like 列為外部上游，現行文件從整理後 8-band 場景開始，首輪記錄資料層級、VRT 邏輯對齊、Mask 原始語意、資料池與 355-scene 實驗語料邊界，以及 `nodata=0` 與 `Oil=0` 衝突的 metadata 風險；未修改資料、writer、訓練設定或既有 `GT_expand_pipeline.md`
+
+
+## [2026-09-03] experiment | P10 油背像素比例六點格三臂訓練完成：rho17/19/21 各 3 折共 9 個 run 全數完成（run_metrics.json 齊全），起 2026-09-01 09:28、迄 2026-09-03 23:00；rho15/23.0187/30 沿用 P9 不重跑。（vault 回填於 2026-09-06，詳見 wiki/experiments/20260904_P10油背像素比例六點格_峰位辨識但增益不足.md）
+
+## [2026-09-04] experiment | P10 主分析與詮釋閘完成：exposure_audit 判定 NOT_CENSORED（18 折皆乾淨早停，steps-to-best 跨臂差 2.19 倍，與 S 的 Spearman ρ=+0.829）；primary_results.json 六臂結果與六個對比皆通過 parity/regression 閘；E1 峰位 ρ*=19.751（bootstrap CI [18.873,21.091] 排除正典 23.0187）、E3 選擇機率 0.9255（peak_identified=True）、E2 峰增益 G=+0.0064（同時 CI [−0.00946,+0.02222] 跨 0）；預註冊換值規則六臂全不合格，判定 RETAIN_23.0187_protocol_continuity。（vault 回填於 2026-09-06）
+
+## [2026-09-05] doc | P10 簡報圖表產出：fig_oil_iou_curve / fig_ratio_curve_S / fig_ratio_curve_pooled / P10_ratio_metrics.xlsx / fig_usable_band，論述「1:19–1:23 為可用區間」但明載兩條警語（不對未測比例作主張、S 與 pooled 口徑對區間內排序不一致）。（vault 回填於 2026-09-06）
+
+## [2026-09-06] experiment | 補寫 P10 結案回填（訓練 09-01~03、分析 09-04、圖表 09-05，vault 當日未同步）：新增 wiki/experiments/20260904_P10油背像素比例六點格_峰位辨識但增益不足.md，更新 index.md；更新 .agents/decisions/20260901_P10油背比例細格研究設計.md 狀態列與新增 §11 結案回填；更新 .agents/handoff.md「目前狀態」P10 由「已授權待啟動」改為已結案，並記錄下一棒待裁決事項（ρ 軸是否正式結案為已耗盡的槓桿——決議 §10.2 自動觸發條件本次未成立，需另行裁決）。
+
+## [2026-09-11] decision | 新增 `.agents/decisions/20260911_P13_patch-balanced台灣source_sensitivity實驗設計.md` 並更新 `.agents/handoff.md`：記錄與 pixel-balanced 平行的 8-arm patch-balanced 設計、配額、train-proxy 限制與固定台灣 holdout；Claude×Codex 第4回合 ACCEPT，全 arms `run:false`、未啟動。本次僅修改 vault，未碰 repo、未啟動／刪除／commit／push。
+
+## [2026-09-20] decision-draft | 新增 `.agents/decisions/20260920_P16_GoM等patch單seed設計.md` 草稿（`DRAFT_NOT_FROZEN`），同步 index／handoff；使用者已授權 GoM／NonGoM 各 1 seed 配置並送跑，但本筆記建立時尚未啟動，待方法協商及資料／程式 audit 才凍結 1–6。擬每臂 584 GT＋1,180 BG、seed42、相同總更新預算，採 P5 同日去重→日期→事件等權主端點；來源內容與 source-Val 仍為殘餘混淆。未改原始資料、未 launch、未 commit／push。
+
+## [2026-09-20] prereg-freeze | 20:15:11 Asia/Taipei 凍結 P16 卡片 1–6（`FROZEN_prelaunch`），同步 index／handoff；Claude×Codex R3 ACCEPT／BLOCKING=[]，獨立 input/config audit PASS；GoM156／NonGoM120 train scenes 全覆蓋，兩臂 GT584＋BG1180 unique、split 無 scene 交集，Val／Test 繼承 P14。P5 原公式 P12 CPU parity PASS；P16 新 report runtime parity 與 launch snapshot 校驗仍待通過。尚未 launch、未 commit／push；之後卡片不回改，process 狀態另寫 handoff／log。
+
+## [2026-09-20] prelaunch-gates | 凍結後主線回報 P16 新 report P12 endpoint exact parity PASS，P14 checkpoint provenance GoM46／7866／Val mIoU0.7303328514 與 NonGoM64／7040／0.6536126733 皆 PASS，獨立 `--verify-frozen` PASS。卡 SHA256=`fe5410196e177946bb03cc2a203da16345cc904bbe5808ff567746964628efcb`，不回改已凍結卡；config run 開關已由主線依使用者授權啟用，仍待 snapshot／launch 證據。同步 index／handoff；未 commit／push。
+
+## [2026-09-20] launch | 補記 P16 已啟動證據（實際 launch 20:17:47，晚前次 20:17 回寫 16 秒，原「尚無啟動證據」句已過期）：獨立 tmux session=`p16_matched_s42`、main PID=`23909`，兩臂串行 GoM→NonGoM、config 兩臂皆 `run:true`；config SHA256 實查=`5c8fdde49bd4140dc156699143b67d51a86f708f04455b52456d9f3a63ce290a`，與 institution 正本一致。300 epochs／patience301／110 updates/epoch=33,000 updates/臂、seed42。20:28～20:29 實查：GoM 臂 Epoch 3 完成、Epoch 4 進行中（Epoch 2 V-mIoU 0.5635／Oil IoU 0.2187），僅訓練中數字非可報告結果；粗估兩臂共約 28 小時。事前卡`.agents/decisions/20260920_P16_GoM等patch單seed設計.md`狀態仍`FROZEN_prelaunch`、SHA256=`fe5410196e177946bb03cc2a203da16345cc904bbe5808ff567746964628efcb`，未回改。更新 `.agents/handoff.md`「目前狀態」（新增 20:30 條目、標註 20:17 條目已被推翻但原樣保留）與「執行中程序」（P16 改列執行中、P14 完成敘述保留）；更新 `index.md` P16 條目移除過期的「尚未記錄啟動」字樣。未動 decisions/ 凍結卡；未 commit／push。
+
+## [2026-09-20] incident | P16 首次送跑於 Epoch 15 遭 SIGINT 中斷、經使用者授權刪除並重跑：20:17:47 啟動的 GoM 臂（main PID `23909`、tmux `p16_matched_s42`）於 21:07 左右在 `torch.save()` 寫 checkpoint 當下收到 `KeyboardInterrupt` 而死，非 OOM、非程式錯誤、非磁碟問題；NonGoM 臂從未啟動。⚠ 成因未完全確證，僅觀察到 tmux `claudeXcodex_review` 建立於 `21:07:59` 與死亡時間吻合到秒，強烈暗示但無直接證據，不得寫成已確認因果、不點名任何人為責任。使用者於 21:10 明確授權刪除重跑（與 P14 09-14 中斷裁決一致）；刪除前重驗 `launch_files.sha256`（12 檔全 `OK`）與 `build_design.py --verify-frozen`（`PASS`），確認凍結未受污染。已刪除 `20260920-201818_MS6_P16_GoM_matched1764_S42`（7.9 GB，含 `last.tmp` 3.46 GB 寫一半殘骸），不可復原；刪除前將 `args.yaml`／`data.yaml`／`results.csv`（15 epochs）與改名 log 另存於 `_p16_runs/P16_gom_matched_patch/_interrupted_20260920-2107_record/`。中斷 run 的 15 epochs 最佳為 Epoch 13（Val mIoU `0.699347`／Oil IoU `0.436575`），僅供中斷存證，不得引用為任何 P16 結果。21:12:40 由 epoch 0 重跑：main PID `28418`、detached tmux `p16_restart_2111`，同一凍結 config、seed42 已鎖；新 GoM run=`20260920-211240_MS6_P16_GoM_matched1764_S42`，log=`P16_seed42_restart_20260920-2111.log`。事前卡 `.agents/decisions/20260920_P16_GoM等patch單seed設計.md` 狀態仍 `FROZEN_prelaunch`、SHA256 不變，未回改；設計／資料／端點全部沿用。institution 正本已於 21:12 寫入對應 CURRENT 條目。更新 `.agents/handoff.md`「目前狀態」（新增 21:15 STATUS_AS_OF、20:30 條目標註已被推翻但原樣保留）與「執行中程序」（PID／tmux／run 目錄／log 改列新重跑）；更新 `index.md` P16 條目反映中斷與重跑狀態。未動 decisions/ 凍結卡；未 commit／push。
+
+## [2026-09-23] launch | P18 台灣 holdout × 背景配額 ρ∈{19, 21, 23} 已授權啟動：tmux session `P18_rho_grid`，串行跑 ρ19→21→23；開跑前閘 1–7 PASS，閘 8/9（build_report.py 與 P12 端點重現）尚未寫，須在讀任何台灣數字前補上並先重現 P12 0.46379088875726393 才能揭封。詳見 `.agents/decisions/20260923_P18_台灣holdout背景配額rho19_21_23設計.md`「啟動紀錄（2026-09-23）」。未 commit／push。
+
+## [2026-09-24] decision | P19 GoM 形態分組獨立訓練設計：Claude×Codex 共識收斂（3 回合），共識稿存 `.agents/decisions/20260924_P19_GoM形態分組獨立訓練設計.md`，待使用者選方案 A/B 後凍結；未建檔、未訓練。
+
+## [2026-09-24] decision | P19 凍結：使用者選方案 A（3 seeds×3 組），維持既有 loader；建檔 analysis/p19_gom_morph_split 完成（parity gate、val 39 景閘、loader 模擬、report selfcheck 重現 P17 0.455751／P16 NonGoM 0.281168、7 unit tests 全 PASS），共用 val k=45（251 oil＋310 BG）；未 launch（P18 仍在跑）。
+
+## [2026-09-25] result | P18 台灣 holdout × 背景配額 ρ∈{19,21,23} 結案：主端點（best.pt event-macro Oil IoU 兩事件 pairwise Δ）三組皆判定不可判定，且對 checkpoint 規則敏感（last.pt 19−21 兩事件皆 ≥+0.02 支持 19，與 best.pt 19−21 不可判定不一致）；不收線也不採用新比例。build_report.py 因 2026-09-25 host 上 import torch 卡死而改以 torch-free 模式運行（P12 端點 exact parity 0.46379088875726393 先行重現 PASS），last.pt-internal best_epoch 交叉核對 PENDING（results.csv 復核 PASS）。詳見 wiki/experiments/20260925_P18_台灣holdout比例19_21_23_不可判定.md，設計正本 .agents/decisions/20260923_P18_台灣holdout背景配額rho19_21_23設計.md 已補「結案（2026-09-25）」節。未 commit／push。
+
+## [2026-09-25] fix | 容器重啟後 import torch 恢復；P18 last.pt best_epoch 交叉核對全 PASS（ρ19/21/23 best_epoch=50/39/40，updates_to_best=13200/11349/12680，selection_reconciliation 全 PASS，輸出 `/home/alanyh/oil_dataset/new/_p18_runs/P18_taiwan_rho_grid/P18_checkpoint_crosscheck.json`）；P18 無待補項。已就地更新 wiki/experiments/20260925_P18_台灣holdout比例19_21_23_不可判定.md 與 .agents/decisions/20260923_P18_台灣holdout背景配額rho19_21_23設計.md 中原 PENDING 句（保留原句，附加補跑結果）。未 commit／push。
+
+## [2026-09-25] experiment | P19 launch：09:29 首次 launch 因全機 import torch 卡在 kernel（SIGKILL 殺不掉）而停在 selfcheck，未訓練；使用者重啟容器後 10:16 重新 launch（tmux p19_morph_split），sha／verify-frozen／selfcheck PASS，10:21 開始 MS6_P19_MS_S42，loader 實載 train 538 oil＋630 BG／121 景、val 251＋310／39 景。9 runs 後自動跑 18 個台灣測試與 build_report.py。
