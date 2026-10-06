@@ -22,7 +22,7 @@
 
 ## 實驗紀錄（wiki/experiments/）
 
-- [20261005_台灣預測線寬量測與2x放大推論試探.md](wiki/experiments/20261005_台灣預測線寬量測與2x放大推論試探.md) — 台灣預測線寬 13–18 px 與標註寬無關；2× 放大推論線寬未減半、IoU 多數下降；描述性、無訓練
+- [20261005_台灣預測線寬量測與2x放大推論試探.md](wiki/experiments/20261005_台灣預測線寬量測與2x放大推論試探.md) — 台灣預測線寬 13–18 px 與標註寬無關；2× 放大推論線寬未減半、IoU 多數下降；描述性、無訓練；10-06 追加 GoM 驗證集檢查：細碎 patch 在來源域也圈胖
 - [P16 GoM 等 patch 單 seed 設計](.agents/decisions/20260920_P16_GoM等patch單seed設計.md) — 2026-09-20 事前凍結：GoM／NonGoM 各 584 GT＋1,180 BG，seed42，等更新預算；input/config 與 report runtime gates 通過；首次送跑（20:17:47 啟動）於 21:07 遭 SIGINT 中斷（Epoch 15/300），經使用者授權刪除，21:12:40 由 epoch 0 重跑中（詳見 handoff.md「目前狀態」），尚無可報告結果
 - [20260429_OSDMamba整合至0420.md](wiki/experiments/20260429_OSDMamba整合至0420.md) — OSDMamba 整合至 0420 專案：移植工作、與 0422 版差異、下一步
 - [20260430_訓練效能優化.md](wiki/experiments/20260430_訓練效能優化.md) — OSDMamba 訓練效能優化：CPU-GPU 同步瓶頸、向量化 Loss、EMA 調整
