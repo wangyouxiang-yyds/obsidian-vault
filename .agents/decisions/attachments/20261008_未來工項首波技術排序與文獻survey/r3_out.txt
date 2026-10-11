@@ -1,0 +1,73 @@
+結論：v2 已處理我上一輪的三個 blocker；你的對應理解正確。我只要求兩個非阻擋性的文字精化，之後可視為共識稿。
+
+## 1. Blocker 狀態
+
+- **Blocker 1：Z 定義與 source-only 合規——已解除。**
+- **Blocker 2：B1 有效樣本單位——已解除。**
+- **Blocker 3：MADOS／checkpoint averaging 證據邊界——已解除。**
+
+建議補兩句：
+
+1. G0-b 外層 pseudo-target 須寫明：  
+   **「外層結果不得決定 B2/B3/B4b 的入口或設定；這些決策只依內層 GoM cluster-val與A1/A3。」**  
+   否則外層雖未直接調超參數，仍可能被用於方法路由而成為隱性 validation。
+
+2. Z 的 mask重採樣方法只能依 **source-train幾何保真度** 選擇，例如 component消失率、面積及線寬偏差；不得依 source-val模型成績挑選。
+
+## 2. Z 的 `s_min` 規則：接受，但請把公式寫精確
+
+我接受這個 source-only heuristic。它不是唯一最佳規則，但足以作為事前凍結、可否證的首個 treatment。建議正式寫成：
+
+\[
+s_{\min}=
+\max\left(
+\frac{3}{\tilde w_{\text{source-train}}},
+\frac{256}{W_{\max}},
+0.25
+\right),\qquad
+s\sim\operatorname{LogUniform}(s_{\min},1)
+\]
+
+其中：
+
+- \(\tilde w_{\text{source-train}}\) 只由重切後的 GoM source-train計算。
+- `3 px` 是最粗30 m原生尺度在10 m分析網格上的保守參考。
+- \(W_{\max}\) 是實際允許讀取的最大視窗；若只允許512，這一項會把 `s_min` 提高到0.5。
+- 施作機率0.5固定，不掃描。
+- 所有感測器使用同一分布以保持 treatment一致，但結果須按S2/L8/L9分層報告。
+
+另加一個只看 source-train mask的 geometry smoke gate：若選定重採樣法造成過多正patch或連通區消失，先提高 `s_min`，再凍結正式實驗。這不是模型調參，也不涉及臺灣。
+
+Ghiasi只應作廣尺度整體增強的先例，不應被解讀為上述公式的直接理論依據；目前 v2 的寫法已正確。
+
+## 3. 排序
+
+大方向沒有錯，但 B1 後不宜固定寫成「B2 再 B3」，應明確改成決策樹：
+
+- **Z通過、R不通過**：優先 B3，因證據偏向資料尺度／context分布問題。
+- **R通過或仍有穩定寬度膨脹**：優先 B2a，因證據偏向表示解析度。
+- **Z、R皆通過**：先測 Z+R 是否可加成，再決定 B2/B3；否則可能跳過最直接的組合。
+- **Z、R皆不通過**：回看 A1/A3。若仍確認局部解析失真，可做 B2a；此時不應直接投入大規模 B3。
+- **B4a**：C完成後即可平行做事後分析，但 B1 primary comparison仍維持同一 `best.pt`政策。除非 averaging規則已凍結並一致套用C/Z/R，否則不得在實驗族進行中更換 checkpoint-selection policy。
+- **B4b、B5、B6**：目前位置正確。
+
+所以候選清單的實際首波順序應表達為：
+
+`G0 → A1/A2/A3 + C → B1(Z/R) → 依結果分流至 Z+R、B2a 或 B3 → B4b/B5/B6條件式進場`
+
+其餘我接受，包括：
+
+- G0-f 對遠場 `255→BG` 僅稱弱背景假設；
+- MADOS只支撐 annotated-pixel負類指標；
+- 臺灣背景融合明確列為 target-informed計畫支線；
+- B2a/b/c分閘；
+- PEFT不先於細線機制診斷；
+- 論文貢獻在 B1/B3 出現 source正證據前保持候選語氣。
+
+---VERDICT---
+STANCE: ACCEPT
+BLOCKING: []
+RESTATE: 先以共同對照的 Z 與 R 區分資料尺度／context缺口和模型解析缺口，再由結果決定 B2、B3 或 Z+R，是目前最節省實驗成本且最能形成可辯護論文證據鏈的方案。
+CONFIDENCE: HIGH
+---END---
+exit=0

@@ -1,0 +1,129 @@
+## 結論
+
+真正應先做的不是換成更大的模型，而是：
+
+1. 先建立無洩漏、source-only、可量測重跑雜訊的評估底座。
+2. 第一個模型實驗做 P23 的 2× 入口重訓。
+3. 若解析度假說成立，再做高解析邊界 decoder；若不成立，才轉向資料分布與光譜機制。
+4. 工項二的融合以「受條件約束的 mask copy-paste」為首選，但必須等標註及六波段合理性盤點完成。
+5. 形態硬分組／平衡目前不應當作論文主方法：P22 尚無正證據。
+
+所有方法選擇都應只看海外 source folds；臺灣 18 景只能在方法、權重、閾值全部凍結後，做一次「已看過的外部壓力測試」，不可稱盲測。
+
+## 必須先完成、但不計入七項技術的 G0 評估底座
+
+建立：
+
+- event／姊妹景／同次取得群組不可跨 split 的 source-only split。
+- 全球資料以 12 個事件群做 grouped outer folds；GoM-only 則至少以日期、航帶或姊妹景群組切分，不能 patch 隨機切分。
+- 固定指標：event-macro及pooled Oil IoU、Recall/FNR、Precision、細碎組 IoU、預測/GT 線寬比、boundary F-score；有確認負景後再加 scene FPR 與 false-positive area/km²。
+- 同版 baseline 重跑，先估計「同設定差值」的 95% null band。以下每一項的有效門檻都取  
+  `max(所列實質差值，source null 95% band)`。
+- 每個主要比較至少三個 paired seeds；方法須三個 seed 同方向，不能靠最好的一次。
+- P24 因沒有同版本 Original 對照，只能算描述性結果，不能進入因果證據鏈。
+
+這符合 WILDS 對真實分布轉移、群組化 OOD 評估的基本精神；Koh 等，2021，ICML，偏好頂會，[出版商摘要及書目頁](https://proceedings.mlr.press/v139/koh21a.html)。
+
+## 排序候選技術
+
+### 1. 2× 入口放大後完整重訓：先完成 P23
+
+- **工項**：一-(3) 敏感度測試；四-光學「初步效能→調整訓練策略後優化效能」。
+- **技術與 MVP**：同一 Prithvi+ASPP、資料、loss 與增強，只改 scale=1/2，從頭訓練；先完成 null 校準、等價閘及 smoke test，再做 scale 1/2 × 3 seeds。
+- **文獻**：Kirillov 等，2020，CVPR，PointRend 指出低解析規則網格會欠取樣邊界並造成模糊輪廓；這是**間接機制依據**，不是對 Sentinel-2 插值放大的直接證明。[全文](https://openaccess.thecvf.com/content_CVPR_2020/papers/Kirillov_PointRend_Image_Segmentation_As_Rendering_CVPR_2020_paper.pdf)
+- **我方證據**：最強支持是 GoM 細碎組 GT 5.0→預測 11.0 px、臺灣細碎組 5.0→14.2 px；細碎油污在 GoM train 僅 3.1%，天使輪卻達 75%。反證是推論期單獨 2× 已失敗，且插值不會創造新光譜資訊，所以必須重訓而不能宣稱「增加真實解析度」。
+- **預期、成本、風險**：主要應改善 source 細碎組 Precision、IoU及線寬比；6 GPU runs，約 30–84 GPU-hours。風險是純插值模糊、context 變小及顯存／batch 改變形成混淆。
+- **事前判準**：在重新做過姊妹景分組的 GoM source validation 上，細碎組 Oil IoU paired mean 至少 `+0.04`、3/3 seeds 為正；線寬比絕對誤差降低至少 25%；全 source scene-macro IoU 不得下降超過 0.02。不得看臺灣決定 scale。
+
+### 2. 高解析邊界 decoder：低階局部特徵＋邊界細化
+
+- **工項**：一-(3) 特徵及條件敏感度；四-光學優化效能。
+- **技術與 MVP**：保留 Prithvi encoder，將現有「1/16 logits 直接上採樣」改成輕量 1/4-resolution CNN stem/skip，加 PointRend 式不確定邊界點細化或邊界 auxiliary loss；先不要同時換 SAM。
+- **文獻**：
+  - Kirillov 等，2020，CVPR，PointRend，偏好頂會，[全文](https://openaccess.thecvf.com/content_CVPR_2020/html/Kirillov_PointRend_Image_Segmentation_As_Rendering_CVPR_2020_paper.html)。
+  - Yuan 等，2020，ECCV，SegFix，偏好頂會；以內部像素修正不可靠邊界，[官方摘要](https://www.ecva.net/papers/eccv_2020/papers_ECCV/html/1633_ECCV_2020_paper.php)。
+- **我方證據**：目前 decoder 沒有 skip，細油污 recall 已高達 0.738/0.844、但 precision 只有 0.457/0.271，且普遍被畫粗；這比「找不到油污」更像解析／邊界定位問題。過去 ResNet50 的 DeepLabV3+ 淨負不能直接否定 Prithvi 上的局部邊界支路，但警告不能整套換成一般 decoder。
+- **預期、成本、風險**：改善細碎組 precision、boundary F-score、width ratio；約 baseline/decoder × 3 seeds，即 6 runs。風險是標註邊界本身不準、局部支路過擬合或召回下降。
+- **事前判準**：source 細碎組 IoU `+0.04` 且 precision `+0.08`；線寬比誤差降低 25%；recall 不下降超過 0.03，全 source event-macro IoU不下降超過 0.02。
+
+### 3. 確認負景／look-alike 的多類輔助訓練
+
+- **工項**：一-(1)(2)(3)；二-(1) 無油污分布盤點；四-初步與優化驗證；五-適用條件及誤報原則。
+- **技術與 MVP**：先核實 92 景及抽樣核實 342 臺灣未標註景，但模型選擇只用海外；另引入或整理 source-only 的雲、耀光、浪紋、藻華、船跡、一般海面等 look-alikes，訓練時加多類 auxiliary head，輸出仍折疊為 oil/non-oil。
+- **文獻**：
+  - Kikaki 等，2024，ISPRS JPRS，偏好頂刊，MADOS 提供全球 Sentinel-2、15 類海洋污染與海表類別；DOI [10.1016/j.isprsjprs.2024.02.017](https://doi.org/10.1016/j.isprsjprs.2024.02.017)，**出版商摘要**。
+  - Dong、Liu、Wang，2025，*Journal of Remote Sensing*，領域期刊、非指定首選清單；其 GlobalOSD-SAR 明確加入 negative/look-alike 樣本並用共訓練降低假陽性；DOI [10.34133/remotesensing.0613](https://doi.org/10.34133/remotesensing.0613)，**全文相關方法段**。但它是 SAR，只能支持資料設計原則，不能直接外推光學效果。
+- **我方證據**：目前確認無油景為 0，故法定要求的誤報率實際不可估；過去 HNM 只輸入隨機背景，並不等於困難 look-alikes。這是整個計畫最大的 operacional 缺口。
+- **預期、成本、風險**：首先改善 source confirmed-negative 的 scene FPR與 false-positive area；人工核實成本大於算力成本，模型比較約 6 runs。風險是把未標註油污誤當負類、外部資料標準不一致。
+- **事前判準**：在完全獨立、事件／取得群組隔離的海外確認負景上，false-positive area/km² 至少下降 30%，同時正油景 recall下降不超過 0.02、Oil IoU下降不超過 0.02。沒有確認負景前不得聲稱改善誤報率。
+
+### 4. 有條件的 mask-based copy-paste
+
+- **工項**：二-(2) 油污影像融合與增強；一-(3) 特徵敏感度；四-優化效能。
+- **技術與 MVP**：完成 raster mask、連通區、寬度、破碎度與六波段油–鄰近水體反差盤點後，將 source 油污 residual／mask 貼到光譜與耀光條件相近的 source 海面；按面積、寬度及碎裂程度控制抽樣，但不先做硬 SM/L 分模型。
+- **文獻**：Ghiasi 等，2021，CVPR，Simple Copy-Paste，偏好頂會；隨機物件貼合可改善稀有類別，但研究是自然影像 instance segmentation，不保證多光譜物理合理性。[官方摘要](https://openaccess.thecvf.com/content/CVPR2021/html/Ghiasi_Simple_Copy-Paste_Is_a_Strong_Data_Augmentation_Method_for_Instance_CVPR_2021_paper.html)
+- **我方證據**：GoM thin-fragmented train 僅 36/1,171 patches、油像素只佔 0.4%，而天使輪為 75%，支持定向補足；目前沒有 copy-paste 實測，P22 分組也未改善，故它是高價值但未證實的候選。
+- **預期、成本、風險**：主要改善 source thin/fragmented subgroup，以及工項二要求的面積、位置、形態與背景擴充；前處理 CPU，正式比較約 6 GPU runs。最大風險是貼合邊緣、耀光方向及油–水反差不合理，讓模型學會合成痕跡。
+- **事前判準**：
+  - 先做合理性閘：synthetic-real 的六波段局部油–水反差 MMD，不得超過 real-vs-real split null 的 95% 範圍。
+  - 通過後，source-held-out thin/fragmented IoU至少 `+0.04`、event-macro IoU至少 `+0.02`，大油污 IoU下降不超過 0.02；3/3 seeds 同方向。
+
+### 5. Source-group validation 下的 SWAD／權重平均
+
+- **工項**：一-(3) 模型敏感度；四-優化效能與可重現性；五-整合驗證原則。
+- **技術與 MVP**：不改模型，用 grouped source validation 選擇 dense checkpoint averaging 區間；所有停止與平均範圍只能依 source 決定。
+- **文獻**：
+  - Cha 等，2021，NeurIPS，SWAD，偏好頂會；在五個 DG benchmark 以 flat minima 改善 OOD，[官方摘要](https://proceedings.neurips.cc/paper_files/paper/2021/hash/bcb41ccdc4363c6848a1d760f26c28a0-Abstract.html)。
+  - Gulrajani、Lopez-Paz，2021，ICLR，DomainBed，偏好頂會；指出公平 protocol 下 ERM 常與複雜 DG 方法相當，[全文](https://openreview.net/pdf?id=lQdXeXDoWtI)。
+- **我方證據**：同資料同 seed 可差 0.051、跨程式版本差 0.09；P21 的 +0.087 已與重跑差同量級。因此先壓低方差，資訊價值可能高於再加一個複雜 loss。反面是現有差異也可能來自程式／資料非確定性，SWAD不能修復 pipeline 漂移。
+- **預期、成本、風險**：目標是降低 seed 方差與提高 worst-source-group 表現；若已有密集 checkpoints，可 CPU/GPU 後處理，否則約 3 GPU runs。風險是平均跨過不同 basin、source validation太小。
+- **事前判準**：source event-macro 的跨 seed SD下降至少 30%，worst held-out event IoU至少 `+0.03`，平均 event-macro 不下降超過 0.01。若只提升 source pooled、不提升 group-macro，判無效。
+
+### 6. 輕量逐像素光譜支路＋空間支路融合
+
+- **工項**：一-(3) 油污／背景特徵與影像條件敏感度；四-光學優化；五-適用條件。
+- **技術與 MVP**：在高解析 decoder 中加入共享的 1×1 MLP／小型 CNN，直接處理六波段像素及局部油–水反差，再與 Prithvi spatial feature 融合；先不重建 MS3OSD 的整套多感測器 fusion。
+- **文獻**：
+  - Jiao、Lu、Hu，2024，RSE，偏好頂刊；使用 spectral-spatial-geometrical variables做光學油污表徵，DOI [10.1016/j.rse.2024.114205](https://doi.org/10.1016/j.rse.2024.114205)，**出版商摘要**。
+  - Du 等，2025，JSTARS，正式期刊版而非 preprint，DOI [10.1109/JSTARS.2025.3550421](https://doi.org/10.1109/JSTARS.2025.3550421)，**搜尋摘要**；JSTARS依本案標準屬應用領域期刊、低於指定頂刊。摘要支持 spatial-spectral fusion，但不足以證明先前討論的某個具體「中心光譜分支」實作。
+- **我方證據**：六波段多光譜本來就是優勢，但尚未做油–水逐波段反差稽核；指數壓縮已顯著較差、S2/L8/L9無顯著差異，均不支持現在就大幅手工設計光譜特徵。
+- **預期、成本、風險**：可能改善低對比、耀光或細線子集；約 6 runs。風險是再度丟失完整光譜資訊、學到 Sen2Like 處理路徑或感測器捷徑。
+- **事前判準**：先由 source-only 機制稽核定義低反差／耀光 strata；其 worst-stratum IoU至少 `+0.04`，source event-macro至少 `+0.02`，其他 strata下降不超過 0.02。沒有逐景 Sen2Like路徑與耀光資料時，不應啟動。
+
+### 7. Source-only 機率校準與固定操作閾值
+
+- **工項**：五-辨識閾值、品質與適用條件；四-效能驗證；一-(2) 品質規範。
+- **技術與 MVP**：保存 source logits，用獨立事件群作 calibration，測 temperature scaling及 segmentation-selective scaling；先固定所需 recall，再選閾值，最後只在另一組 source events 測試。
+- **文獻**：Wang、Gong、Wang，2023，CVPR，偏好頂會；研究 semantic segmentation 在 domain shift 下的校準並提出 selective scaling，[官方摘要](https://openaccess.thecvf.com/content/CVPR2023/html/Wang_On_Calibrating_Semantic_Segmentation_Models_Analyses_and_an_Algorithm_CVPR_2023_paper.html)。
+- **我方證據**：P4 閾值掃描對 IoU實質為 null，表示單純搜尋最佳 IoU threshold沒有價值；但工項五仍要求可解釋閾值，而目前沒有負景，無法選擇操作點。校準的目標是可靠性與固定 operating point，不是宣稱提升 IoU。
+- **預期、成本、風險**：若 logits 已保存，CPU-only；改善 ECE/Brier、閾值穩定性與誤報／漏判權衡。風險是 source 校準在臺灣 shift 下失效。
+- **事前判準**：在 source calibration events 選出的單一閾值，於獨立 source test events 上達 recall ≥0.80，且相較未校準 0.5 threshold，false-positive area至少下降 20%；adaptive ECE下降至少 25%、Brier下降至少 10%。臺灣不得用來重校準。
+
+## 不建議現在做
+
+- **形態 SM/L 硬分組或把它當論文主貢獻**：P22 的 0.386–0.418全在未分組四次 run 範圍內，且低於其 0.422平均；應先完成 mask形態盤點及上述解析度實驗。未來若重訪，應用連續 weighting／batch quota，而不是硬切兩個模型。
+- **DADS-SAM B/C 直接進正式大實驗**：Zhang 等的 DADS-SAM 已正式發表於 TGRS 2025，非 preprint，DOI [10.1109/TGRS.2025.3649271](https://doi.org/10.1109/TGRS.2025.3649271)，但核心證據來自港區 UAV及 SAR，不是六波段中解析度光學衛星。現況只有接線與顯存證據，沒有學習證據；應排在輕量 decoder 之後。
+- **clDice 作第一個形態 loss**：Shit 等，2021，CVPR，[全文](https://openaccess.thecvf.com/content/CVPR2021/html/Shit_clDice_-_A_Novel_Topology-Preserving_Loss_Function_for_Tubular_Structure_CVPR_2021_paper.html)。它刻意強調中心線連通，論文也指出有限半徑誤差可被容忍；目前問題恰是寬度膨脹、recall高而precision低，目標錯位。
+- **再掃 Tversky、class weight、Focal-Tversky、普通 threshold、隨機背景 HNM**：已有 null、被支配或噪音等級證據。
+- **UDA／臺灣 pseudo-label、自訓練**：違反已議定的 source-only 定義；若要做必須另立 UDA研究問題，不能偷偷併入現論文。
+- **diffusion/GAN 油污生成**：OSS-Diff 已有 ISPRS JPRS 2026正式論文、DOI [10.1016/j.isprsjprs.2025.11.032](https://doi.org/10.1016/j.isprsjprs.2025.11.032)，但模型與合理性驗證成本高；目前連 mask copy-paste及負景基線都沒有，先做生成模型無法判斷增益來自哪裡。
+- **環境資料直接餵模型**：ERA5、Hs、耀光幾何目前應先用於工項一分層與機制稽核，不宜先變成模型輸入，否則也偏離「不需額外海洋環境參數」的論文方向。
+- **把 P24 當增強有效證據**：缺同版 Original對照，最多用來形成假說。
+
+## 目前阻礙排序的關鍵缺失
+
+1. **海外資料的精確 lineage**：12事件群之外，GoM／NOAA內部哪些是同航帶、同日期、重疊裁切或姊妹景？這決定 P23 的52張細線 patch是否真是獨立驗證，也決定所有方法的排序是否可信。
+2. **可確認的無油與 look-alike source資料**：目前為0，因而無法比較工項要求的誤報率，也無法建立操作閾值。
+3. **逐景 Sen2Like L2F/L2H路徑、太陽／觀測幾何及品質旗標**：缺這些就無法區分模型是在學油污、耀光，還是前處理捷徑。
+4. **92景 polygon-only 的實際 mask狀態與標註尺度／可信度**：未解決前，copy-paste與形態分布都可能建立在錯誤母體上。
+5. **同版本可重現 baseline manifest**：需要固定 code、data manifest、determinism及 checkpoint策略，否則 +0.05等級效果仍無法解釋。
+
+最強的論文方向目前應改寫成：「先證明並修正 source資料中稀有細碎油污的解析／表示偏差，再評估經多光譜合理性約束的形態資料擴充。」不能先把「形態選擇與平衡有效」寫成既定貢獻。
+
+---VERDICT---
+STANCE: REVISE
+BLOCKING: [1,2]
+RESTATE: N/A 盲提案
+CONFIDENCE: HIGH
+---END---
+exit=0

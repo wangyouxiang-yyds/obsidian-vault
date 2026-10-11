@@ -22,7 +22,14 @@
 
 ## 實驗紀錄（wiki/experiments/）
 
+- [20261011_P25_HNM背景替換在臺灣終點無效_GoM否定_全球不可判定.md](wiki/experiments/20261011_P25_HNM背景替換在臺灣終點無效_GoM否定_全球不可判定.md) — P25 HNM 背景替換單 seed pilot 結案九步驟卡（第7-9步）：GoM-only＋HNM 0.3268 否定、全球排除臺灣＋HNM 0.4025 不可判定；路線收線
+- [20261011_DADS_SAM_GoM_only_正式C與B_皆不可判定.md](wiki/experiments/20261011_DADS_SAM_GoM_only_正式C與B_皆不可判定.md) — DADS-SAM GoM-only 正式 C／B 結案九步驟卡（第7-9步）：臺灣 9 景平均 Oil IoU C 0.3596（X−R −0.0266）、B 0.3732（X−R −0.0130），皆不可判定；每組單 seed、B 非盲測；1–6 正本見 `.agents/decisions/20261010_DADS_SAM_GoM_C_B正式run設計.md`
+- [未來工項(116–117)首波技術排序與文獻 survey](.agents/decisions/20261008_未來工項首波技術排序與文獻survey.md) — 2026-10-08 Claude×Codex 三回合同 session 收斂（R3 雙方 ACCEPT／BLOCKING=[]）；G0 評估底座先行，B1 以共用對照同批檢驗 zoom-out(Z) 與入口 2×(R)；僅優先序，未授權任何 launch／改檔／凍結
+- [P24 全球排除台灣、GoM 增強曝光設計](.agents/decisions/20261006_P24_全球排除台灣_GoM增強曝光設計.md) — 2026-10-06 卡1–6正式收斂；Original／P15倍率1.6420745069／2×，三seed九run、global source-Val選模、固定台灣兩事件P5評估；屬曝光政策效果。CPU稽核及獨立72項PASS；actual loader／CUDA待驗證、run:false、未launch／commit
+- [P25 HNM 背景替換單 seed pilot 設計](.agents/decisions/20261011_P25_HNM背景替換單seed_pilot設計.md) — 2026-10-11 九步驟卡 1–6 凍結；把大圖時期 hard negative mining 搬回 GT-centric 架構，單 seed pilot、使用者直接指示未經 Codex 協商；設計凍結、訓練未啟動
+
 - [20261005_台灣預測線寬量測與2x放大推論試探.md](wiki/experiments/20261005_台灣預測線寬量測與2x放大推論試探.md) — 台灣預測線寬 13–18 px 與標註寬無關；2× 放大推論線寬未減半、IoU 多數下降；描述性、無訓練；10-06 追加 GoM 驗證集檢查：細碎 patch 在來源域也圈胖
+- [20261004_P16_vs_P21_Tversky舊圖比較.md](wiki/experiments/20261004_P16_vs_P21_Tversky舊圖比較.md) — 使用者指定 Claude 舊圖 P16 0.3/0.7 vs P21 0.2/0.8：recall↑、precision↓，event-macro Oil IoU 0.4554→0.4518；Val 與 α/β 同步改變、單 seed，因果不可判定；附 confusion matrix／9 景指標熱力圖來源，與 P21 同輪 PROMISING 比較分開
 - [P16 GoM 等 patch 單 seed 設計](.agents/decisions/20260920_P16_GoM等patch單seed設計.md) — 2026-09-20 事前凍結：GoM／NonGoM 各 584 GT＋1,180 BG，seed42，等更新預算；input/config 與 report runtime gates 通過；首次送跑（20:17:47 啟動）於 21:07 遭 SIGINT 中斷（Epoch 15/300），經使用者授權刪除，21:12:40 由 epoch 0 重跑中（詳見 handoff.md「目前狀態」），尚無可報告結果
 - [20260429_OSDMamba整合至0420.md](wiki/experiments/20260429_OSDMamba整合至0420.md) — OSDMamba 整合至 0420 專案：移植工作、與 0422 版差異、下一步
 - [20260430_訓練效能優化.md](wiki/experiments/20260430_訓練效能優化.md) — OSDMamba 訓練效能優化：CPU-GPU 同步瓶頸、向量化 Loss、EMA 調整

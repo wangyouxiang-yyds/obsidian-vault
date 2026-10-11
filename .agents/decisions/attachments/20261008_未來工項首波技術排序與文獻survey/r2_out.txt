@@ -1,0 +1,189 @@
+結論：整體架構已接近可接受，但 v1 還需修正三個會影響因果解釋的點：Z 的定義與 source-only 合規、B1 的有效樣本單位、以及 MADOS／SWAD 能支持到什麼程度。
+
+先更正我 R1 的兩個錯誤：P23 是由 Prithvi 預訓練權重微調，不是隨機從頭訓練；成本也應以既有設計卡的 6 runs、單卡合計約 3–12 天為準。這不改變 P23 的優先級，但會改變排程與 PEFT 的成本論證。
+
+## 1. Z 與 P23 同批：接受，但須改寫 Z 的假說與實作
+
+我接受共用 C，並把 Z、R 視為同一個機制實驗族。實際排程先 C、Z，再跑昂貴的 R，也不破壞共同對照，只要 split、程式版本、資料 manifest 和判準已經凍結。
+
+但要修正四點：
+
+1. **Ghiasi 的文獻支持比候選稿寫得弱。**  
+   Ghiasi 等的 LSJ 使用 0.1–2.0 整體影像縮放；補充實驗顯示，LSJ 大部分增益來自對「主影像」施作尺度抖動，把 pasted image 從 SSJ 改成 LSJ只多約 0.2 mask AP。因此它支持「廣尺度整體增強值得單獨測」，不能直接支持「把油污物件縮小是 copy-paste 增益的主因」。[CVPR 2021 全文與消融](https://openaccess.thecvf.com/content/CVPR2021/supplemental/Ghiasi_Simple_Copy-Paste_Is_CVPR_2021_supplemental.pdf)
+
+2. **0.3–0.6× 不得由臺灣線寬反推。**  
+   若這個範圍是為了把 17.6 px 變成臺灣的 5–10 px，它已使用臺灣資料設計增強，違反既定 source-only 定義。倍率與機率只能來自：
+
+   - 海外 source-train 的形態分布；
+   - 或文獻預先給定的廣尺度規則。
+
+   臺灣數字只能解釋研究動機，不能決定範圍。
+
+3. **「讀 2× 視窗再降採樣」不只操弄油污尺度。**  
+   它同時改變 field of view、背景量、occupancy、空間頻率及插值程度，宜命名為「zoom-out／field-of-view augmentation」，假說是「較小相對尺度與較大背景 context 是否有利」，不能純粹解釋成「資料缺細油污」。若日後要單獨操弄形態尺度，才另做 object-only縮放／copy-paste。
+
+4. **須事前凍結 mask 重採樣規則。**  
+   影像可用 antialiased area resampling；mask 用 nearest、area-fraction soft mask或重新 rasterize，會產生不同線寬與小元件消失率。應先報告各方法造成多少 oil component／positive patch消失，選定一種 source-only規則後固定，不能看結果更換。
+
+B1 的 primary endpoint也必須改。52張 patch只來自14景，兩景佔36張，patch-pooled `IoU_thin` 會被兩景主導。建議：
+
+- Primary：每個 acquisition cluster內先 pooled，再做等權 cluster-macro thin IoU。
+- Secondary：原本52張 patch pooled IoU，維持和舊卡可比。
+- 線寬、precision、recall同樣先在 cluster內聚合。
+- 除3/3 seeds同方向外，至少多數可評估 clusters方向一致。
+
+此外，Claude R1 的「海外留一來源 pseudo-target」在候選稿 D 中變淡了，應恢復為第二層評估：
+
+- 內層：GoM acquisition-cluster，用於 B1 機制判斷。
+- 外層：未參與設定的海外事件／地理來源 pseudo-target，用於判斷方法是否只適合 GoM。
+
+## 2. G0-d 評估與 B5 訓練拆開：接受，但 MADOS 只能提供局部負證據
+
+拆分是正確的，也同意在負資料顯示實質誤報問題前，不先跑 B5。
+
+MADOS 的主要風險依重要性為：
+
+1. **稀疏標註**：MADOS官方明確把任務描述為 sparse annotations；只有已標註的 Marine Water、Waves & Wakes、藻類等像素可視為確認非油。未標註像素仍須 ignore。[官方資料庫說明](https://github.com/gkakogeorgiou/mados/blob/master/README.md)
+
+   因此它可以算：
+
+   - annotated-negative pixel FPR；
+   - oil-vs-specific-look-alike confusion；
+   - 各負類的 precision/recall。
+
+   但不能算：
+
+   - scene FPR；
+   - 全景 FP area/km²；
+   - 「此景無油」層級誤報率。
+
+2. **前處理域不同**：MADOS由 Sentinel-2 L1C經 ACOLITE取得 Rayleigh reflectance；本專案是 Sen2Like 的大氣、NBAR、SBAF及fusion產品。[MADOS方法頁](https://doi.org/10.1016/j.isprsjprs.2024.02.017)  
+   這不是普通 normalization差異。最好能由原始產品ID重新走本案 pipeline；若做不到，只能把 MADOS稱為外部 preprocessing-shift stress test，不能當本案同域負景。
+
+3. **僅涵蓋 Sentinel-2**：不能代表 Landsat-8/9負類表現。
+
+4. **永久 holdout**：如果先把 MADOS作 G0-d評估，日後 B5 又拿同一批 scenes訓練，就污染了評估。須在 scene/tile層先切出永久 holdout，B5只能使用其餘部分。
+
+所以 G0-d建議改成兩層：
+
+- G0-d1：MADOS annotated-negative pixels，外部像素級 look-alike stress test。
+- G0-d2：自行建立完整審閱、有有效水域面積分母的海外或臺灣無油 scenes／regions，才可支撐 scene FPR與 FP area/km²。
+
+另須新增 G0-f：查明現行訓練到底如何把 `255` 傳入 loss。可保留「255→弱背景假設」作既有 baseline，但不得把這些像素稱為確認負類，也不得供 B3 當確認乾淨背景。
+
+## 3. #2 與 #6 合併為 B2：原則接受，實驗上須分階段
+
+接受把它們歸為一條「local high-resolution bypass」路線。ViT-Adapter確實支持為 plain ViT增加局部空間 inductive bias以改善 dense prediction。[Chen 等，ICLR 2023全文](https://openreview.net/pdf?id=plKu2GByCNW)
+
+但不應在同一個首跑同時加入 shallow stem、skip、PointRend及顯式光譜反差，否則即使改善也無法歸因。建議：
+
+- **B2a**：1/4 shallow six-band stem + skip，其他不變。
+- **B2b**：若 B2a仍有寬度膨脹，再加 PointRend式 boundary refinement。
+- **B2c**：只有 A1/A3 證明低油–水反差是獨立失敗 strata，才加入顯式反差特徵。
+
+B2a雖直接讀六波段，但它的主要假說是「保留局部高解析資訊」，不應同時宣稱已證明「光譜雙支路」有效。
+
+我不贊成把「R成立」設成 B2 唯一入口：R可能因顯存導致 batch改變、field of view或插值問題而失敗，但 local skip仍可能有效。較好的閘門是：B1後仍存在穩定的 source細線寬度膨脹，即可考慮 B2a；不必要求 R先成功。
+
+## 4. SWAD piggyback：接受作篩選，但不能直接稱 SWAD
+
+可用 C 組 checkpoint做低成本 trajectory averaging audit；但 SWAD正式方法含特定的 dense averaging、overfit-aware區間與訓練軌跡設計。若只是對現行 decay schedule 的若干 checkpoint事後平均，應稱：
+
+- checkpoint averaging；
+- dense trajectory averaging audit；
+- 或 post-hoc SWA screening。
+
+不能直接把正結果歸功於 SWAD。[Cha 等，NeurIPS 2021](https://proceedings.neurips.cc/paper_files/paper/2021/hash/bcb41ccdc4363c6848a1d760f26c28a0-Abstract.html)
+
+另一個實務問題是「密集存 checkpoint」可能很浪費。300M模型即使只存FP16權重也約數百MB；三個 seed、數百 epoch會迅速膨脹。建議：
+
+- 只在 source-val進入 plateau 後，每2–5 epoch保存一次；
+- 或訓練時維護 EMA／數個預設起點的 online averages；
+- 不保存 optimizer state作後處理候選。
+
+若這個 screening有效，再決定是否值得正式重跑 SWAD recipe。
+
+原判準可保留，但把 `worst held-out cluster +0.03` 改成預先固定的 outer source groups；不能從多種 averaging windows挑出對 test最好的那一個。
+
+## 5. PEFT 的位置
+
+建議放在 **B4b，條件式第二波**：
+
+1. 完成 B1，取得乾淨、cluster-disjoint 的 full-finetune baseline。
+2. 做 B4 checkpoint averaging／learning curve診斷。
+3. 若看到明顯 source-train → held-out gap、encoder漂移或跨 seed不穩，再測一個預註冊 PEFT設定。
+4. 若主要殘差仍是固定線寬膨脹，先做 B2；PEFT本身不會恢復被1/16 decoder丟掉的局部資訊。
+
+文獻支持存在，但要區分：
+
+- Rein 是正式 CVPR 2024頂會工作，凍結 backbone、只訓練約1%額外參數，在 domain-generalized semantic segmentation勝過 full fine-tuning；但其主要證據是都市自然影像VFM，不是 Prithvi。[全文](https://openaccess.thecvf.com/content/CVPR2024/papers/Wei_Stronger_Fewer__Superior_Harnessing_Vision_Foundation_Models_for_Domain_CVPR_2024_paper.pdf)
+- Marti-Escofet 等直接比較 Prithvi-EO-2.0、LoRA及 decoder，但目前仍是 arXiv preprint，不能和 CVPR／TPAMI同等引用。[arXiv:2504.17397](https://arxiv.org/abs/2504.17397)
+- CrossEarth 已正式刊於 TPAMI，但它是 Earth-Style Injection與multi-task DG，不是 PEFT證據，不應列在 PEFT主引文下。[DOI 10.1109/TPAMI.2025.3649001](https://doi.org/10.1109/TPAMI.2025.3649001)
+
+MVP只做一個 source-only預註冊設定，例如 attention q/v LoRA、固定 rank；不要先掃 rank、layer及learning rate。
+
+PEFT可用雙重成功定義：
+
+- 效能型：outer source event-macro IoU至少 `+0.02`；
+- 效率型：event-macro不劣於 full FT超過0.01，同時 trainable parameters下降≥90%，且實測 peak memory或訓練時間有預先規定的改善。
+
+只有參數量下降、但時間／顯存幾乎沒變，不足以成為本案優先技術。
+
+## 6. Blocker 1、2 是否解除
+
+### Blocker 1：設計上已處理，執行上尚未解除
+
+G0-a是正確解法，但在空間重疊完成並實際重切前，任何 GPU launch仍應暫停。建議連邊規則至少納入：
+
+- 同 product／acquisition identifier；
+- footprint或油污區空間重疊；
+- 日期 ±1天；
+- 再用 ±3天做 split敏感度檢查。
+
+Union-find要留意「±1天鏈式連接」可能把很長時段串成一群；這不一定錯，但須報告最大 cluster及各 split的有效 cluster數。
+
+### Blocker 2：解除對 B1–B4 的阻擋，但沒有解除 FPR／B5／B6 的資料缺口
+
+「負資料存在前不主張誤報改善」足以讓正油污端的 B1–B4繼續。可是：
+
+- MADOS只能解除像素級 look-alike評估的一部分；
+- B5、B6及工項五的 scene FPR／FP area仍須完整審閱負 scenes或有效負 regions；
+- 臺灣342景核實完成前，只能列為待交付資料，不能用來校準方法。
+
+因此 blocker 2 已被合理隔離，不再阻擋整個計畫，但尚未被資料上解決。
+
+## 7. 最可能讓使用者做白工的地方
+
+1. **三個 baseline runs不能估「null 95% band」。**  
+   三個 seeds只有三個 pairwise差，稱95% band是假精確。建議稱「three-seed empirical envelope」，並使用3/3 paired方向一致及固定實質門檻。若真要量 same-seed非確定性，至少另做同版本同seed重跑；但不值得為估95百分位跑十多次。
+
+2. **B1若維持 patch-pooled主指標，可能只是在最佳化兩景。**  
+   必須改成 cluster-macro primary。
+
+3. **Z若未凍結重採樣與空 patch規則，結果不可解釋。**  
+   特別是細線降採樣後消失時，是保留為背景樣本、丟棄，還是 soft-label，會直接改變訓練分布。
+
+4. **B3不能把 `255` 區域當乾淨背景。**  
+   海外油×海外背景也須使用人工確認或可信規則確認的水域；否則可能把未標註油污當水，再貼另一層油污。
+
+5. **海外油×臺灣背景須更嚴格隔離。**  
+   這是 target-informed augmentation／UDA類計畫支線，不能進 source-only論文主張；且342景在核實前可能已有油污，不應作貼合底圖。
+
+6. **MMD不能作唯一合理性閘。**  
+   它還應搭配反射率合法範圍、接縫梯度、各感測器分層及連通區消失率；MMD的kernel及bandwidth須事前固定。
+
+7. **A3只能稱敏感度，不是特徵因果歸因。**  
+   band遮蔽會製造訓練分布外輸入；模糊也應按感測器MTF／原生解析度設計。建議先做少數可解釋擾動，不要一次展開大量任意遮蔽。
+
+8. **B2不要一次包四個元件。**  
+   B2a/B2b/B2c分閘能省掉後續無法歸因而被迫重跑的成本。
+
+整體而言，我接受「G0 → A與B1 → 有條件B2/B3/B4 → 負資料後B5/B6 → 條件式PEFT」這條主線。v2最重要的不是再加技術，而是把 B1 的實驗單位、Z 的 source-only來源，以及 MADOS能支持的指標寫準。
+
+---VERDICT---
+STANCE: REVISE
+BLOCKING: [1,2,3]
+RESTATE: 以同一個 acquisition-disjoint 對照，同批區分資料尺度缺口的 Z 與模型解析缺口的 R，是目前最具資訊效率、也最可能支撐論文貢獻的首波實驗。
+CONFIDENCE: HIGH
+---END---
+exit=0
