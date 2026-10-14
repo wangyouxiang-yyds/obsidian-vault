@@ -310,3 +310,9 @@
 - 含意：seed 44 偏低不是單次 GPU 非決定性造成的偶發，同設定同 seed 可重複。seed 決定抽樣順序、增強與分類頭初始化，是哪一項、是否與「多放一份原圖」有關，未查。
 - 未決：報告用哪個數字待使用者決定。四次並列 0.4625／0.4564／0.2851／0.2949；若以重跑取代第一次，三 seed 平均 0.4046±0.0951（原 0.4013±0.1007）。
 - 紀錄：repo `analysis/p24_global_gom_augmentation/SCOPE_V4.md`「seed 44 重跑」段；結果目錄 `/home/alanyh/oil_dataset/new/_p24_runs/P24_global_gom2x_raw_S44_rerun/`。
+
+## [2026-10-14] queue | P24 Original seed 44 已排隊（等 DADS-SAM B 公開碼 seeds 跑完）
+- 使用者指示（原話）：「那你再幫我安排進去吧， 我現在有一個實驗在跑， DADSSAM，等他跑完你就跑看看2」。目的：分辨 Gom2xRaw seed 44 漏掉 05-22 大片油污，是 seed 44 本身還是「多放一份不增強原圖」造成。
+- 10-13～14 的分析：Gom2xRaw seed 44 兩次（0.2851／0.2949）在周圍 256×256 油污比例 >30% 的區域召回率只有 0.01–0.06（seed 42／43 為 0.41–0.88），稀疏油污則與其他 seed 相當（0.60–0.77）。49 個有機率圖的 run 裡，會整片漏掉那塊大油污（召回率 0.00–0.05）的只有沒用 GoM 訓練的模型和這兩次；模型對那塊的機率中位數不是約 0 就是約 1，調門檻救不回。那塊油污相對海水的亮度比和同景其他油污差不多。
+- 使用者問 seed 44 是否抽到比較差的資料：程式查證，三個 seed 每輪看到的資料完全相同（抽樣只依輪數），seed 只決定順序、增強與分類頭初始值，所以不是抽到不同資料。
+- 設定 `main/experiments_P24_original_S44.yaml`（凍結設計的 Original S44，只開 run、加 wandb notes），與 Gom2xRaw S44 只差有沒有多放那份原圖；repo commit `1107efc`。tmux `p24_original_s44`，launcher `analysis/p24_global_gom_augmentation/launch_original_s44_after_dads.sh`，等 DADS log 出現 `EXIT=` 與共用 GPU 鎖空出（Codex 馬祖全圖推論已先排隊）才啟動。結果會在 `/home/alanyh/oil_dataset/new/_p24_runs/P24_global_original_S44/`。預估 10-15 中午後開始、約 1.5 小時。
