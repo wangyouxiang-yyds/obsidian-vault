@@ -316,3 +316,10 @@
 - 10-13～14 的分析：Gom2xRaw seed 44 兩次（0.2851／0.2949）在周圍 256×256 油污比例 >30% 的區域召回率只有 0.01–0.06（seed 42／43 為 0.41–0.88），稀疏油污則與其他 seed 相當（0.60–0.77）。49 個有機率圖的 run 裡，會整片漏掉那塊大油污（召回率 0.00–0.05）的只有沒用 GoM 訓練的模型和這兩次；模型對那塊的機率中位數不是約 0 就是約 1，調門檻救不回。那塊油污相對海水的亮度比和同景其他油污差不多。
 - 使用者問 seed 44 是否抽到比較差的資料：程式查證，三個 seed 每輪看到的資料完全相同（抽樣只依輪數），seed 只決定順序、增強與分類頭初始值，所以不是抽到不同資料。
 - 設定 `main/experiments_P24_original_S44.yaml`（凍結設計的 Original S44，只開 run、加 wandb notes），與 Gom2xRaw S44 只差有沒有多放那份原圖；repo commit `1107efc`。tmux `p24_original_s44`，launcher `analysis/p24_global_gom_augmentation/launch_original_s44_after_dads.sh`，等 DADS log 出現 `EXIT=` 與共用 GPU 鎖空出（Codex 馬祖全圖推論已先排隊）才啟動。結果會在 `/home/alanyh/oil_dataset/new/_p24_runs/P24_global_original_S44/`。預估 10-15 中午後開始、約 1.5 小時。
+
+## [2026-10-15] result | P24 Original seed 44 完成（Gom2xRaw seed 44 漏判的對照）
+- 10-15 11:14 起被 launch gate 擋（Codex 未 commit 的馬祖 README），使用者指示代 Codex 提交（repo commit `9203882`，內容未改）後啟動；`EXIT=0`，早停／最佳輪 111／61，驗證 mIoU 0.7099，59 分鐘。
+- 臺灣 9 景像素加總 Oil IoU 0.4249（P 0.6025／R 0.5904／F1 0.5964；TP 179,276／FP 118,257／FN 124,400／TN 3,510,945）；05-22 兩景 0.4531／0.4497；天使輪 7 景加總 0.3740。
+- 05-22 大片油污那一塊召回率：Original S44 0.57；Gom2xRaw S44 兩次 0.03／0.04。周圍油污比例 >50% 的區域召回率：Original S44 0.79；Gom2xRaw S44 0.01–0.03。
+- 判讀：seed 44 不多放原圖時抓得到，所以漏判和 Gom2xRaw 設定有關，不是 seed 44 本身。但兩組每輪張數不同（7,240 對 4,502），同一個 seed 打亂出來的順序也完全不同，分不出是「不增強的原圖」還是「另一種順序」造成。單一 run，描述性。
+- 紀錄：repo `analysis/p24_global_gom_augmentation/SCOPE_V4.md` 末段；結果 `/home/alanyh/oil_dataset/new/_p24_runs/P24_global_original_S44/`。
