@@ -323,3 +323,7 @@
 - 05-22 大片油污那一塊召回率：Original S44 0.57；Gom2xRaw S44 兩次 0.03／0.04。周圍油污比例 >50% 的區域召回率：Original S44 0.79；Gom2xRaw S44 0.01–0.03。
 - 判讀：seed 44 不多放原圖時抓得到，所以漏判和 Gom2xRaw 設定有關，不是 seed 44 本身。但兩組每輪張數不同（7,240 對 4,502），同一個 seed 打亂出來的順序也完全不同，分不出是「不增強的原圖」還是「另一種順序」造成。單一 run，描述性。
 - 紀錄：repo `analysis/p24_global_gom_augmentation/SCOPE_V4.md` 末段；結果 `/home/alanyh/oil_dataset/new/_p24_runs/P24_global_original_S44/`。
+
+## [2026-10-17] launch | P24 Gom2xRaw seed 44 再重跑三次（rerun2／3／4）啟動（14:30 Asia/Taipei）
+
+- 2026-10-17 14:30 P24 Gom2xRaw（全資料＋GoM 原圖多放一份）seed 44 再重跑三次（rerun2/3/4）已啟動，依序執行。使用者原話：「你可以再幫我多跑個三次seed 44嗎? 我想要觀察到底是怎樣」。目的：看 05-22 大片油污漏判是否每次重現（前兩次 Oil IoU 0.2851、0.2949）。設定與前兩次相同，只差結果目錄與 wandb notes；GT_expand commit 8b18edc，launcher analysis/p24_global_gom_augmentation/launch_v4_s44_rerun234.sh（tmux p24_s44_rerun234），launch gate PASS；結果 /home/alanyh/oil_dataset/new/_p24_runs/P24_global_gom2x_raw_S44_rerun{2,3,4}/。臺灣測試只用原 5 景 9 張（既有設定的重複，便於與前兩次比較）。
