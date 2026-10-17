@@ -330,3 +330,6 @@
 
 ## [2026-10-17] result | P24 Gom2xRaw seed 44 三次重跑完成：後三次都正常（18:20 Asia/Taipei）
 - seed 44 五次臺灣 9 景像素加總 Oil IoU 0.2851／0.2949／0.4807／0.4388／0.4314（平均 0.3862），S42／S43 為 0.4625／0.4564；05-22 大片油污召回率 0.03／0.04／0.67／0.54／0.66。判讀：漏判不是 seed 44 每次都會發生，是同一設定不同次訓練間的不穩定（Gom2xRaw 7 次中 2 次）；10-15「與 Gom2xRaw 設定有關」的判讀不成立（Original 只 1 次 run）；GoM 驗證 mIoU 看不出差別（0.703–0.713）。三次皆 EXIT=0，GPU 已釋放。紀錄在 GT_expand analysis/p24_global_gom_augmentation/SCOPE_V4.md 末節（commit 85409e1）。
+
+## [2026-10-17] result | P24 Gom2xRaw seed 44 第 5 次重跑（rerun5）完成（22:20 Asia/Taipei）
+- 使用者原話「再給他跑一次 下去 這樣等於說重跑五次」；19:15 啟動（GT_expand commit 7b25efc，launch gate PASS），EXIT=0，GPU 已釋放。結果臺灣 9 景像素加總 Oil IoU 0.3785，05-22 大片油污召回率 0.18（部分漏判）；驗證 mIoU 0.7244 為六次最高。seed 44 六次：0.2851／0.2949／0.4807／0.4388／0.4314／0.3785，平均 0.3849 ± 0.0804。判讀不變：同一設定訓練間不穩定，GoM 驗證看不出。紀錄 SCOPE_V4.md 末節（commit 27896ff）。
