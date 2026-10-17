@@ -327,3 +327,6 @@
 ## [2026-10-17] launch | P24 Gom2xRaw seed 44 再重跑三次（rerun2／3／4）啟動（14:30 Asia/Taipei）
 
 - 2026-10-17 14:30 P24 Gom2xRaw（全資料＋GoM 原圖多放一份）seed 44 再重跑三次（rerun2/3/4）已啟動，依序執行。使用者原話：「你可以再幫我多跑個三次seed 44嗎? 我想要觀察到底是怎樣」。目的：看 05-22 大片油污漏判是否每次重現（前兩次 Oil IoU 0.2851、0.2949）。設定與前兩次相同，只差結果目錄與 wandb notes；GT_expand commit 8b18edc，launcher analysis/p24_global_gom_augmentation/launch_v4_s44_rerun234.sh（tmux p24_s44_rerun234），launch gate PASS；結果 /home/alanyh/oil_dataset/new/_p24_runs/P24_global_gom2x_raw_S44_rerun{2,3,4}/。臺灣測試只用原 5 景 9 張（既有設定的重複，便於與前兩次比較）。
+
+## [2026-10-17] result | P24 Gom2xRaw seed 44 三次重跑完成：後三次都正常（18:20 Asia/Taipei）
+- seed 44 五次臺灣 9 景像素加總 Oil IoU 0.2851／0.2949／0.4807／0.4388／0.4314（平均 0.3862），S42／S43 為 0.4625／0.4564；05-22 大片油污召回率 0.03／0.04／0.67／0.54／0.66。判讀：漏判不是 seed 44 每次都會發生，是同一設定不同次訓練間的不穩定（Gom2xRaw 7 次中 2 次）；10-15「與 Gom2xRaw 設定有關」的判讀不成立（Original 只 1 次 run）；GoM 驗證 mIoU 看不出差別（0.703–0.713）。三次皆 EXIT=0，GPU 已釋放。紀錄在 GT_expand analysis/p24_global_gom_augmentation/SCOPE_V4.md 末節（commit 85409e1）。
