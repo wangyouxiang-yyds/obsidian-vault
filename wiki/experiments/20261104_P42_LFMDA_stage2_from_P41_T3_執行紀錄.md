@@ -2,7 +2,7 @@
 date: 2026-11-04
 type: experiment
 stage: unsupervised
-status: 完成：not improved（臺灣24 0.479 vs T3 0.491，單 seed）
+status: completed
 tags: [p42, lfmda, stage2, self-training, sam, lrh, segformer-b2, prithvi-teacher, execution-record, wandb]
 ---
 

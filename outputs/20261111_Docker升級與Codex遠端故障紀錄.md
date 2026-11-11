@@ -2,7 +2,11 @@
 date: 2026-11-11
 type: environment
 tags: [docker, codex, remote, troubleshooting, persistence]
+validity: superseded
+superseded_by: "[[Docker_環境設定]]"
 ---
+
+> ⚠ 已作廢（2026-11-11，使用者 WP3 裁決）：日期故障快照已併入常青環境頁；改看 [[Docker_環境設定]]
 
 # Docker 升級與 Codex 遠端：已遇問題及處置入口
 
@@ -20,4 +24,4 @@ tags: [docker, codex, remote, troubleshooting, persistence]
 
 升級時保留遠端的關鍵核對：同一 `STATE_ROOT`；新容器掛載 `/root/.codex`、`/home/alanyh/.agents`、`/home/alanyh/obsidian-vault`；`app-server-control` 是 tmpfs；host wrapper 的 container 名仍是 `oil_deeplab_v3`。新 image 先做隔離 smoke；切換前確認訓練與 chat；切換後驗證 Codex、vault、agent 和 GPU。詳細命令以 repo `Docker/PERSISTENCE.md` 現行版為準。
 
-舊 [Claude MCP 修復](Claude_MCP_Docker_Fix.md)與 [Gemini MCP 修復](Gemini_MCP_Docker_Fix.md)是當時的設定紀錄，不表示目前 Dockerfile 仍用相同方式自動建立 MCP；Antigravity 一般顧問現已停用。
+舊 [Claude MCP 修復](../wiki/environment/Claude_MCP_Docker_Fix.md)與 [Gemini MCP 修復](../wiki/environment/Gemini_MCP_Docker_Fix.md)是當時的設定紀錄，不表示目前 Dockerfile 仍用相同方式自動建立 MCP；Antigravity 一般顧問現已停用。

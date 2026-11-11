@@ -5,7 +5,7 @@ tags: [overview, OSDMamba, DeepLabV3+, multiband, segmentation]
 
 # OIL_PROJECT_MutiBand_0420 專案概述
 
-> 這是 0420／11 波段歷史專案概述，不是目前主線。現行新資料處理與 ROI 3840 路由見 [新資料處理路由](20261111_新資料處理路由_GT-centric與ROI.md)。
+> 這是 0420／11 波段歷史專案概述，不是目前主線。現行新資料處理與 ROI 3840 路由見 [新資料處理路由](../../outputs/20261111_新資料處理路由_GT-centric與ROI.md)。
 
 ## 專案目標
 

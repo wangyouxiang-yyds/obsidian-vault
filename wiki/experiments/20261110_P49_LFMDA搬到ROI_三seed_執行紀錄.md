@@ -2,7 +2,7 @@
 date: 2026-11-10
 type: experiment
 stage: evaluation
-status: 完成
+status: completed
 tags: [lfmda, roi, roi3840, p49, three-seed, pcd, sam, lrh, descriptive, transductive, taiwan24, segformer-b2, h1-prime-teacher, execution-record]
 ---
 

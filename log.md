@@ -771,3 +771,22 @@
 
 ## [2026-11-11] harness | WP1 規則落地：CLAUDE.md、AGENTS.md、vault-manager 兩份正本改版（Claude×Codex 共識 R4 ACCEPT）
 - 決策紀錄 `.agents/decisions/20261111_vault知識庫修復_WP1規則落地_共識.md`；institution 實驗卡範本／30_maintenance／README 同步（institution repo）
+
+## [2026-11-11] correction | WP3 模型知識頁回填與舊頁作廢
+- 新建 `wiki/models/` 常青主題頁；舊模型頁留原文並加作廢標記，見 `wiki/corrections.md`。
+- `index.md` 增列常青頁與勘誤表入口。
+
+## [2026-11-11] writeback | WP3 流程、資料、概念與環境知識頁回填
+- 更新 `wiki/pipeline/`、`wiki/datasets/`、`wiki/concepts/`、`wiki/environment/Docker_環境設定.md`；日期快照作廢見 `wiki/corrections.md`。
+- `index.md` 增列常青頁及調整舊頁摘要。
+
+## [2026-11-11] correction | WP3 逐項作廢掃描與舊勘誤補登
+- `wiki/corrections.md` 登錄實驗說法、凍結卡歷史裁決及既有刪除線；原位註記見相關 `wiki/experiments/`、`wiki/pipeline/`、`wiki/datasets/`。
+- `index.md` 更新被取代的資料分折頁摘要。
+
+## [2026-11-11] writeback | WP3 實驗狀態統一
+- `wiki/experiments/` 可確定的實驗 frontmatter 改為四值狀態，補註後續完成證據；歷史計畫與無法確定的狀態留待裁決。
+
+## [2026-11-11] harness | WP3 收尾
+- 6 頁舊實驗卡 status 正規化為 `abandoned`；12 頁已作廢日期快照由 `wiki/` 搬至 `outputs/`（路徑型連結、index、`wiki/corrections.md` 已同步）。
+- 刪除 3 個 .bak（`.agents/consensus.md.bak-20260718`、`.agents/handoff.md.bak-20260718`、`.agents/handoff.md.bak-20260825`，內容在 git 歷史）。

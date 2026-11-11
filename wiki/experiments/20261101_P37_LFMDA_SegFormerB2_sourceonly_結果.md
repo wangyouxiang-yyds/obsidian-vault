@@ -65,8 +65,8 @@ P37 為 LFMDA 的 source-only 基準：SegFormer-B2 僅用 GoM 來源訓練，La
 
 - **Finding**：誤差以漏判為主（recall 0.39、precision 0.81）。
 - **判定**：support baseline adequacy；僅代表可當 LFMDA 後續對照基線，**不是跨域方法效益**。
-- 限制：單 seed；GT-derived ROI 非全景盲測；raw255 計背景；未與其他模型同口徑配對比較。與 Lane B（新五景已標油 recall 0.2516）**不合併為 24 景 IoU**。
-- **2026-11-03 規則變更（附加，上列原文保留）**：使用者裁決新增五張油標註以外視為背景，取代「不合併為 24 張 IoU」的 11-01 規則；往後新實驗主報臺灣 24 張 pooled OilIoU，19 張與新增五張並列。本頁判定（support baseline adequacy）不改；C 的 24 張數字見 [[20261103_P38_LFMDA_warmupPCD_結果]] 末節。
+- 限制：單 seed；GT-derived ROI 非全景盲測；raw255 計背景；未與其他模型同口徑配對比較。與 Lane B（新五景已標油 recall 0.2516）**~~不合併為 24 景 IoU~~（2026-11-11 作廢：11-03 使用者改定新增五張未標油作背景；本頁原判定不變）**。
+- **2026-11-03 規則變更（附加，上列原文保留）**：使用者裁決新增五張油標註以外視為背景，取代「不合併為 24 張 IoU」的 11-01 規則；往後新實驗主報臺灣 24 張 pooled OilIoU，~~19 張與新增五張並列~~（2026-11-11 作廢：現行呈現改為大林 2 張與其他 22 張）。本頁判定（support baseline adequacy）不改；C 的 24 張數字見 [[20261103_P38_LFMDA_warmupPCD_結果]] 末節。
 
 ## 6. 後續改進方向（Decision / Next，待使用者決定）
 

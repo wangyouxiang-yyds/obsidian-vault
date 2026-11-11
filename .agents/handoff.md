@@ -7,6 +7,8 @@
 
 ## 目前狀態(每次更新覆蓋本節;本節只是摘要,研究細節唯一正本=institution research/oil_spill_project_status.md)
 
+- STATUS_AS_OF:2026-11-11 Asia/Taipei（更新者:Claude 主 harness 經 obsidian-vault-manager）：WP3 全部完成（6 頁 status→abandoned、12 頁日期快照搬 outputs/、刪 3 個 .bak），待 commit；WP4 lint 11-25 由 Claude 負責。
+- STATUS_AS_OF:2026-11-11 16:16 Asia/Taipei（更新者:Codex WP3 經 obsidian-vault-manager）：WP3 內容回填已完成已授權部分：16 新常青頁、更新 GT_expand／Docker 舊頁、46 筆勘誤（見 [[corrections]]）、10 實驗 status 正規化、2 非實驗 status 移除；6 張 status 與 outputs 快照處置待使用者裁決；WP4 lint 由 Claude 負責；未 add／commit／push。本行僅作操作交接，研究證據以來源頁與 institution 現況檔為準。
 - STATUS_AS_OF:2026-11-11 15:47 Asia/Taipei（更新者:Claude 主 harness 經 obsidian-vault-manager）：vault 知識庫修復 WP1 規則落地已套用（CLAUDE.md、AGENTS.md、vault-manager 兩份正本；決策檔 `.agents/decisions/20261111_vault知識庫修復_WP1規則落地_共識.md`）；下一步 WP2（vault-manager 記憶校正），WP3／WP4 分工待使用者。
 - STATUS_AS_OF:2026-11-11 15:20 Asia/Taipei（更新者:Claude 主 harness 經 obsidian-vault-manager）：vault 知識庫修復 WP0 目標設計定案（D0–D5，使用者 2026-11-11 裁決），決策檔 `.agents/decisions/20261111_vault知識庫修復_WP0目標設計.md`；WP1–WP7 分工待使用者討論，尚未開始。
 - STATUS_AS_OF:2026-11-11 14:31 Asia/Taipei（Codex 文件回填）：依使用者要求補 `outputs/` 的當代 harness 與 GT-centric 階段快照、資料集風／海流和標記清冊、Docker/Codex 遠端故障紀錄、模型路線及 Sen2Like→GT-centric／ROI 新資料路由，並更新 vault 維護規則與 index/log。`wiki/papers/` 未動；本次只整理既有證據，未改主線 Dockerfile、資料、split、模型、訓練或 process。兩個 vault 掛載路徑 inode 相同，但此 session 的 vault-manager 仍載入舊規則而停止寫入；alias 規則已更新於 `.codex/agents/obsidian-vault-manager.toml`，**尚未驗證重載後可寫**。**P51 的下方 13:51 觀察已過時，本次未重新檢查其現況，不得據此宣稱仍在跑或已有結果。** vault 本次尚未 commit／push。

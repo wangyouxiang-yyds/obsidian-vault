@@ -2,7 +2,7 @@
 date: 2026-09-15
 type: experiment
 stage: training
-status: in-progress
+status: running
 tags: [p14, gom-vs-nongom, full-source-ablation, taiwan-holdout, gt-expand, oil-detection, prithvi, deeplabv3, tversky, experiment-card, post-hoc, primary-endpoint-pending, event-macro]
 ---
 

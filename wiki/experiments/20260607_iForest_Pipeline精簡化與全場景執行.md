@@ -2,9 +2,11 @@
 date: 2026-06-07
 type: experiment
 stage: unsupervised
-status: ready-to-run
+status: abandoned
 tags: [unsupervised, isolation-forest, sentinel-2, PCA, pipeline, patch-level, full-scene]
 ---
+
+> 2026-11-11 status 正規化：原狀態 `ready-to-run`，後續未記錄結案，依使用者裁決標 abandoned。
 
 # iForest Pipeline 精簡化與全場景執行準備
 

@@ -2,7 +2,7 @@
 date: 2026-11-10
 type: experiment
 stage: evaluation
-status: 完成
+status: completed
 tags: [p50, upernet, prithvi-eo-2, h1-prime, roi3840, three-seed, teacher-candidate, supervised, descriptive, taiwan24, execution-record]
 ---
 

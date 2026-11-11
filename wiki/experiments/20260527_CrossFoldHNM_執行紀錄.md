@@ -2,7 +2,7 @@
 date: 2026-05-27
 type: experiment
 stage: HNM
-status: training
+status: completed
 tags: [HNM, Cross-Fold, FP-mining, spectral-filter, DeepLabV3+]
 ---
 

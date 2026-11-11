@@ -2,11 +2,15 @@
 type: model
 tags: [DeepLabV3+, ResNet50, segmentation, baseline, FocalLoss]
 related: [OSDMamba.md, ../pipeline/project_overview.md]
+validity: superseded
+superseded_by: "[[早期模型_DeepLabV3+_OSDMamba]]"
 ---
+
+> ⚠ 已作廢（2026-11-11，使用者 WP3 裁決）：早期工程快照已整理入常青歷史模型頁；改看 [[早期模型_DeepLabV3+_OSDMamba]]
 
 # DeepLabV3+（工程紀錄）
 
-> 本頁是早期 ResNet50／八波段路線的歷史工程設定，不是目前 Prithvi 六波段＋DeepLabV3 的 P44 ROI baseline。現行模型入口見 [模型路線總覽](20261111_模型路線總覽.md)。
+> 本頁是早期 ResNet50／八波段路線的歷史工程設定，不是目前 Prithvi 六波段＋DeepLabV3 的 P44 ROI baseline。現行模型入口見 [模型路線總覽](../../outputs/20261111_模型路線總覽.md)。
 
 ## 一句話定義
 

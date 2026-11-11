@@ -2,7 +2,7 @@
 date: 2026-11-09
 type: experiment
 stage: evaluation
-status: 完成
+status: completed
 tags: [lfmda, roi, roi3840, probe, descriptive, inference-only, p44, p41, p42, p43, taiwan24, segformer-b2, execution-record]
 ---
 

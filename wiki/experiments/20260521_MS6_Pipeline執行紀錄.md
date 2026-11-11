@@ -2,11 +2,13 @@
 date: 2026-05-21
 type: experiment
 stage: preprocess
-status: in_progress
+status: completed
 tags: [sen2like, deeplabv3+, vrt, patching, fold-split, GB1.0, 8band, trial-run]
 ---
 
 # 新批 Sen2Like Pipeline 執行紀錄（2026-05-21）
+
+> 狀態更新（2026-11-11）：本頁 05-24「目前狀態」是當時快照；後續 cfHNM 與 5-fold 結果已記於 [[20260530_實驗結果彙整]]。本頁前處理與訓練執行紀錄以已完成的歷史流程解讀。
 
 承接 [20260520 計畫文件](20260520_新批Sen2Like資料Pipeline重建計畫.md)，本頁記錄實際執行的過程、產出與發現的問題。
 

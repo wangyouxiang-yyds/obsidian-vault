@@ -4,8 +4,8 @@
 
 ## 研究問題與資料有效性
 
-- [20261111_研究問題與未解事項](wiki/concepts/20261111_研究問題與未解事項.md) — 當前研究問題、已知證據與尚未回答之處。
-- [20261111_來源分折與封存測試稽核](wiki/datasets/20261111_來源分折與封存測試稽核.md) — GoM 三折、NOAA 來源與封存測試的角色和限制。
+- [研究問題與未解事項](wiki/concepts/研究問題與未解事項.md) — 研究問題、已有證據與尚待驗事項的導覽。
+- [來源分折與封存測試](wiki/datasets/來源分折與封存測試.md) — GoM 場景名單、全球來源草案與封存測試邊界。
 
 ## 實驗紀錄
 
@@ -159,14 +159,15 @@
 
 ## 資料集
 
-- [20261111_資料集現況與物理標記清冊](wiki/datasets/20261111_資料集現況與物理標記清冊.md) — 457 景入口、標記來源、逐景風海流與對位限制。
-- [dataset_split_strategy](wiki/datasets/dataset_split_strategy.md) — 資料範圍、處理及評估使用方式。
+- [資料集與物理標記](wiki/datasets/資料集與物理標記.md) — 影像、標記、來源與風海流欄位的現行字典。
+- [dataset_split_strategy](wiki/datasets/dataset_split_strategy.md) — 已作廢的 2026-07 資料分折策略頁，正文留存歷史。
 - [ms6_sen2like](wiki/datasets/ms6_sen2like.md) — 資料範圍、處理及評估使用方式。
 
 ## Pipeline 與處理流程
 
-- [20261111_新資料處理路由_GT-centric與ROI](wiki/pipeline/20261111_新資料處理路由_GT-centric與ROI.md) — Sen2Like 入庫後的標記稽核、GT-centric 與 ROI 3840 路由。
-- [GT_expand_pipeline](wiki/pipeline/GT_expand_pipeline.md) — 處理流程、輸入輸出與操作說明。
+- [P44 ROI 滑窗基線](wiki/pipeline/P44_ROI滑窗基線.md) — 自然比例 ROI 取樣、訓練與臺灣評估流程。
+- [新資料處理路由](wiki/pipeline/新資料處理路由.md) — Sen2Like 入庫、標記稽核及 GT-centric／ROI 派生路線。
+- [GT_expand_pipeline](wiki/pipeline/GT_expand_pipeline.md) — GT-centric 256 窗歷史工程流程與評估口徑。
 - [GT_expand_workflow_onboarding](wiki/pipeline/GT_expand_workflow_onboarding.md) — 處理流程、輸入輸出與操作說明。
 - [OIL_PROJECT_MutiBand_0422_VRT_training](wiki/pipeline/OIL_PROJECT_MutiBand_0422_VRT_training.md) — 處理流程、輸入輸出與操作說明。
 - [OIL_PROJECT_VRT_0422](wiki/pipeline/OIL_PROJECT_VRT_0422.md) — 處理流程、輸入輸出與操作說明。
@@ -180,6 +181,9 @@
 
 ## 技術概念
 
+- [評估口徑](wiki/concepts/評估口徑.md) — run 內像素加總、跨 seed 平均與臺灣兩組呈現。
+- [背景比例研究線](wiki/concepts/背景比例研究線.md) — 配額、曝光像素比、HNM 與 ROI 自然比例的證據邊界。
+- [臺灣測試集演變](wiki/concepts/臺灣測試集演變.md) — 9、19、24 張名冊與 GT-aware／ROI 測試口徑的沿革。
 - [acolite_vs_sen2like](wiki/concepts/acolite_vs_sen2like.md) — 概念定義、方法比較及本案應用。
 - [cloud_optimized_geotiff](wiki/concepts/cloud_optimized_geotiff.md) — 概念定義、方法比較及本案應用。
 - [deeplabv3plus_358clean_overfitting_改善方向](wiki/concepts/deeplabv3plus_358clean_overfitting_改善方向.md) — 概念定義、方法比較及本案應用。
@@ -195,15 +199,16 @@
 
 ## 模型
 
-- [20261111_模型路線總覽](wiki/models/20261111_模型路線總覽.md) — 歷史模型與現行 Prithvi ROI baseline 的導覽。
-- [20261111_無監督候選模型_iForest與DeepRX](wiki/models/20261111_無監督候選模型_iForest與DeepRX.md) — 早期 iForest 與 DeepRX 候選提示結果。
-- [20261111_光學EUDA與IntraDA嘗試](wiki/models/20261111_光學EUDA與IntraDA嘗試.md) — 對抗對齊與自訓練原型的已知失效。
-- [20261111_Prithvi_DeepLabV3主線](wiki/models/20261111_Prithvi_DeepLabV3主線.md) — GT-centric 與 ROI 階段共同的六波段模型家族。
-- [20261111_DADS-SAM與SAM_decoder嘗試](wiki/models/20261111_DADS-SAM與SAM_decoder嘗試.md) — 六波段 DADS-SAM 與 Prithvi＋SAM hybrid 實驗紀錄。
-- [20261111_LFMDA模型路線](wiki/models/20261111_LFMDA模型路線.md) — source-only、PCD、SAM/LRH 與 ROI 搬移結果。
-- [20261111_替代模型SpectralGPT與UperNet](wiki/models/20261111_替代模型SpectralGPT與UperNet.md) — ROI 替代 encoder／head 的結果與限制。
-- [DeepLabV3+](wiki/models/DeepLabV3+.md) — 模型架構與本案接入說明。
-- [OSDMamba](wiki/models/OSDMamba.md) — 模型架構與本案接入說明。
+- [模型路線總覽](wiki/models/模型路線總覽.md) — 現行基線與各模型主題頁的導覽。
+- [Prithvi＋DeepLabV3](wiki/models/Prithvi_DeepLabV3.md) — 六波段模型家族與 P44 ROI 自然比例基線。
+- [DADS-SAM](wiki/models/DADS-SAM.md) — 公開 DADS-SAM 與 Prithvi＋SAM hybrid 的區別和結果範圍。
+- [LFMDA](wiki/models/LFMDA.md) — SegFormer-B2、PCD、SAM/LRH 及 ROI 搬移的證據。
+- [光學 EUDA／IntraDA](wiki/models/EUDA_IntraDA.md) — 對抗對齊與自訓練光學原型的失效邊界。
+- [SpectralGPT+／UperNet](wiki/models/替代模型_SpectralGPT_UperNet.md) — ROI 替代 encoder 與 head 的受限比較。
+- [iForest／DeepRX](wiki/models/無監督_iForest_DeepRX.md) — 早期無監督候選提示模型與指標口徑。
+- [早期 DeepLabV3+／OSDMamba](wiki/models/早期模型_DeepLabV3+_OSDMamba.md) — 0420／0422 工程路線及其歷史定位。
+- [DeepLabV3+](wiki/models/DeepLabV3+.md) — 已作廢的早期工程頁；正文留存歷史。
+- [OSDMamba](wiki/models/OSDMamba.md) — 已作廢的早期工程頁；正文留存歷史。
 
 ## 文獻
 
@@ -228,9 +233,8 @@
 
 ## 環境
 
-- [20261111_Docker升級與Codex遠端故障紀錄](wiki/environment/20261111_Docker升級與Codex遠端故障紀錄.md) — 容器升級與 Codex Desktop 遠端排查。
 - [Claude_MCP_Docker_Fix](wiki/environment/Claude_MCP_Docker_Fix.md) — 環境設定與問題修復紀錄。
-- [Docker_環境設定](wiki/environment/Docker_環境設定.md) — 主線 Dockerfile、Codex 持久化與遠端掛載。
+- [Docker_環境設定](wiki/environment/Docker_環境設定.md) — 主線容器持久化、遠端掛載與故障排查入口。
 - [Gemini_MCP_Docker_Fix](wiki/environment/Gemini_MCP_Docker_Fix.md) — 環境設定與問題修復紀錄。
 
 ## 分析輸出
@@ -238,9 +242,22 @@
 - [20261111_AI協作Harness現況快照](outputs/20261111_AI協作Harness現況快照.md) — Claude／Codex 雙入口與現行容器狀態架構快照。
 - [20261111_GT-centric階段結果快照](outputs/20261111_GT-centric階段結果快照.md) — 轉向 ROI 前的代表性結果與不可比口徑。
 - [20260711_AI協作Harness現況快照](outputs/20260711_AI協作Harness現況快照.md) — 分析與背景資料。
+- [20261111_研究問題與未解事項](outputs/20261111_研究問題與未解事項.md) — 已作廢的研究問題日期快照。
+- [20261111_來源分折與封存測試稽核](outputs/20261111_來源分折與封存測試稽核.md) — 已作廢的來源分折日期快照。
+- [20261111_資料集現況與物理標記清冊](outputs/20261111_資料集現況與物理標記清冊.md) — 已作廢的逐景資料清冊日期快照。
+- [20261111_新資料處理路由_GT-centric與ROI](outputs/20261111_新資料處理路由_GT-centric與ROI.md) — 已作廢的新資料路由日期快照。
+- [20261111_模型路線總覽](outputs/20261111_模型路線總覽.md) — 已作廢的模型導覽日期快照。
+- [20261111_無監督候選模型_iForest與DeepRX](outputs/20261111_無監督候選模型_iForest與DeepRX.md) — 已作廢的無監督候選日期快照。
+- [20261111_光學EUDA與IntraDA嘗試](outputs/20261111_光學EUDA與IntraDA嘗試.md) — 已作廢的域適應日期快照。
+- [20261111_Prithvi_DeepLabV3主線](outputs/20261111_Prithvi_DeepLabV3主線.md) — 已作廢的主線模型日期快照。
+- [20261111_DADS-SAM與SAM_decoder嘗試](outputs/20261111_DADS-SAM與SAM_decoder嘗試.md) — 已作廢的 DADS-SAM 日期快照。
+- [20261111_LFMDA模型路線](outputs/20261111_LFMDA模型路線.md) — 已作廢的 LFMDA 日期快照。
+- [20261111_替代模型SpectralGPT與UperNet](outputs/20261111_替代模型SpectralGPT與UperNet.md) — 已作廢的替代模型日期快照。
+- [20261111_Docker升級與Codex遠端故障紀錄](outputs/20261111_Docker升級與Codex遠端故障紀錄.md) — 已作廢的容器故障日期快照。
 
 ## 協作導覽
 
+- [作廢清冊](wiki/corrections.md) — 整頁與單項作廢紀錄的查閱入口。
 - [README](.agents/README.md) — 協作文件、agent 與 skill 的入口。
 - [handoff](.agents/handoff.md) — 最近工作與接手摘要；舊條目保留歷史。
 - [consensus](.agents/consensus.md) — 協商紀錄與逐案決議的入口。

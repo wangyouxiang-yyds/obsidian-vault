@@ -1,6 +1,10 @@
 ---
 updated: 2026-07-24
+validity: superseded
+superseded_by: "[[來源分折與封存測試]]"
 ---
+
+> ⚠ 已作廢（2026-11-11，使用者 WP3 裁決）：2026-07 分折策略頁的「現行」定位與獨立性前提已被後續來源稽核及新 GoM 名單取代；改看 [[來源分折與封存測試]]
 
 # 海面油汙偵測資料集切割策略規劃 (Dataset Splitting Strategy)
 

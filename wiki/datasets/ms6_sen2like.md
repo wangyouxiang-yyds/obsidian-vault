@@ -8,7 +8,7 @@ updated: 2026-07-10
 
 # MS6_sen2like 資料集
 
-> 本頁主要保留 2026-07-10 的 445 景歷史盤點與原流程。2026-11-11 的 457 景、逐景風／海流及來源稽核入口見 [資料集現況與物理標記清冊](20261111_資料集現況與物理標記清冊.md)；不要將本頁的舊數量當作目前實驗清單。
+> 本頁主要保留 2026-07-10 的 445 景歷史盤點與原流程。2026-11-11 的 457 景、逐景風／海流及來源稽核入口見 [資料集現況與物理標記清冊](../../outputs/20261111_資料集現況與物理標記清冊.md)；不要將本頁的舊數量當作目前實驗清單。
 
 ## 1. 基本資訊
 這是目前專案主要使用的 8 波段多光譜資料集，由 Sen2Like 處理後生成。影像對齊至 10m 解析度（10980×10980），並與 Mask TIF 座標系一致。
@@ -17,7 +17,7 @@ updated: 2026-07-10
 - **原始影像 (8-band TIF)**: `/home/alanyh/oil_dataset/new/full_band/MS6_sen2like/`
 - **VRT 虛擬影像**: `/home/alanyh/oil_dataset/new/full_band/MS6_sen2like_vrt/`（⚠️ 2026-07-10 查證：`/mnt/backup/oil_dataset/new/full_band/MS6_sen2like_vrt/` 亦真實存在同一份，兩份並存；何者為 canonical 尚未確認，見 [[VRT_pipeline_01_前處理]]）
 - **Mask 標籤**: `/home/alanyh/oil_dataset/new/full_band/mask/`
-- **JSON 標註**: ~~`/home/alanyh/oil_dataset/new/full_band/JSON/`~~ 已修正：實際分佈在**兩處**，`build_manifest.py` 兩處都查（場景資料夾優先）：
+- **JSON 標註**: ~~`/home/alanyh/oil_dataset/new/full_band/JSON/`~~（2026-11-11 作廢：實際在集中與場景內兩處）已修正：實際分佈在**兩處**，`build_manifest.py` 兩處都查（場景資料夾優先）：
   - 集中目錄：`/home/alanyh/oil_dataset/new/full_band/MS6_sen2like_JSON/`
   - 各場景資料夾內：`MS6_sen2like/{LOCATION}/{YEAR}/{SCENE_NAME}/{SCENE_NAME}.json`
   - 2026-07-10 manifest 盤點（445 場景）：163 個只在集中目錄、6 個只在場景資料夾內（含 5 張新入庫的 2026 NOAA Atlantic 場景 + 1 張 2023年菲律賓MT公主皇后號_20230430_L8_51PUQ）、276 個兩處都有；曾誤報菲律賓場景缺 JSON，已更正
@@ -45,8 +45,8 @@ updated: 2026-07-10
 | 255 | Unannotated | ignore_index=255 |
 
 ## 5. 目前狀態
-- **格式**: ~~已轉換為 **COG (Cloud Optimized GeoTIFF)** 格式~~ 已修正（2026-07-10）：實際已跑轉檔（tiled 256 + deflate，`cog_convert.log` 3080 檔全 OK），但**未建 overviews**，嚴格來說是 **tiled GeoTIFF**，非完整 COG 規格。
-- **單位**: ~~數值已除以 10000 轉換為反射率 (Reflectance)~~ 已修正（2026-07-10）：檔案本體是 **uint16 DN（0-10000 尺度）**，`/10000` 是 dataloader 讀取時才做的轉換（`deeplab_adapter.py` 讀 window 後 `/10000.0`，另有 nodata 歸零處理），並非儲存時就已轉好的反射率。
+- **格式**: ~~已轉換為 **COG (Cloud Optimized GeoTIFF)** 格式~~（2026-11-11 作廢：缺 overviews，嚴格為 tiled GeoTIFF）已修正（2026-07-10）：實際已跑轉檔（tiled 256 + deflate，`cog_convert.log` 3080 檔全 OK），但**未建 overviews**，嚴格來說是 **tiled GeoTIFF**，非完整 COG 規格。
+- **單位**: ~~數值已除以 10000 轉換為反射率 (Reflectance)~~（2026-11-11 作廢：檔案儲存的是 DN，讀取時才除以 10000）已修正（2026-07-10）：檔案本體是 **uint16 DN（0-10000 尺度）**，`/10000` 是 dataloader 讀取時才做的轉換（`deeplab_adapter.py` 讀 window 後 `/10000.0`，另有 nodata 歸零處理），並非儲存時就已轉好的反射率。
 - **統計值**: `mean` 與 `std` 已依 8 波段重新計算。
 - **場景總數（2026-07-10 manifest 盤點）**：445 場景，8-band TIF 齊全、mask/JSON/VRT 齊全，manifest issues 欄全空（0 個異常）。dirty（`dirty.txt`/`blur.txt` 標記）85 張。訓練用 358clean 3-fold split（`3_fold_stratified_v2`）不受影響，維持不變。
 - **VRT 雙路徑覆蓋率**：220 場景 home（`/home/alanyh/...`）+ backup（`/mnt/backup/oil_dataset/...`）兩份皆有，225 場景（含新入庫的 5 張 2026 場景）只有 home 份，backup 補齊為待辦。
@@ -77,3 +77,7 @@ updated: 2026-07-10
 - JSON 只存在於場景資料夾內，尚未同步到集中目錄 `MS6_sen2like_JSON/`（見上方第 2 節）
 - VRT 只有 home 份，無 backup
 - **尚未加入任何 split**：`3_fold_stratified_v2` 不含這 5 張；若要進訓練須重生 split / patch 座標，另行決策
+
+## 變更紀錄
+
+- 2026-11-11｜補登舊 JSON 路徑、COG 格式與 DN 單位的作廢註記｜依據 [[20260521_MS6_Pipeline執行紀錄]]

@@ -2,9 +2,11 @@
 date: 2026-05-20
 type: experiment
 stage: preprocess
-status: planning
+status: abandoned
 tags: [sen2like, deeplabv3+, patching, fold-split, GB1.0, 8band]
 ---
+
+> 2026-11-11 status 正規化：原狀態 `planning`，後續未記錄結案，依使用者裁決標 abandoned。
 
 # 新批 Sen2Like 資料完整 Pipeline 重建計畫
 

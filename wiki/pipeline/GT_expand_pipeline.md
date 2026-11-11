@@ -1,14 +1,19 @@
 ---
 date: 2026-07-02
 updated: 2026-07-24
+validity: current
 type: pipeline
 tags: [gt-expand, deeplabv3+, oil-detection, gt-centric, patch-strategy, 3-fold-cv]
 project: OIL_PROJECT_MutiBand_GT_expand
 ---
 
-# GT_expand Pipeline — GT-centric Patch 策略說明
+# GT_expand Pipeline — GT-centric Patch 歷史策略
 
-> 本頁記錄 GT-centric 256 窗的實作與歷史結果；目前新研究基線是 P44 自然比例 ROI 3840，兩種口徑及新資料路由見 [新資料處理路由](20261111_新資料處理路由_GT-centric與ROI.md)。本頁的 2026-07「現行」數量與路線標示均按當時版本理解。
+> 本頁第「一」至「七」節是 2026-07 的 GT-centric 256 窗工程紀錄；其中「現行」「主線」「唯一」等字樣均指當時版本，不能直接當 2026-11 狀態。現在的研究基線是 [P44 自然比例 ROI 滑窗](P44_ROI滑窗基線.md)，新景入庫見 [新資料處理路由](新資料處理路由.md)，評估分母見 [評估口徑](../concepts/評估口徑.md)。歷史實驗設計與原判定仍按各事件頁解讀。
+
+## 目前如何使用本頁
+
+GT-centric 依標記連通區 bbox 取 256 窗，小區中心取窗、大區鋪 256 格，背景 patch 另按該版規則取樣；可用於重建 P12/P14/P15 等**歷史**配方和核對取窗機制。P44 則先以 GT 衍生 3840 ROI，再在 ROI 內步距 128 滑窗，背景不挑選。兩者訓練曝光和測試覆蓋不同，分數不能直接相減。來源：[P44 設計](../../.agents/decisions/20261106_P44_ROI重疊滑窗全球排除臺灣設計.md)、[P44 結果](../experiments/20261106_P44_ROI自然比例基線_結果.md)。本頁 2026-07 三折及 bug 修復前後數字要依 [決定性修復](../experiments/20260718_訓練不可重現根因與決定性修復.md)及 [資料溯源評估合約](../experiments/20260716_資料溯源洩漏與評估合約v1.md)各自版本查核，不可移為 P44 現行基線數字。
 
 > 本頁說明 `OIL_PROJECT_MutiBand_GT_expand` 的完整 pipeline 設計，並與論文主線 [[OIL_PROJECT_MutiBand_0422_VRT_training]] 的 sliding-window 策略作對比。
 
@@ -33,11 +38,11 @@ GT_expand 的出發點：**每個 patch 都包含油汙**，讓模型集中學�
 |------|--------------------------|---------------------|
 | repo | OIL_PROJECT_MutiBand_0422_VRT_training | OIL_PROJECT_MutiBand_GT_expand |
 | Patch 策略 | 全圖 sliding-window（stride 切）| GT-centric：bbox 中心取 patch，大 bbox 改 256-grid 鋪磚（見第三節）|
-| Patch 數量 | ~5 萬量級，油汙 patch 稀少 | 2,893 個 patch（每 fold train+val+test 皆 2,893；~~原每個都含油汙~~ 已混入背景 patch，見第三節 b）|
+| Patch 數量 | ~5 萬量級，油汙 patch 稀少 | 2,893 個 patch（每 fold train+val+test 皆 2,893；~~原每個都含油汙~~（2026-11-11 作廢：實際另混入純背景窗）已混入背景 patch，見第三節 b）|
 | 資料讀取 | VRT 動態讀取（rasterio.Window）| 同左 |
 | 評估方式 | reconstruct_module 拼回大圖，整圖 IoU（含大量 BG）| **每 fold 訓練完自動跑 gt_aware reconstruction（post_test）**，主指標 = recon pooled_oil_iou + per-scene oil IoU（詳見第五節）|
-| post_tests | reconstruct_module | **gt_aware reconstruction**（~~[]（不做重組）~~ 已於 2026-07 前後啟用，此欄過時）|
-| class_weights | [13, 1]（適配稀疏 patch）| baseline **[1.0, 1.0]**；~~已重校：GT_expand 油汙佔比 ~42:58，接近自然分佈，無需加權~~ 此前提已被背景 patch 機制打破（實測 oil 像素佔比僅 ≈0.059），現有 recall 導向的 cw31=[3,1] 實驗線（見第三節 c）|
+| post_tests | reconstruct_module | **gt_aware reconstruction**（~~[]（不做重組）~~（2026-11-11 作廢：已啟用 gt_aware 重組）已於 2026-07 前後啟用，此欄過時）|
+| class_weights | [13, 1]（適配稀疏 patch）| baseline **[1.0, 1.0]**；~~已重校：GT_expand 油汙佔比 ~42:58，接近自然分佈，無需加權~~（2026-11-11 作廢：混入背景窗後油像素比例約 0.059）此前提已被背景 patch 機制打破（實測 oil 像素佔比僅 ≈0.059），現有 recall 導向的 cw31=[3,1] 實驗線（見第三節 c）|
 | 論文角色 | **主軸**（整圖偵測、真實部署情境）| **探索**（效能上限估計、分布分析）|
 
 ---
@@ -64,7 +69,7 @@ GT_expand 的出發點：**每個 patch 都包含油汙**，讓模型集中學�
 **關鍵特性**：
 - 每個 oil-bearing patch 保證含至少一部分油汙 component
 - oil-pixel 佔比顯著高於 sliding-window patch
-- 訓練集共 2,893 個 patch（每 fold train+val+test 皆 2,893；358 clean scenes，3-fold CV；~~原 2,897~~ 已於 2026-07-10 依現行 code 校正）
+- 訓練集共 2,893 個 patch（每 fold train+val+test 皆 2,893；358 clean scenes，3-fold CV；~~原 2,897~~（2026-11-11 作廢：2026-07-10 依程式校正為 2,893）已於 2026-07-10 依現行 code 校正）
   - fold1 = 1,418 / 560 / 915（train/val/test）
   - fold2 = 1,738 / 294 / 861
   - fold3 = 1,436 / 340 / 1,117
@@ -89,9 +94,9 @@ baseline 仍用 `[1.0, 1.0]`，但既然真實 oil 像素佔比只有 ≈0.059�
 | 實驗 | 設定 | 現況（2026-07-24 更新）|
 |------|------|------|
 | cw31 | `class_weights: [3.0, 1.0]` | 三折已跑完：pooled_oil_iou = **0.394**，三折同向勝 baseline（0.332）。細看是 **trade-off 而非全面提升**：大油汙（>50k px, n=51）顯著變好（p=0.032，recall 0.474→0.608）；tiny 油汙（<1k px）顯著變差（p=0.007）；整體 per-scene Wilcoxon p=0.643（未達顯著）。⚠️ 此為 2026-07-22 才發現的訓練不可重現 bug 修復前的單次跑結果，未來若要正式比較需在決定性管線上重跑，見 [[20260718_訓練不可重現根因與決定性修復]] |
-| tversky | region-based loss，α=0.3 / β=0.7 | 三折已跑完（修復前）：pooled_oil_iou mean=**0.3915**（vs baseline 0.332），三個實驗線（baseline 0.332 / cw31 0.394 / tversky 0.3915）中**唯一同時通過舊雙 gate**（per-scene Wilcoxon p=9.5e-14），判定優於 cw31，已成為標竿 loss 設定並帶入下一輪架構消融（`tversky_v3plus`）。詳見下方說明。|
+| tversky | region-based loss，α=0.3 / β=0.7 | 三折已跑完（修復前）：pooled_oil_iou mean=**0.3915**（vs baseline 0.332），三個實驗線（baseline 0.332 / cw31 0.394 / tversky 0.3915）中~~**唯一同時通過舊雙 gate**~~（2026-11-11 作廢：舊雙 gate 與非決定性訓練均失效）（per-scene Wilcoxon p=9.5e-14），判定優於 cw31，已成為標竿 loss 設定並帶入下一輪架構消融（`tversky_v3plus`）。詳見下方說明。|
 
-**補充說明**：α=0.3/β=0.7 這組超參數與原始文獻 [[Salehi2017_TverskyLoss]]（Salehi et al. 2017）在 MS 病灶分割任務上實測的最佳點一致，見該文獻頁與 [[分割損失函數與類別不平衡.md]] 概念頁的交叉整理。2026-07-18 用 Evaluation Contract v1.0（12 事件群 cluster bootstrap）重放後，tversky vs baseline 的 ΔM2 仍顯著（+0.053）——槓桿在事件層級修正下站得住，見 [[20260716_資料溯源洩漏與評估合約v1]]。
+**補充說明**：α=0.3/β=0.7 這組超參數與原始文獻 [[Salehi2017_TverskyLoss]]（Salehi et al. 2017）在 MS 病灶分割任務上實測的最佳點一致，見該文獻頁與 [[分割損失函數與類別不平衡]] 概念頁的交叉整理。2026-07-18 用 Evaluation Contract v1.0（12 事件群 cluster bootstrap）重放後，tversky vs baseline 的 ΔM2 仍顯著（+0.053）——槓桿在事件層級修正下站得住，見 [[20260716_資料溯源洩漏與評估合約v1]]。
 
 > ⚠️ [2026-07-24 失效] 上面「唯一同時通過舊雙 gate（Wilcoxon p=9.5e-14）」是修復前（Albumentations RNG 未鎖，訓練不可重現）、單次跑產出的數字，且 355-scene Wilcoxon 本身已因事件層級洩漏被 Evaluation Contract v1.0 取代（見上段 grouped replay）。**決定性正本重跑進行中**（baseline 3-fold 已完成 pooled=0.3447，tversky 3-fold 訓練中），tversky 優於 baseline／cw31 的方向暫視為穩定，但「唯一通過雙 gate」「已勝出」這類確定性措辭正式數字以 rerun 後為準，見 [[20260718_訓練不可重現根因與決定性修復]]。
 
@@ -157,8 +162,8 @@ C7 的 eval_protocol 欄位標註已完成；與 0422 sliding-window 的完整�
 > **2026-07-18 更新**：舊「雙 gate」已降為 legacy descriptive 指標，正式判定改用 **Evaluation Contract v1.0**（見下方新增小節），原因是 2026-07-16 溯源稽核發現 355-scene 不是統計獨立樣本。
 
 - 每個 fold 訓練完成後，自動觸發 **gt_aware reconstruction（post_test）**，把 patch 級預測拼回場景做評估
-- **主要指標**：recon **pooled_oil_iou** + per-scene oil IoU；~~per-patch IoU on oil-bearing patches~~ 降為輔助指標
-- ~~**正式驗收採雙 gate**~~（2026-07-18 起降為 legacy descriptive，不再單獨作為判定依據）：
+- **主要指標**：recon **pooled_oil_iou** + per-scene oil IoU；~~per-patch IoU on oil-bearing patches~~（2026-11-11 作廢：已改採重組口徑）降為輔助指標
+- ~~**正式驗收採雙 gate**~~（2026-11-11 作廢：2026-07-18 起由 Evaluation Contract v1.0 取代；legacy 僅描述）：
   1. `pooled_oil_iou > 0.362`
   2. per-scene 配對 Wilcoxon 檢定 vs baseline，p<0.05 且方向為正
 - **Baseline 三折基準**（run `20260701-133158` / `20260701-204746` / `20260702-032032`）：pooled_oil_iou = 0.3695 / 0.3119 / 0.3157，mean = **0.332**（⚠️ 修復前產出，決定性正本重跑後另有數字，見 [[20260718_訓練不可重現根因與決定性修復]]）
@@ -199,3 +204,8 @@ C7 的 eval_protocol 欄位標註已完成；與 0422 sliding-window 的完整�
 - [[20260716_資料溯源洩漏與評估合約v1]] — 事件層級溯源洩漏稽核、Evaluation Contract v1.0（取代第五節舊雙 gate）、backbone 政策決策
 - [[20260718_訓練不可重現根因與決定性修復]] — Albumentations RNG 未鎖導致訓練不可重現的根因與修復，第三-c節 tversky/cw31 數字需以此篇 caveat 解讀
 - [[20260724_Focal_Tversky小圖實驗可行性評估]] — 下一個候選 loss 實驗的條件式規劃
+
+## 變更紀錄
+
+- 2026-11-11｜把 2026-07 GT-centric 工程正文標為歷史版本並指向 P44 新路由｜依據 [[20261106_P44_ROI自然比例基線_結果]]、[[20261109_P48_H1prime與P44補seed_結果]]
+- 2026-11-11｜舊版已刪除說法補作廢日期與勘誤登錄｜依據 [[20260716_資料溯源洩漏與評估合約v1]]、[[20260718_訓練不可重現根因與決定性修復]]

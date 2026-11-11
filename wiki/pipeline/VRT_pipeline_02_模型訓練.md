@@ -52,7 +52,7 @@ patch 座標 TXT（train/val/test）
 | Scheduler | CosineAnnealingLR（eta_min=lr0×0.01）|
 | 梯度裁剪 | clip_grad_norm\_（max_norm=1.0）|
 | Epochs | 300 |
-| Patience（early stop）| 50（~~依 val Oil IoU 計算~~ 已修正：實際依 **val_miou** 計算，見下方 status ⑤-3）|
+| Patience（early stop）| 50（~~依 val Oil IoU 計算~~（2026-11-11 作廢：程式實依 val_miou）已修正：實際依 **val_miou** 計算，見下方 status ⑤-3）|
 | Batch Size | 16 |
 | num_workers | 8 |
 | pin_memory | True |
@@ -96,7 +96,7 @@ class_weights: [13.0, 1.0]   # [Oil, Background]
 | 設定 | 值 |
 |------|----|
 | 套件 | `timm.utils.ModelEma` |
-| Decay | **0.0**（~~0.9997~~，已知 bug 未修，見上方說明）|
+| Decay | **0.0**（~~0.9997~~（2026-11-11 作廢：當時實際程式為 0.0），已知 bug 未修，見上方說明）|
 | 用途 | 驗證與 best.pt 均使用 EMA 權重（因 decay=0.0，實質等於直接用當下權重，並無平滑效果）|
 
 ---
@@ -106,7 +106,7 @@ class_weights: [13.0, 1.0]   # [Oil, Background]
 ### SegmentationDataset（動態 VRT 讀取）
 
 - `read_images_from_vrt: true`：啟用 rasterio.Window 從 VRT 讀取對應 patch 位置
-- 輸入：patch 座標 TXT（~~`x, y, w, h` 格式~~ 已修正，實際為檔名編碼 `{SCENE_NAME}_patch_x{COL}_y{ROW}`，見 [[VRT_pipeline_01_前處理]]）→ 動態切 8-band 256×256
+- 輸入：patch 座標 TXT（~~`x, y, w, h` 格式~~（2026-11-11 作廢：實際座標編在檔名）已修正，實際為檔名編碼 `{SCENE_NAME}_patch_x{COL}_y{ROW}`，見 [[VRT_pipeline_01_前處理]]）→ 動態切 8-band 256×256
 - GT：同時從 mask TIF 對應座標讀取單 channel GT Mask
 - 不預先存實體 patch 檔，省磁碟 + 彈性
 
@@ -147,7 +147,7 @@ std:  [0.136939, 0.130860, 0.129367, 0.131349, 0.136126, 0.131062, 0.072673, 0.0
 
 | 檔案 | 存檔時機 | 內容 |
 |------|---------|------|
-| `best.pt` | ~~val Oil IoU 創新高~~ 已修正：實際依 **val_miou** 創新高（`main/deeplab_adapter.py:969`）。val_miou 會被 background IoU 稀釋，早停/存檔判準不完全對齊 Oil 表現，**列為已知 bug，狀態：未修（status ⑤-3）** | EMA model state_dict（推論用，因 EMA decay=0.0 實質等於當下權重，見上節）|
+| `best.pt` | ~~val Oil IoU 創新高~~（2026-11-11 作廢：實際依 val_miou 創新高）已修正：實際依 **val_miou** 創新高（`main/deeplab_adapter.py:969`）。val_miou 會被 background IoU 稀釋，早停/存檔判準不完全對齊 Oil 表現，**列為已知 bug，狀態：未修（status ⑤-3）** | EMA model state_dict（推論用，因 EMA decay=0.0 實質等於當下權重，見上節）|
 | `last.pt` | 每個 epoch 結束（atomic write）| model / optimizer / scheduler / scaler / EMA / epoch / best_val / patience / RNG 狀態 |
 
 Resume 邏輯：啟動時自動偵測 `last.pt`，若存在則從上次 epoch 繼續，RNG 狀態完整恢復（torch / cuda / numpy / random）。
@@ -231,3 +231,7 @@ conda run -n mamba_env python main_runner.py \
 - [[DeepLabV3+]] — 模型工程紀錄（詳細超參數與 checkpoint code）
 - [[deeplabv3plus_358clean_overfitting_改善方向]] — A1/A2/A3 改善路線分析
 - [[20260605_資料集修正與三策略重跑]] — 三策略訓練進度紀錄
+
+## 變更紀錄
+
+- 2026-11-11｜補登舊 early stop、EMA、座標與 checkpoint 說法作廢註記｜依據 [[20260718_訓練不可重現根因與決定性修復]]

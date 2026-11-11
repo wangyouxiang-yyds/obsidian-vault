@@ -2,11 +2,15 @@
 type: model
 tags: [OSDMamba, SwinUMambaD, Mamba, SSM, segmentation, RTX5090]
 related: [DeepLabV3+.md, ../papers/OSDMamba_摘要.md, ../pipeline/project_overview.md]
+validity: superseded
+superseded_by: "[[早期模型_DeepLabV3+_OSDMamba]]"
 ---
+
+> ⚠ 已作廢（2026-11-11，使用者 WP3 裁決）：早期工程快照已整理入常青歷史模型頁；改看 [[早期模型_DeepLabV3+_OSDMamba]]
 
 # OSDMamba（工程紀錄）
 
-> 本頁保留早期 OSDMamba／11 波段路線的工程紀錄，並非現行 ROI 3840 模型。現行模型導覽見 [模型路線總覽](20261111_模型路線總覽.md)。
+> 本頁保留早期 OSDMamba／11 波段路線的工程紀錄，並非現行 ROI 3840 模型。現行模型導覽見 [模型路線總覽](../../outputs/20261111_模型路線總覽.md)。
 
 ## 一句話定義
 

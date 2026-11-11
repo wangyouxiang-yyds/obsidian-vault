@@ -199,7 +199,7 @@ Sen2Like 8-band TIF（每場景 8 個 ~125 MB TIF）
 |------|------|
 | 8-band TIF | `/home/alanyh/oil_dataset/new/full_band/MS6_sen2like/` |
 | VRT 檔 | `/mnt/backup/oil_dataset/new/full_band/MS6_sen2like_vrt/` **與** `/home/alanyh/oil_dataset/new/full_band/MS6_sen2like_vrt/`（2026-07-10 查證：兩份皆真實存在，B 分支 yaml 用 `/home/alanyh` 這份；何者為 canonical 尚未確認，兩份並存待統一）|
-| Mask TIF | ~~與各場景 TIF 同目錄~~ 已修正：實際集中於 `/home/alanyh/oil_dataset/new/full_band/mask/` |
+| Mask TIF | ~~與各場景 TIF 同目錄~~（2026-11-11 作廢：實際集中於 `full_band/mask/`）已修正：實際集中於 `/home/alanyh/oil_dataset/new/full_band/mask/` |
 | JSON 標註 | 集中目錄 `/home/alanyh/oil_dataset/new/full_band/MS6_sen2like_JSON/` **與**各場景資料夾內（兩處並存，見步驟 B）|
 | Dataset Manifest | `/home/alanyh/oil_dataset/new/full_band/manifest.csv`（單一真相帳本，見步驟 G）|
 | Split TXT | `/mnt/backup/oil_dataset/new/full_band/data_split/` |
@@ -217,3 +217,7 @@ Sen2Like 8-band TIF（每場景 8 個 ~125 MB TIF）
 - [[annotation_workflow]] — LabelMe JSON 標注工作流程
 - [[20260605_資料集修正與三策略重跑]] — 場景擴充至 439 的完整紀錄
 - [[hard_negative_mining]] — HNM 概念說明
+
+## 變更紀錄
+
+- 2026-11-11｜補登舊 mask 路徑作廢註記｜依據 [[20260605_資料集修正與三策略重跑]]
