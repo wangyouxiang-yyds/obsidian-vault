@@ -1,0 +1,200 @@
+我接受「固定 k=2／k=4、暫不導入 RL」這個方向，但正式比較必須加入同碼 k=1 控制組。核心問題應被限定為：在相同雙分支、融合容量及訓練流程下，真正超出 local patch 的像素是否提供可重現的增益。
+
+## 1. 組別、seed 與算力
+
+| 組別 | context footprint | 用途 |
+|---|---:|---|
+| K1-control | 256×256 | 同碼、同雙 forward、同 γ 的負控制；沒有 patch 外資訊 |
+| K2 | 512×512 → 256×256 | 使用者指定固定倍率 |
+| K4 | 1024×1024 → 256×256 | 使用者指定固定倍率 |
+
+- 每組使用 S42–S46，共 5 個配對 seed，總計 15 runs。
+- 使用完全相同的 sampler 順序與 local augmentation RNG；context 專用亂數使用獨立、可重現的 RNG stream，避免不同倍率消耗亂數後破壞 paired-seed 比較。
+- P44 S42–S44只作 legacy sanity reference，不進主要效果量；主要對照是同碼 K1。
+- 不加入 random-k：它回答的是尺度隨機化／正則化問題，不是固定 k 的效果。
+- 不加入 context-only：不能回答 patch 外資訊對 local 模型的增量價值。
+- 建議以 Latin-style 順序交錯執行，例如 S42：K1→K2→K4；S43：K2→K4→K1；S44：K4→K1→K2，避免執行時間順序與組別完全重合。
+- 每次只跑一個訓練，P51 或其他 GPU 工作未結束時不得並行。
+
+P44 最長約 5.5 GPU 小時。雙 encoder forward 加上可能的 activation checkpointing，保守估計每 run 最長 11–17 小時；15 runs 約 165–255 GPU 小時，即連續 7–11 天。實際排程以記憶體 preflight 的 400-step throughput 重估，但不得因此改組別或 seed。
+
+## 2. 架構與對齊
+
+兩分支共用同一個 Prithvi encoder 權重，均取第 23 層的 `16×16×1024` feature。ASPP、classifier、optimizer 分組與 P44 不變。
+
+融合採最小干擾的 residual gate：
+
+\[
+F_{\mathrm{fused}}=F_{\mathrm{local}}+
+\gamma\odot C_{\mathrm{aligned}}
+\]
+
+其中：
+
+- `γ` 為 `[1,1024,1,1]` 的 fp32 channel-wise 參數。
+- zero-init、no weight decay，使用 head LR `5e-5`。
+- 不加 projection、concat convolution、額外 normalization 或空間 gate。
+- γ=0 時 logits 必須與 P44 local path 等價，讓模型由 local-only 起跑。
+- K1 也使用可訓練 γ；它控制雙 forward、額外梯度路徑及 channel rescaling 容量。
+
+對齊不用「先裁整數 token 再直接放大」，而以 context feature 的完整 `16×16` 網格做固定、可微分的 ROIAlign/grid-sample：
+
+- K2 的 local footprint 是中央 8×8-token 寬度。
+- K4 是中央 4×4-token 寬度。
+- 在該中央區域按 16×16 個 local token center 取樣，bilinear、`align_corners=False`。
+- 第 `j` 個輸出 token 的 normalized sampling position 為  
+  `g_j = (((2j+1)/16)-1)/k`，兩軸相同。
+- K1 應退化成 identity sampling。
+
+這比裁出 8×8／4×4 後普通 interpolate 更準確，因為後者會把最外層 token center 錯放到 local 邊界。
+
+## 3. Context 讀取、邊界與降採樣
+
+- local window `[x,x+256)×[y,y+256)` 的中心固定；K2 從 `x-128,y-128` 開始讀 512，K4 從 `x-384,y-384` 開始讀 1024。偶數尺寸中心可精確重合。
+- ROI 不是 context 邊界：只要仍在同一來源 scene/VRT 內，允許讀取 ROI 外像素。
+- 不得跨接另一個 train/VAL split 的 tile、事件或 VRT；來源影像外才使用 boundless invalid。
+- context 使用 area downsample 至 256×256。影像與 valid mask 分開縮放，以 `area(image×valid)/area(valid)` 計算部分有效格；完全無效格沿用目前輸入的 raw fill=0 行為。
+- 無效資訊不新增第七個 channel。loss ignore mask只由 local label／local validity 決定。
+- 每個 run 記錄 context valid-fraction 分布，並在 VAL 按 coverage 分層；不得事後刪除低 coverage 樣本。
+
+## 4. Augmentation 的地理一致性
+
+flip與 rot90 對 local、context、label 使用完全相同的轉換。
+
+RandomResizedCrop 不能直接對兩張 256 array 使用同一組像素座標，否則 context 的地理中心會移動 k 倍。正確配對方式是：
+
+1. 在 local 256 grid 抽出 crop `(cx+Δx, cy+Δy, w, h)`。
+2. context 256 grid 使用中心 `(cx+Δx/k, cy+Δy/k)`，但使用相同 `w,h`。
+3. local label依 local crop用 nearest resize；兩張影像依現行影像 interpolation resize至256。
+
+這能保持兩分支的地理中心一致，且 context footprint 始終是 local 的 k 倍。
+
+Brightness/Contrast 使用同一組參數；GaussNoise 使用同一組強度及同一 network-grid noise realization，使 K1 在 encoder 前仍可與 local 完全相同。所有組別保持現有 augmentation 機率。
+
+## 5. 取樣、batch 與記憶體
+
+取樣完全沿用 P44：
+
+- ROI、stride 128、自然背景比例均不變。
+- batch 16、Tversky batch aggregation、AdamW、LR、Cosine、40 VE及 patience 8 均不改。
+- 不固定油窗，不加入 HNM。
+
+32 GB 下優先只對 Prithvi 的無 BatchNorm transformer blocks做 activation checkpointing，保留 RNG state；ASPP 不 checkpoint，避免 BN running statistics 在 recompute 中被更新兩次。
+
+不得直接改成 batch 8＋gradient accumulation 2，因為 Tversky 是 batch-level 非線性函數，兩個 batch-8 loss 的梯度不等於 batch 16。若 batch 16仍無法容納，只允許經驗證的 exact-gradient replay方案；它必須在固定 reference batch 上達到：
+
+- loss 絕對誤差 ≤ `1e-6`
+- parameter-gradient 最大相對誤差 ≤ `1e-5`
+- 單一步 optimizer update 最大相對誤差 ≤ `1e-5`
+
+否則是開跑阻項，不能以較小 batch 靜默替代。
+
+## 6. 終點、門檻與結論規則
+
+主要終點是每個 best checkpoint 的 VAL ROI pooled oil IoU。定義配對差：
+
+\[
+\Delta_{k,s}=IoU_{\mathrm{VAL}}(Kk,s)-IoU_{\mathrm{VAL}}(K1,s)
+\]
+
+某一倍率得到「支持」須同時滿足：
+
+1. 五 seed 平均 `Δ ≥ +0.020`。
+2. 五 seed 中至少 4 個 `Δ > 0`。
+3. median `Δ ≥ +0.010`。
+4. collapse 數不高於 K1。
+5. 將 context 做跨事件、coverage-decile matched 的固定 derangement 後，平均 IoU 下降至少 `0.010`，且至少相當於該倍率相對 K1增益的 50%。
+
+第 5 點防止把額外訓練梯度或 scene prior 誤稱為推論時的 patch 外資訊。
+
+方向判定：
+
+- 支持：K2或 K4至少一組通過以上全部門檻。
+- 否定：K2與 K4的平均 Δ 都 `≤0`，且各自最多只有 2/5 seed勝過 K1。
+- 不可判定：其餘情況，包括效果介於0與實用門檻、seed不一致，或模型改善但 context derangement 不影響結果。
+
+collapse 預註冊為 VAL oil recall `≤0.01` 或 `predicted-oil/GT-oil ≤0.01`。collapse 是科學結果，不是 non-executed。
+
+次終點包括：
+
+- VAL precision、recall、pred/GT ratio、per-event IoU。
+- `>20 px`、`≥80% local GT density` 等已凍結 bins 的 recall與 FN share。
+- 小元件 recall、context valid-coverage分層。
+- γ=0、context derangement及 full-context 三種反事實推論。
+
+臺灣只在所有 VAL 判定凍結後評估。每個 run只報：
+
+- 大林2張 pooled IoU。
+- 其他22張 pooled IoU。
+- 各組跨 seed平均及 paired-seed差值。
+
+臺灣的預註冊 corroboration 門檻是：大林相對 K1平均 IoU `≥+0.05` 且至少 4/5 seed改善；其他22張平均差不得低於 `-0.02`。這不取代 VAL 主終點。
+
+大林內部的 `≥80% density recall`、`>20 px recall` 可以登記，但必須標為「由既有臺灣事後發現所導出的機制診斷」，只作描述性驗證，不得用來選模、改 k、調 γ 或翻轉主結論。可登記的機制門檻是 recall增加 `≥0.10`。
+
+## 7. Non-executed 與 scientific null
+
+non-executed只限技術上沒有施加預定 treatment，例如：
+
+- 讀取倍率、中心、對齊或 split boundary測試失敗。
+- γ=0 parity測試失敗。
+- context tensor被錯誤複製成 local、梯度斷線或 checkpoint載入錯誤。
+- OOM後改了 batch、loss aggregation或 optimizer protocol。
+- metric/checkpoint損毀，無法還原預定主終點。
+
+梯度 exposure audit：
+
+- 前200 steps應取得至少20個含油 batch。
+- 其中至少18個的 γ gradient須 finite，且 RMS `>1e-12`。
+- 若 γ 全程保持精確零且 exposure audit失敗，該 run為 non-executed。
+
+另登記 context adoption：
+
+- `RMS(γ⊙C_aligned)/RMS(F_local) ≥0.01`
+- VAL平均 absolute oil-logit change `≥0.01`
+
+未達 adoption門檻但梯度路徑正常，代表模型選擇忽略 context，屬 scientific null，不能宣告 non-executed。γ小、全背景 collapse、沒有提升或提早停止，也都不是重跑理由。
+
+## 8. 前置條件
+
+VAL FN拆解必須在訓練前完成，使用所有可用的非 collapse P44 seed，bins事前沿用既定定義，不得看結果後重切。
+
+機制可評估門檻：
+
+- `>20 px`或 `≥80% density`至少有10,000個 GT oil pixels。
+- 至少來自2個具名事件群。
+
+「dense-interior targeted hypothesis」的相關性門檻：
+
+- 非 collapse seeds的 median interior FN share：`>20 px ≥30%`或 `≥80% density ≥20%`；且
+- interior recall比 `6–20 px` recall至少低 `0.15`。
+
+若只通過可評估門檻、未通過相關性門檻，仍可依使用者決定執行一般性的 context 實驗，但實驗卡必須先改標為 exploratory general-context test，不能宣稱它是針對 VAL 已確認的 homogeneous-interior failure。
+
+其他開跑前測試：
+
+- synthetic coordinate-ramp中心誤差 ≤0.5 source pixel。
+- K1 encoder input最大絕對差 ≤`1e-6`。
+- γ=0 logits相對既有 local path最大絕對差 ≤`1e-5`。
+- batch16 peak memory ≤30.5 GiB，保留至少約1.5 GiB餘量。
+- `CUBLAS_WORKSPACE_CONFIG`在 import torch前設定，並呼叫 `main_runner.set_global_seed`、固定 DataLoader workers與所有 augmentation RNG。只聲稱設定可重現條件，不聲稱 GPU bitwise deterministic。
+
+## 9. 最大風險與競爭解釋
+
+最大科學風險不是 K4算力，而是把「大型油區中心漏判」過早解釋成缺乏空間 context。其他解釋包括標註或光譜域偏移、大片均質油面超出1024範圍仍看不到邊界，以及模型只在學事件／海域指紋。
+
+主要競爭解釋有：
+
+- 改善來自雙 forward及額外 encoder gradient，而非外部像素；K1與test-time derangement用來區分。
+- K4從 invalid border或 scene extent取得捷徑；需 coverage-matched derangement與分層結果。
+- context area downsample提供的是低頻光譜平滑，不是真正的地理關係。
+- pooled IoU增益只來自單一大型事件；因此必須同報 per-event及大林／其他22組。
+- seed collapse掩蓋或偽造平均效果；因此使用5個配對 seed、逐 seed差值與明確不可判定區。
+
+---VERDICT---
+STANCE: ACCEPT
+BLOCKING: [1. 完成並凍結 VAL FN 拆解與 targeted/exploratory 定位, 2. 通過中心對齊、K1 identity、γ=0 parity及梯度 exposure 測試, 3. 在不改 batch-16 Tversky 語義下證明 32 GB 記憶體可行]
+RESTATE: 固定 k=2與k=4是目前最乾淨的第一步，因為它能在不引入 RL 與小事件數造成的事件指紋風險下，直接檢驗 patch 外像素是否帶來可重現且推論時確實被使用的資訊。
+CONFIDENCE: HIGH
+---END---
+EXIT 0

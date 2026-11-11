@@ -1,133 +1,236 @@
 # 油汙偵測研究 Wiki — 目錄
 
-> 本頁列出所有 Wiki 頁面。每次新增頁面後請同步更新此目錄。
+> 每個內容頁面一行；此頁只幫你找到筆記，不承載最新數字或執行狀態。研究即時狀態見 `.agents/handoff.md` 與 institution `research/oil_spill_project_status.md`。
 
----
+## 研究問題與資料有效性
 
-## Pipeline 說明（wiki/pipeline/）
+- [20261111_研究問題與未解事項](wiki/concepts/20261111_研究問題與未解事項.md) — 當前研究問題、已知證據與尚未回答之處。
+- [20261111_來源分折與封存測試稽核](wiki/datasets/20261111_來源分折與封存測試稽核.md) — GoM 三折、NOAA 來源與封存測試的角色和限制。
 
-- [sen2like.md](wiki/pipeline/sen2like.md) — Sen2Like 處理流程：大氣校正、光譜一致化、Fusion、空間對齊、比對工具箱
-- [project_overview.md](wiki/pipeline/project_overview.md) — OIL_PROJECT_MutiBand_0420 專案概述：模型架構、前處理、訓練設定、I/O 優化、重要路徑
-- [OIL_PROJECT_VRT_0422.md](wiki/pipeline/OIL_PROJECT_VRT_0422.md) — 0422 VRT 訓練專案：GDAL VRT 虛擬影像、動態 Patch 讀取、全場景 Mask 流程
-- [annotation_workflow.md](wiki/pipeline/annotation_workflow.md) — 標注工作流程：LabelMe JSON 在 pipeline 的角色、QGIS GPKG → JSON 橋接腳本說明
-- [add_new_data.md](wiki/pipeline/add_new_data.md) — 新增 Sen2Like 資料流程：目錄結構規範、Strip→COG 轉換、VRT 建置、fold split 重算、patch 座標重生成（含腳本指令與關鍵路徑索引）
-- [VRT_pipeline_01_前處理.md](wiki/pipeline/VRT_pipeline_01_前處理.md) — 完整前處理 Pipeline：VRT 生成、GT Mask、Patch 切分（GB1.5）、3-fold 策略、HNM、NIR-R-G 背景圖；445 場景 / 8-band；2026-07-10 更新場景數 439→445、新增 Dataset Manifest 制度章節、JSON 雙位置說明
-- [VRT_pipeline_02_模型訓練.md](wiki/pipeline/VRT_pipeline_02_模型訓練.md) — 模型訓練 Pipeline：DeepLabV3+ ResNet-50（8-ch, from-scratch）、FocalLoss、class_weights=[13,1]、checkpoint/resume、fold2 基準；2026-07-10 修正三處硬錯（EMA decay=0.0 未修 bug、best.pt 依 val_miou 非 Oil IoU、FocalLoss 無 alpha 參數）並補分支 B（GT_expand）差異表
-- [VRT_pipeline_03_重組評估.md](wiki/pipeline/VRT_pipeline_03_重組評估.md) — Reconstruction 評估 Pipeline：全場景 Sliding Window、Cloud Mask 後處理、annot-only / JSON GT 兩組指標、prevalence 對照表、v2 效能優化、fold2 Oil IoU=39.80%
-- [OIL_PROJECT_MutiBand_0422_VRT_training.md](wiki/pipeline/OIL_PROJECT_MutiBand_0422_VRT_training.md) — 0422 論文主軸版本入口索引：sliding-window 策略說明、指向三份 VRT pipeline 系列文件、與 GT_expand 的關係
-- [GT_expand_pipeline.md](wiki/pipeline/GT_expand_pipeline.md) — GT_expand Fork 版本 Pipeline：GT-centric patch 策略（bbox≤256 取中心 / bbox>256 用 256-grid 鋪磚，2,893 patches）、背景 patch 機制（bg_coords 3,510 筆）、3_fold_stratified_v2 split、cw31/tversky 實驗線；2026-07-10 大幅更新反映現況；**2026-07-24 更新**：舊雙 gate（pooled_oil_iou>0.362 + Wilcoxon）降為 legacy，正式判定改用 Evaluation Contract v1.0，並補 tversky 完整結果與訓練不可重現修復的 caveat
-- [GT_expand_workflow_onboarding.md](wiki/pipeline/GT_expand_workflow_onboarding.md) — 逐段維護的新人導覽；目前完成範圍界定與 8-band 資料特性，後續將沿 VRT/Mask、patch、訓練、推論與評估逐段補寫
+## 實驗紀錄
 
----
+- [三策略比較實驗計畫](wiki/experiments/三策略比較實驗計畫.md) — 實驗方法、結果與解讀限制。
+- [20261110_P50_H1prime_UperNet_三seed_執行紀錄](wiki/experiments/20261110_P50_H1prime_UperNet_三seed_執行紀錄.md) — 實驗方法、結果與解讀限制。
+- [20261110_P49_LFMDA搬到ROI_三seed_執行紀錄](wiki/experiments/20261110_P49_LFMDA搬到ROI_三seed_執行紀錄.md) — 實驗方法、結果與解讀限制。
+- [20261109_ROI_probe_既有LFMDA模型套ROI3840_執行紀錄](wiki/experiments/20261109_ROI_probe_既有LFMDA模型套ROI3840_執行紀錄.md) — 實驗方法、結果與解讀限制。
+- [20261109_P48_H1prime與P44補seed_結果](wiki/experiments/20261109_P48_H1prime與P44補seed_結果.md) — HNM 與自然比例三 seed 的穩定性及判讀。
+- [20261109_P47_SpectralGPT_ROI_結果](wiki/experiments/20261109_P47_SpectralGPT_ROI_結果.md) — SpectralGPT+ 接 ROI 的單 seed 結果與限制。
+- [20261108_P46_HNM_SI大圖版_結果](wiki/experiments/20261108_P46_HNM_SI大圖版_結果.md) — HNM 組裝 gate、版本修訂與臺灣對照。
+- [20261107_P45_固定含油窗數_結果](wiki/experiments/20261107_P45_固定含油窗數_結果.md) — 固定 k 個含油窗的選擇、結果與感測器觀察。
+- [20261106_P44_ROI自然比例基線_結果](wiki/experiments/20261106_P44_ROI自然比例基線_結果.md) — ROI 自然比例流程的首次結果與判定。
+- [20261105_P43_LFMDA流程補seed穩定性_執行紀錄](wiki/experiments/20261105_P43_LFMDA流程補seed穩定性_執行紀錄.md) — 實驗方法、結果與解讀限制。
+- [20261104_P42_LFMDA_stage2_from_P41_T3_執行紀錄](wiki/experiments/20261104_P42_LFMDA_stage2_from_P41_T3_執行紀錄.md) — 實驗方法、結果與解讀限制。
+- [20261104_P41_LFMDA_PCD_固定P15teacher_執行紀錄](wiki/experiments/20261104_P41_LFMDA_PCD_固定P15teacher_執行紀錄.md) — 實驗方法、結果與解讀限制。
+- [20261104_P40_LFMDA_6波段_執行紀錄](wiki/experiments/20261104_P40_LFMDA_6波段_執行紀錄.md) — 實驗方法、結果與解讀限制。
+- [20261103_P39_LFMDA_stage2_SAM_LRH_結果](wiki/experiments/20261103_P39_LFMDA_stage2_SAM_LRH_結果.md) — 實驗方法、結果與解讀限制。
+- [20261103_P38_LFMDA_warmupPCD_結果](wiki/experiments/20261103_P38_LFMDA_warmupPCD_結果.md) — 實驗方法、結果與解讀限制。
+- [20261101_P37_臺灣24景補充_LaneB結果](wiki/experiments/20261101_P37_臺灣24景補充_LaneB結果.md) — 實驗方法、結果與解讀限制。
+- [20261101_P37_LFMDA_SegFormerB2_sourceonly_結果](wiki/experiments/20261101_P37_LFMDA_SegFormerB2_sourceonly_結果.md) — 實驗方法、結果與解讀限制。
+- [20261030_P36_結果](wiki/experiments/20261030_P36_結果.md) — 實驗方法、結果與解讀限制。
+- [20261030_P35_LFMDA凍結原型教師可行性_事前卡](wiki/experiments/20261030_P35_LFMDA凍結原型教師可行性_事前卡.md) — 實驗方法、結果與解讀限制。
+- [20261028_P30_StageIII結果與診斷](wiki/experiments/20261028_P30_StageIII結果與診斷.md) — 實驗方法、結果與解讀限制。
+- [20261026_DADS_SAM_全資料排除臺灣_臺灣19張](wiki/experiments/20261026_DADS_SAM_全資料排除臺灣_臺灣19張.md) — 實驗方法、結果與解讀限制。
+- [20261024_P27_Wakashio比值診斷_否定單一比值優先Stage2候選](wiki/experiments/20261024_P27_Wakashio比值診斷_否定單一比值優先Stage2候選.md) — 實驗方法、結果與解讀限制。
+- [20261024_DADS_SAM_Tversky_全資料3fold](wiki/experiments/20261024_DADS_SAM_Tversky_全資料3fold.md) — 實驗方法、結果與解讀限制。
+- [20261019_DADS_SAM_公開碼loss_全資料3fold](wiki/experiments/20261019_DADS_SAM_公開碼loss_全資料3fold.md) — 實驗方法、結果與解讀限制。
+- [20261016_DADS_SAM_B_只換loss_三seed_與B無可分辨差異](wiki/experiments/20261016_DADS_SAM_B_只換loss_三seed_與B無可分辨差異.md) — 實驗方法、結果與解讀限制。
+- [20261015_DADS_SAM_B_公開碼訓練設定_三seed_臺灣皆低於B範圍](wiki/experiments/20261015_DADS_SAM_B_公開碼訓練設定_三seed_臺灣皆低於B範圍.md) — 實驗方法、結果與解讀限制。
+- [20261014_DADS_SAM_B_公開碼訓練設定_臺灣低於B三seed範圍](wiki/experiments/20261014_DADS_SAM_B_公開碼訓練設定_臺灣低於B三seed範圍.md) — 實驗方法、結果與解讀限制。
+- [20261011_P25_HNM背景替換在臺灣終點無效_GoM否定_全球不可判定](wiki/experiments/20261011_P25_HNM背景替換在臺灣終點無效_GoM否定_全球不可判定.md) — 實驗方法、結果與解讀限制。
+- [20261011_DADS_SAM_GoM_only_正式C與B_皆不可判定](wiki/experiments/20261011_DADS_SAM_GoM_only_正式C與B_皆不可判定.md) — 實驗方法、結果與解讀限制。
+- [20261005_台灣預測線寬量測與2x放大推論試探](wiki/experiments/20261005_台灣預測線寬量測與2x放大推論試探.md) — 實驗方法、結果與解讀限制。
+- [20261004_P16_vs_P21_Tversky舊圖比較](wiki/experiments/20261004_P16_vs_P21_Tversky舊圖比較.md) — 實驗方法、結果與解讀限制。
+- [20260925_P18_台灣holdout比例19_21_23_不可判定](wiki/experiments/20260925_P18_台灣holdout比例19_21_23_不可判定.md) — 實驗方法、結果與解讀限制。
+- [20260915_P14_GoM_vs_NonGoM_full_ablation_主端點未計](wiki/experiments/20260915_P14_GoM_vs_NonGoM_full_ablation_主端點未計.md) — 實驗方法、結果與解讀限制。
+- [20260913_P13海域來源敏感度_只部分回答](wiki/experiments/20260913_P13海域來源敏感度_只部分回答.md) — 實驗方法、結果與解讀限制。
+- [20260904_P10油背像素比例六點格_峰位辨識但增益不足](wiki/experiments/20260904_P10油背像素比例六點格_峰位辨識但增益不足.md) — 實驗方法、結果與解讀限制。
+- [20260831_週結_背景patch配額三部曲P7P8P9](wiki/experiments/20260831_週結_背景patch配額三部曲P7P8P9.md) — 實驗方法、結果與解讀限制。
+- [20260831_P9油背像素比例bracket_inconclusive與凹性發現](wiki/experiments/20260831_P9油背像素比例bracket_inconclusive與凹性發現.md) — 實驗方法、結果與解讀限制。
+- [20260827_P7背景patch配額政策實驗_r12_null與機制發現](wiki/experiments/20260827_P7背景patch配額政策實驗_r12_null與機制發現.md) — 實驗方法、結果與解讀限制。
+- [20260806_P4操作點決策閾值_實質null](wiki/experiments/20260806_P4操作點決策閾值_實質null.md) — 實驗方法、結果與解讀限制。
+- [20260805_巨型場景診斷與P4操作點實驗](wiki/experiments/20260805_巨型場景診斷與P4操作點實驗.md) — 實驗方法、結果與解讀限制。
+- [20260731_ASPP_rate適配實驗](wiki/experiments/20260731_ASPP_rate適配實驗.md) — 實驗方法、結果與解讀限制。
+- [20260724_Focal_Tversky小圖實驗可行性評估](wiki/experiments/20260724_Focal_Tversky小圖實驗可行性評估.md) — 實驗方法、結果與解讀限制。
+- [20260718_訓練不可重現根因與決定性修復](wiki/experiments/20260718_訓練不可重現根因與決定性修復.md) — 實驗方法、結果與解讀限制。
+- [20260716_資料溯源洩漏與評估合約v1](wiki/experiments/20260716_資料溯源洩漏與評估合約v1.md) — 實驗方法、結果與解讀限制。
+- [20260709_baseline錯誤分析_GT過寬與方向二降級](wiki/experiments/20260709_baseline錯誤分析_GT過寬與方向二降級.md) — 實驗方法、結果與解讀限制。
+- [20260708_JM距離判別髒資料可行性診斷](wiki/experiments/20260708_JM距離判別髒資料可行性診斷.md) — 實驗方法、結果與解讀限制。
+- [20260702_波段選擇消融實驗規劃](wiki/experiments/20260702_波段選擇消融實驗規劃.md) — 實驗方法、結果與解讀限制。
+- [20260702_CV_358clean_gt_expand_進行中](wiki/experiments/20260702_CV_358clean_gt_expand_進行中.md) — 實驗方法、結果與解讀限制。
+- [20260614_DeepRX_EM_v3_全場景實驗總結](wiki/experiments/20260614_DeepRX_EM_v3_全場景實驗總結.md) — 實驗方法、結果與解讀限制。
+- [20260613_iForest_LocalContrast_B4B8B11_全場景實驗總結](wiki/experiments/20260613_iForest_LocalContrast_B4B8B11_全場景實驗總結.md) — 實驗方法、結果與解讀限制。
+- [20260607_iForest_Pipeline精簡化與全場景執行](wiki/experiments/20260607_iForest_Pipeline精簡化與全場景執行.md) — 實驗方法、結果與解讀限制。
+- [20260605_資料集修正與三策略重跑](wiki/experiments/20260605_資料集修正與三策略重跑.md) — 實驗方法、結果與解讀限制。
+- [20260604_iForest全場景改進](wiki/experiments/20260604_iForest全場景改進.md) — 實驗方法、結果與解讀限制。
+- [20260603_Unsupervised油汙偵測初探](wiki/experiments/20260603_Unsupervised油汙偵測初探.md) — 實驗方法、結果與解讀限制。
+- [20260602_三策略前置作業執行紀錄](wiki/experiments/20260602_三策略前置作業執行紀錄.md) — 實驗方法、結果與解讀限制。
+- [20260530_實驗結果彙整](wiki/experiments/20260530_實驗結果彙整.md) — 實驗方法、結果與解讀限制。
+- [20260527_CrossFoldHNM_執行紀錄](wiki/experiments/20260527_CrossFoldHNM_執行紀錄.md) — 實驗方法、結果與解讀限制。
+- [20260525_架構演進與差異彙整](wiki/experiments/20260525_架構演進與差異彙整.md) — 實驗方法、結果與解讀限制。
+- [20260521_MS6_Pipeline執行紀錄](wiki/experiments/20260521_MS6_Pipeline執行紀錄.md) — 實驗方法、結果與解讀限制。
+- [20260520_新批Sen2Like資料Pipeline重建計畫](wiki/experiments/20260520_新批Sen2Like資料Pipeline重建計畫.md) — 實驗方法、結果與解讀限制。
+- [20260501_大圖重組效能優化](wiki/experiments/20260501_大圖重組效能優化.md) — 實驗方法、結果與解讀限制。
+- [20260430_訓練效能優化](wiki/experiments/20260430_訓練效能優化.md) — 實驗方法、結果與解讀限制。
+- [20260429_OSDMamba整合至0420](wiki/experiments/20260429_OSDMamba整合至0420.md) — 實驗方法、結果與解讀限制。
 
-## 實驗紀錄（wiki/experiments/）
+## 實驗設計與逐案決策
 
-- [P37 臺灣 24 景補充推論設計（DESIGN_FROZEN，推論前凍結）](.agents/decisions/20261101_P37_臺灣24景補充推論設計.md) — 2026-11-01：將 Lane A（19 景/270 窗）已訓練 P37 source-only checkpoint 套用到新增五景/36 窗（Lane B，非盲）；共識 Claude Opus 5／high 同 session `24d691d4-5388-4d35-a462-76bf053a311d` R1 REVISE→R2 REVISE→R3 ACCEPT／BLOCKING=[]；固定 repo commit `483b797…162a0b`、24 景 manifest/registry SHA、final/best checkpoint SHA（`39947952…32b58`/`c98173626…957ff`），本次已核對 `infer_p37_extension.py`/`evaluate_p37_extension.py`/`seal_p37_extension_attempts.py` 三份程式 SHA；固定方法含 last-window-wins（含兩個非零無效比例窗 .378937/.004608，自分母排除）、raw0=已標油/raw255=未標註、僅報已標油 micro（主）/macro（次）recall（需另外授權）、明確不算 IoU/precision/F1/FPR、不與 Lane A 合併成 24 景 pooled IoU；五景在 P37 訓練前已存在，Lane B 非盲測；卡本身為推論前凍結之歷史設計；**現況更新（2026-11-01）：五景/36 窗 image-only 推論已完成（final/best），selection SHA `e8a09f8e8f3cb458cdcc556ef8cf9e56b59c74538434927f0ed4f4ab57030351`；target GT 指標尚未執行**
-- [P37 臺灣預測圖編碼勘誤（已修復）](.agents/decisions/20261101_P37_臺灣預測圖編碼勘誤.md) — 2026-11-01：發現 `infer_target.py` 把油機率≥0.5 存成 PNG 像素 1，但 `evaluate_target.py`／合成測試把像素 0 當油，原封存 270 窗 PNG 若直接送評估器會正負類反轉（合成測試驗證：原編碼 IoU=0，反轉後 IoU=1）；GoM source-val 訓練/驗證用 argmax 不受影響，不需重訓或重選 checkpoint；修復只對原 PNG 逐檔 `1-old` 另存新資料夾、float16 機率檔逐 byte 複製，原始 manifest／PNG 保持不可變；Pin 原始 final/best manifest SHA（`8edd0482…65bcb9725`/`5abad090…fa2b7c0ce`）、修復程式 SHA `34ec228c…c70189034`、修正後 GT 評估 wrapper `run_corrected_target_eval.py` SHA `2de1c799…9ff5843d2`；修正後 final/best manifest SHA 已補填：`029554e3d3cef83dec92d33d15c0f5273b487eafb86fa2250448edd4ff4d0578` / `161f586457e3464042c3acb189798d6afdb48b0363773a71924672103c9f1444`，修復封口 seal SHA `4a48c199d629b8c878d4d667a0501b7eb841c935ed9bd99fa2aa81c5945955a8`；原始 source/old outputs 保持不變；**target GT 計分仍關閉**
-- [20261011_P25_HNM背景替換在臺灣終點無效_GoM否定_全球不可判定.md](wiki/experiments/20261011_P25_HNM背景替換在臺灣終點無效_GoM否定_全球不可判定.md) — P25 HNM 背景替換單 seed pilot 結案九步驟卡（第7-9步）：GoM-only＋HNM 0.3268 否定、全球排除臺灣＋HNM 0.4025 不可判定；路線收線
-- [20261011_DADS_SAM_GoM_only_正式C與B_皆不可判定.md](wiki/experiments/20261011_DADS_SAM_GoM_only_正式C與B_皆不可判定.md) — DADS-SAM GoM-only 正式 C／B 結案九步驟卡（第7-9步）：臺灣 9 景平均 Oil IoU C 0.3596（X−R −0.0266）、B 0.3732（X−R −0.0130），皆不可判定；每組單 seed、B 非盲測；1–6 正本見 `.agents/decisions/20261010_DADS_SAM_GoM_C_B正式run設計.md`
-- [未來工項(116–117)首波技術排序與文獻 survey](.agents/decisions/20261008_未來工項首波技術排序與文獻survey.md) — 2026-10-08 Claude×Codex 三回合同 session 收斂（R3 雙方 ACCEPT／BLOCKING=[]）；G0 評估底座先行，B1 以共用對照同批檢驗 zoom-out(Z) 與入口 2×(R)；僅優先序，未授權任何 launch／改檔／凍結
-- [P24 全球排除台灣、GoM 增強曝光設計](.agents/decisions/20261006_P24_全球排除台灣_GoM增強曝光設計.md) — 2026-10-06 卡1–6正式收斂；Original／P15倍率1.6420745069／2×，三seed九run、global source-Val選模、固定台灣兩事件P5評估；屬曝光政策效果。CPU稽核及獨立72項PASS；actual loader／CUDA待驗證、run:false、未launch／commit
-- [P25 HNM 背景替換單 seed pilot 設計](.agents/decisions/20261011_P25_HNM背景替換單seed_pilot設計.md) — 2026-10-11 九步驟卡 1–6 凍結；把大圖時期 hard negative mining 搬回 GT-centric 架構，單 seed pilot、使用者直接指示未經 Codex 協商；設計凍結、訓練未啟動
+- [20261111_ROI固定倍率context_k2k4實驗設計](.agents/decisions/20261111_ROI固定倍率context_k2k4實驗設計.md) — 固定倍率 context 實驗的對照、判準與前置驗收。
+- [20261111_P51_GoM_only_ROI資料制度_設計](.agents/decisions/20261111_P51_GoM_only_ROI資料制度_設計.md) — P51 凍結設計卡的 vault 鏡像與原件指標。
+- [20261108_P48補seed_H1與P44](.agents/decisions/20261108_P48補seed_H1與P44.md) — 事前設計、協商或研究裁決。
+- [20261108_P47_SpectralGPT_ROI3840](.agents/decisions/20261108_P47_SpectralGPT_ROI3840.md) — 事前設計、協商或研究裁決。
+- [20261107_P46大圖版配比與OOF探勘](.agents/decisions/20261107_P46大圖版配比與OOF探勘.md) — 事前設計、協商或研究裁決。
+- [20261107_HNM_SI改寫到P45k4](.agents/decisions/20261107_HNM_SI改寫到P45k4.md) — 事前設計、協商或研究裁決。
+- [20261106_P45_每batch固定含油窗數](.agents/decisions/20261106_P45_每batch固定含油窗數.md) — 事前設計、協商或研究裁決。
+- [20261106_P44_ROI重疊滑窗全球排除臺灣設計](.agents/decisions/20261106_P44_ROI重疊滑窗全球排除臺灣設計.md) — 事前設計、協商或研究裁決。
+- [20261105_P43_LFMDA流程補seed穩定性設計](.agents/decisions/20261105_P43_LFMDA流程補seed穩定性設計.md) — 事前設計、協商或研究裁決。
+- [20261104_P42_LFMDA_stage2_from_P41_T3設計](.agents/decisions/20261104_P42_LFMDA_stage2_from_P41_T3設計.md) — 事前設計、協商或研究裁決。
+- [20261104_P41_LFMDA_PCD_固定P15teacher設計](.agents/decisions/20261104_P41_LFMDA_PCD_固定P15teacher設計.md) — 事前設計、協商或研究裁決。
+- [20261104_P40_LFMDA_6波段_C6T6設計](.agents/decisions/20261104_P40_LFMDA_6波段_C6T6設計.md) — 事前設計、協商或研究裁決。
+- [20261103_P39_LFMDA_stage2_SAM_LRH設計](.agents/decisions/20261103_P39_LFMDA_stage2_SAM_LRH設計.md) — 事前設計、協商或研究裁決。
+- [20261101_臺灣24景外部測試名冊擴充](.agents/decisions/20261101_臺灣24景外部測試名冊擴充.md) — 事前設計、協商或研究裁決。
+- [20261101_P38_LFMDA_warmupPCD設計](.agents/decisions/20261101_P38_LFMDA_warmupPCD設計.md) — 事前設計、協商或研究裁決。
+- [20261101_P38_LFMDA_warmupPCD事前卡協商](.agents/decisions/20261101_P38_LFMDA_warmupPCD事前卡協商.md) — 事前設計、協商或研究裁決。
+- [20261101_P37_臺灣預測圖編碼勘誤](.agents/decisions/20261101_P37_臺灣預測圖編碼勘誤.md) — 事前設計、協商或研究裁決。
+- [20261101_P37_臺灣24景補充推論設計](.agents/decisions/20261101_P37_臺灣24景補充推論設計.md) — 事前設計、協商或研究裁決。
+- [20261101_P37_LFMDA_SegFormerB2_sourceonly設計_v2](.agents/decisions/20261101_P37_LFMDA_SegFormerB2_sourceonly設計_v2.md) — 事前設計、協商或研究裁決。
+- [20261101_P37_LFMDA_SegFormerB2_sourceonly設計](.agents/decisions/20261101_P37_LFMDA_SegFormerB2_sourceonly設計.md) — 事前設計、協商或研究裁決。
+- [20261030_P36_StageI判別器GoM含油範本設計](.agents/decisions/20261030_P36_StageI判別器GoM含油範本設計.md) — 事前設計、協商或研究裁決。
+- [20261029_P33_光學IntraDA對照組設計共識](.agents/decisions/20261029_P33_光學IntraDA對照組設計共識.md) — 事前設計、協商或研究裁決。
+- [20261029_P33_光學IntraDA對照組事前卡](.agents/decisions/20261029_P33_光學IntraDA對照組事前卡.md) — 事前設計、協商或研究裁決。
+- [20261029_P32_光學EUDA_GTROI全流程設計](.agents/decisions/20261029_P32_光學EUDA_GTROI全流程設計.md) — 事前設計、協商或研究裁決。
+- [20261029_P32_StageIII凍結addendum](.agents/decisions/20261029_P32_StageIII凍結addendum.md) — 事前設計、協商或研究裁決。
+- [20261029_P32_StageIII_bugfix_addendum](.agents/decisions/20261029_P32_StageIII_bugfix_addendum.md) — 事前設計、協商或研究裁決。
+- [20261029_P32_PhaseC延後聯合評估addendum](.agents/decisions/20261029_P32_PhaseC延後聯合評估addendum.md) — 事前設計、協商或研究裁決。
+- [20261029_P31塌縮後續_V32V33共識](.agents/decisions/20261029_P31塌縮後續_V32V33共識.md) — 事前設計、協商或研究裁決。
+- [20261028_P31_光學EUDA_GT位置ROI_StageIII設計](.agents/decisions/20261028_P31_光學EUDA_GT位置ROI_StageIII設計.md) — 事前設計、協商或研究裁決。
+- [20261028_P30_光學EUDA_StageIII_EMA設計](.agents/decisions/20261028_P30_光學EUDA_StageIII_EMA設計.md) — 事前設計、協商或研究裁決。
+- [20261028_P30_StageIII背景塌縮診斷](.agents/decisions/20261028_P30_StageIII背景塌縮診斷.md) — 事前設計、協商或研究裁決。
+- [20261026_P29_光學EUDA_Stage1來源對抗設計](.agents/decisions/20261026_P29_光學EUDA_Stage1來源對抗設計.md) — 事前設計、協商或研究裁決。
+- [20261025_耀光門檻與光學EUDA_Opus55討論](.agents/decisions/20261025_耀光門檻與光學EUDA_Opus55討論.md) — 事前設計、協商或研究裁決。
+- [20261024_P28_B08_dip來源訓練集診斷設計](.agents/decisions/20261024_P28_B08_dip來源訓練集診斷設計.md) — 事前設計、協商或研究裁決。
+- [20261024_P27_Wakashio比值來源端初步診斷設計](.agents/decisions/20261024_P27_Wakashio比值來源端初步診斷設計.md) — 事前設計、協商或研究裁決。
+- [20261020_P26_SPOT6四波段雙模型設計](.agents/decisions/20261020_P26_SPOT6四波段雙模型設計.md) — 事前設計、協商或研究裁決。
+- [20261018_DADS_SAM_B_固定LR_5e5_設計](.agents/decisions/20261018_DADS_SAM_B_固定LR_5e5_設計.md) — 事前設計、協商或研究裁決。
+- [20261018_DADS_SAM_B_AdamW_同wd_設計](.agents/decisions/20261018_DADS_SAM_B_AdamW_同wd_設計.md) — 事前設計、協商或研究裁決。
+- [20261015_DADS_SAM_B_只換loss_DiceCE_Focal_設計](.agents/decisions/20261015_DADS_SAM_B_只換loss_DiceCE_Focal_設計.md) — 事前設計、協商或研究裁決。
+- [20261014_DADS_SAM_B_公開碼訓練設定_seed43_44_設計](.agents/decisions/20261014_DADS_SAM_B_公開碼訓練設定_seed43_44_設計.md) — 事前設計、協商或研究裁決。
+- [20261013_DADS_SAM_B_公開碼訓練設定_設計](.agents/decisions/20261013_DADS_SAM_B_公開碼訓練設定_設計.md) — 事前設計、協商或研究裁決。
+- [20261011_P25_HNM背景替換單seed_pilot設計](.agents/decisions/20261011_P25_HNM背景替換單seed_pilot設計.md) — 事前設計、協商或研究裁決。
+- [20261010_DADS_SAM_GoM_C_B正式run設計](.agents/decisions/20261010_DADS_SAM_GoM_C_B正式run設計.md) — 事前設計、協商或研究裁決。
+- [20261008_未來工項首波技術排序與文獻survey](.agents/decisions/20261008_未來工項首波技術排序與文獻survey.md) — 事前設計、協商或研究裁決。
+- [20261006_P24_全球排除台灣_GoM增強曝光設計](.agents/decisions/20261006_P24_全球排除台灣_GoM增強曝光設計.md) — 事前設計、協商或研究裁決。
+- [20261006_P23_GoM入口2x放大重訓設計](.agents/decisions/20261006_P23_GoM入口2x放大重訓設計.md) — 事前設計、協商或研究裁決。
+- [20261002_P22_GoM大中小分組五run設計](.agents/decisions/20261002_P22_GoM大中小分組五run設計.md) — 事前設計、協商或研究裁決。
+- [20261001_GoM台灣遷移機制分析與DG_survey方向](.agents/decisions/20261001_GoM台灣遷移機制分析與DG_survey方向.md) — 事前設計、協商或研究裁決。
+- [20260930_P21_GoM_Tversky_a02設計](.agents/decisions/20260930_P21_GoM_Tversky_a02設計.md) — 事前設計、協商或研究裁決。
+- [20260929_GoM大中小組BG配置與訓練控制](.agents/decisions/20260929_GoM大中小組BG配置與訓練控制.md) — 事前設計、協商或研究裁決。
+- [20260929_GoM大中小分組規則與切點](.agents/decisions/20260929_GoM大中小分組規則與切點.md) — 事前設計、協商或研究裁決。
+- [20260927_P20_P18_seed擴充設計](.agents/decisions/20260927_P20_P18_seed擴充設計.md) — 事前設計、協商或研究裁決。
+- [20260924_P19_GoM形態分組獨立訓練設計](.agents/decisions/20260924_P19_GoM形態分組獨立訓練設計.md) — 事前設計、協商或研究裁決。
+- [20260923_P18_台灣holdout背景配額rho19_21_23設計](.agents/decisions/20260923_P18_台灣holdout背景配額rho19_21_23設計.md) — 事前設計、協商或研究裁決。
+- [20260921_雙harness降token消耗方案](.agents/decisions/20260921_雙harness降token消耗方案.md) — 事前設計、協商或研究裁決。
+- [20260921_P17_GoM_val規模對齊設計](.agents/decisions/20260921_P17_GoM_val規模對齊設計.md) — 事前設計、協商或研究裁決。
+- [20260920_P16_GoM等patch單seed設計](.agents/decisions/20260920_P16_GoM等patch單seed設計.md) — 事前設計、協商或研究裁決。
+- [20260918_P15_GoM曝光量倍增設計_部分事前凍結](.agents/decisions/20260918_P15_GoM曝光量倍增設計_部分事前凍結.md) — 事前設計、協商或研究裁決。
+- [20260914_P14_GoM_full-source_ablation設計](.agents/decisions/20260914_P14_GoM_full-source_ablation設計.md) — 事前設計、協商或研究裁決。
+- [20260913_P13海域與資料量最終結論](.agents/decisions/20260913_P13海域與資料量最終結論.md) — 事前設計、協商或研究裁決。
+- [20260911_P13_patch-balanced台灣source_sensitivity實驗設計](.agents/decisions/20260911_P13_patch-balanced台灣source_sensitivity實驗設計.md) — 事前設計、協商或研究裁決。
+- [20260908_P11_GeoAgent_attempt1非執行判定與attempt2啟動](.agents/decisions/20260908_P11_GeoAgent_attempt1非執行判定與attempt2啟動.md) — 事前設計、協商或研究裁決。
+- [20260902_GeoAgent_A2C尺度配置實驗設計與建碼](.agents/decisions/20260902_GeoAgent_A2C尺度配置實驗設計與建碼.md) — 事前設計、協商或研究裁決。
+- [20260901_P10油背比例細格研究設計](.agents/decisions/20260901_P10油背比例細格研究設計.md) — 事前設計、協商或研究裁決。
+- [20260831_GeoAgent_GlobalLocal油污分割應用設計](.agents/decisions/20260831_GeoAgent_GlobalLocal油污分割應用設計.md) — 事前設計、協商或研究裁決。
+- [20260828_油背像素比例敏感度研究設計](.agents/decisions/20260828_油背像素比例敏感度研究設計.md) — 事前設計、協商或研究裁決。
+- [20260827_P8背景座標池擴充實驗設計](.agents/decisions/20260827_P8背景座標池擴充實驗設計.md) — 事前設計、協商或研究裁決。
+- [20260825_Alan專案退役與研究線統一回GT_expand](.agents/decisions/20260825_Alan專案退役與研究線統一回GT_expand.md) — 事前設計、協商或研究裁決。
+- [20260727_Claude_Opus_5正式共識路由升級](.agents/decisions/20260727_Claude_Opus_5正式共識路由升級.md) — 事前設計、協商或研究裁決。
+- [20260724_Focal_Tversky小圖實驗可行性](.agents/decisions/20260724_Focal_Tversky小圖實驗可行性.md) — 事前設計、協商或研究裁決。
+- [20260724_Codex審查與決定性重跑優先序](.agents/decisions/20260724_Codex審查與決定性重跑優先序.md) — 事前設計、協商或研究裁決。
+- [20260718_Codex預設入口與Claude雙向協商](.agents/decisions/20260718_Codex預設入口與Claude雙向協商.md) — 事前設計、協商或研究裁決。
+- [20260716_全景移植amendment與外部效度包](.agents/decisions/20260716_全景移植amendment與外部效度包.md) — 事前設計、協商或研究裁決。
+- [20260715_prithvi_upernet全景移植路線](.agents/decisions/20260715_prithvi_upernet全景移植路線.md) — 事前設計、協商或研究裁決。
+- [20260715_prithvi_dlv3_head消融](.agents/decisions/20260715_prithvi_dlv3_head消融.md) — 事前設計、協商或研究裁決。
+- [20260713_prithvi_eo2_接入方案](.agents/decisions/20260713_prithvi_eo2_接入方案.md) — 事前設計、協商或研究裁決。
+- [20260711_研究路線重排與OOD_holdout](.agents/decisions/20260711_研究路線重排與OOD_holdout.md) — 事前設計、協商或研究裁決。
+- [20260711_收斂驅動協商制度升級](.agents/decisions/20260711_收斂驅動協商制度升級.md) — 事前設計、協商或研究裁決。
+- [20260711_harness結構改革](.agents/decisions/20260711_harness結構改革.md) — 事前設計、協商或研究裁決。
 
-- [20261005_台灣預測線寬量測與2x放大推論試探.md](wiki/experiments/20261005_台灣預測線寬量測與2x放大推論試探.md) — 台灣預測線寬 13–18 px 與標註寬無關；2× 放大推論線寬未減半、IoU 多數下降；描述性、無訓練；10-06 追加 GoM 驗證集檢查：細碎 patch 在來源域也圈胖
-- [20261004_P16_vs_P21_Tversky舊圖比較.md](wiki/experiments/20261004_P16_vs_P21_Tversky舊圖比較.md) — 使用者指定 Claude 舊圖 P16 0.3/0.7 vs P21 0.2/0.8：recall↑、precision↓，event-macro Oil IoU 0.4554→0.4518；Val 與 α/β 同步改變、單 seed，因果不可判定；附 confusion matrix／9 景指標熱力圖來源，與 P21 同輪 PROMISING 比較分開
-- [P16 GoM 等 patch 單 seed 設計](.agents/decisions/20260920_P16_GoM等patch單seed設計.md) — 2026-09-20 事前凍結：GoM／NonGoM 各 584 GT＋1,180 BG，seed42，等更新預算；input/config 與 report runtime gates 通過；首次送跑（20:17:47 啟動）於 21:07 遭 SIGINT 中斷（Epoch 15/300），經使用者授權刪除，21:12:40 由 epoch 0 重跑中（詳見 handoff.md「目前狀態」），尚無可報告結果
-- [20260429_OSDMamba整合至0420.md](wiki/experiments/20260429_OSDMamba整合至0420.md) — OSDMamba 整合至 0420 專案：移植工作、與 0422 版差異、下一步
-- [20260430_訓練效能優化.md](wiki/experiments/20260430_訓練效能優化.md) — OSDMamba 訓練效能優化：CPU-GPU 同步瓶頸、向量化 Loss、EMA 調整
-- [20260501_大圖重組效能優化.md](wiki/experiments/20260501_大圖重組效能優化.md) — 大圖重組效能優化：NAS I/O 瓶頸、GPU 側重組、Batch Size 提升
-- [20260520_新批Sen2Like資料Pipeline重建計畫.md](wiki/experiments/20260520_新批Sen2Like資料Pipeline重建計畫.md) — 新資料引入完整 pipeline：8-band（B01/02/03/04/08/8A/11/12）、GPKG→JSON 轉換、GB1.0、2025 固定 test set、stratified scene-level fold split
-- [20260521_MS6_Pipeline執行紀錄.md](wiki/experiments/20260521_MS6_Pipeline執行紀錄.md) — MS6 8-band DeepLabV3+ 完整執行紀錄：VRT 建置（B02 10m 參考）、COG 轉換（1546 TIF，9× I/O 提升）、class_weights、AMP、Bug 修正 6 項（VRT 60m 參考致訓練全零 / 三處 /10000 遺漏 / NIR-R-G PNG 路徑 / 輸出路徑）、重組速度優化（_read_vrt_parallel、async save、bg prefetch）、per-fold log / start_fold、5-fold CV 進行中（Fold 1 完成 mIoU=0.593）
-- [20260525_架構演進與差異彙整.md](wiki/experiments/20260525_架構演進與差異彙整.md) — 2026-05-20 至 05-25 全面對比：資料格式（11→8 band、strip→COG、VRT Bug 修正）、前處理 pipeline、訓練設定（AMP/class_weights）、重組速度優化（_read_vrt_parallel / async save / prefetch）、Bug 修正彙總
-- [20260527_CrossFoldHNM_執行紀錄.md](wiki/experiments/20260527_CrossFoldHNM_執行紀錄.md) — Cross-Fold HNM Step 2~4 完整紀錄：step2 卡死修正（45,848 FP candidates）、step3 d_min 分布（p10=0.152 截點）、step4 組裝（1:1+0.5HN=1:1.5）、cfHNM 訓練完成（avg Oil IoU=0.224，未超越 A 組 0.242）
-- [20260530_實驗結果彙整.md](wiki/experiments/20260530_實驗結果彙整.md) — 截至 2026-05-30 全實驗彙整：Ref 5-fold GB1.0（avg Oil IoU=0.277）、A 組 3-fold GB1.5（0.242）、B 組 3-fold cfHNM（0.224）、跨組對比與後續方向
-- [三策略比較實驗計畫.md](wiki/experiments/三策略比較實驗計畫.md) — 執行計畫（更新中）：策略一純隨機 / 策略二事件留出 / 策略三時序擴展，各跑 3-fold DeepLabV3+；scene split 完成，patch 座標生成進行中
-- [20260602_三策略前置作業執行紀錄.md](wiki/experiments/20260602_三策略前置作業執行紀錄.md) — 三策略前置作業完整紀錄：資料現況修正（NOAA 可用 220 非 395）、事件 36 場景 GPKG→mask→VRT、COG 轉換 3073 TIF、scene split 三策略執行結果、patch 座標生成指令
-- [20260605_資料集修正與三策略重跑.md](wiki/experiments/20260605_資料集修正與三策略重跑.md) — 183 NOAA 場景補齊 JSON+Mask（220→403 NOAA，總計 439）、廢棄目錄清理（1.1TB）、JSON flat 目錄重建、yaml json_dir 修正、三策略 scene split + patch coords 全部重跑、RGB viz 升級、early stop 觀察與 class_weights 矛盾分析
-- [20260603_Unsupervised油汙偵測初探.md](wiki/experiments/20260603_Unsupervised油汙偵測初探.md) — Unsupervised 油汙偵測兩階段 pipeline 初探：HOSD 高光譜基準（AUC=0.99）、5 個 S2 場景 iForest + OSI 對比、雲遮罩設計、Precision 低問題診斷與改善方向
-- [20260604_iForest全場景改進.md](wiki/experiments/20260604_iForest全場景改進.md) — iForest 全場景失效根因分析（污染比例/競爭異常/均值稀釋）、改進方案：乾淨水體訓練（NDWI>0.1+std<0.05）+ 5th Percentile 聚合取代均值、Fallback 機制
-- [20260613_iForest_LocalContrast_B4B8B11_全場景實驗總結.md](wiki/experiments/20260613_iForest_LocalContrast_B4B8B11_全場景實驗總結.md) — iForest + Local Contrast（B4/B8/B11）全 439 場景評估：Micro Recall=0.0225，TP=104，FP=24,063；非零場景僅 43/438（9.8%）
-- [20260614_DeepRX_EM_v3_全場景實驗總結.md](wiki/experiments/20260614_DeepRX_EM_v3_全場景實驗總結.md) — DeepRX + EM v3 全 439 場景評估：Micro Recall=0.3712（iForest 16.4×），TP=1,698，非零場景 275/433（63.5%）；VAE latent + Mahalanobis + EM 自動門檻
-- [OSDMamba_摘要.md](wiki/papers/OSDMamba_摘要.md) — OSDMamba 論文摘要：首個基於 Mamba 的油汙偵測架構、SS2D 感受野擴張、ConvSSM 解碼器
-- [20260702_CV_358clean_gt_expand_進行中.md](wiki/experiments/20260702_CV_358clean_gt_expand_進行中.md) — GT_expand 3-fold CV 訓練進度：fold1/2 完成（2026-07-01）、fold3 進行中（epoch 43 Oil IoU≈0.30）、TODO 三份待動工、已知繼承 bug（C2/C3/C4）
-- [20260702_波段選擇消融實驗規劃.md](wiki/experiments/20260702_波段選擇消融實驗規劃.md) — 波段選擇消融實驗規劃：源自 Zakzouk et al. 2024 論文，比較 Baseline 全 8 波段／Band Subset(B1,2,3,8A,11,12)／Index C／Index D 四組；已釘死主指標 recon_pooled_oil_iou，組0 Baseline 3-fold 實測完成（0.332±0.026），組1 準備開跑
-- [20260708_JM距離判別髒資料可行性診斷.md](wiki/experiments/20260708_JM距離判別髒資料可行性診斷.md) — 分支 B side study：三框架診斷（scene 級 oil-vs-bg JM AUC=0.50 / patch 級三指標 AUC≤0.65 / anomaly-JM AUC=0.64 但飽和）皆無法自動判髒資料，結論為「標籤性質 vs 工具性質」錯配非 JM 壞掉；附帶發現 SSL4EO band_map 波段錯位 bug
-- [20260709_baseline錯誤分析_GT過寬與方向二降級.md](wiki/experiments/20260709_baseline錯誤分析_GT過寬與方向二降級.md) — SSL4EO 三配置打平 baseline 後的 error analysis：355 測試 scene dirty 命中=0（0.33 天花板與髒資料無關）、感測器無差、面積-IoU 倒 U 形（medium 0.456 最佳）、pooled 0.33 vs per-scene 0.42 落差幾乎全由 ~51 張大油汙 scene 造成；overlay 目視判定瓶頸為 FN + GT 過寬 extent-polygon（Gulf_20190428 IoU=0.753 vs Gulf_20210607 IoU=0.134 對照），判定方向二 detect-then-verify cascade 降級（結論已於同日修正，見文內〔2026-07-09 修正〕：51 張大油汙 scene precision/recall 硬化量化證實瓶頸是真實 under-segmentation，非 GT 過寬）
-- [20260724_Focal_Tversky小圖實驗可行性評估.md](wiki/experiments/20260724_Focal_Tversky小圖實驗可行性評估.md) — Claude×Codex 對 GT-centric 256px 小圖 Focal Tversky 的條件式評估與判定：2026-07-27 prereg 凍結候選改為 q=4/3（direct exponent），3-fold 跑完 mean pooled 0.3859；grouped replay 判定 FTL vs Tversky ΔS=+0.0011 CI 跨 0＝實質等價，保留 Tversky，loss 分支確認枯竭
-- [20260731_ASPP_rate適配實驗.md](wiki/experiments/20260731_ASPP_rate適配實驗.md) — Prithvi 16×16 網格下 ASPP atrous rate 適配實驗：候選 (2,4,6) vs 決定性 (6,12,18)，grouped replay ΔS=−0.0165／機制層 ΔM_L=−0.0219 皆負向顯著，判定「無證據」保留現行 rates；副產品＝Prithvi+DeepLabV3-ASPP 首次決定性 3-fold mean=0.4399（取代舊 pre-fix 0.4167 為計畫基線）；loss 與 rate 兩條槓桿皆已枯竭
-- [20260805_巨型場景診斷與P4操作點實驗.md](wiki/experiments/20260805_巨型場景診斷與P4操作點實驗.md) — 既有 artifact 歸因分析：pooled 分數由極少數巨型場景主導（最大10景=44.4%油污像素、Oil IoU僅0.311）、fold3 pooled 崩塌純屬巨型場景效應非整折變差；JM 距離方法論教訓（高 JM 與 GT 外包絡吻合而非矛盾，JM 答不了標註幾何問題）；發現正典三折從未存過 pixel-exact 預測；催生 P4 操作點（決策閾值）實驗，已開跑（推論 job，非訓練）但 prereg 尚未凍結，codex 審查 VERDICT REVISE 8 條 BLOCKING，卡在使用者裁決 pooled vs S 評成敗
-- [20260806_P4操作點決策閾值_實質null.md](wiki/experiments/20260806_P4操作點決策閾值_實質null.md) — P4 結案：prereg v1.0 凍結（四輪收斂 ACCEPT），使用者裁決計畫任務以 pooled 評成敗，判定 Δpooled=−0.0011 CI[−0.0067,+0.0034]＝實質 null，閾值槓桿關閉；H2a「過度保守」假說被推翻（可救回機率質量僅 2.1%）；estimand 標籤更正（0.4399＝逐折平均非全語料 pooled 0.4335）；盲化標註稽核證實巨景 GT 品質尚可、Pacific 一景輸入端無訊號；含兩則撤回聲明（逐位元相同誤稱、判準量綱教訓）；下一步槓桿轉向方向 C（重訓：面積加權採樣／多層 tap 餵 ASPP）
-- [20260827_P7背景patch配額政策實驗_r12_null與機制發現.md](wiki/experiments/20260827_P7背景patch配額政策實驗_r12_null與機制發現.md) — 背景 patch 配額槓桿（capacity-capped r=1.2 vs 每景固定10張）結案：計畫任務終點 null（Δ=−0.0047）、Contract S 顯著變差（ΔS=−0.0197 CI 全負），prereg 雙端損失預測逐項命中；三項機制知識——全域 FP 逐 size 拆解會反向（tiny +34.3% vs large −14.6%）、負樣本傷害來自每景覆蓋深度塌縮非像素總量、「固定10張」實為有效海域面積比例規則的偽裝（C_s CV=0.37 vs G_s CV=1.82）；**2026-08-31 更新**：後繼兩階段分配方案／P8 已全線砍除（不再推進），改走 P9 全域水位路線；補逐 size 四格回顧（劑量-反應單調關係、small 須用 ΔIoU 不能用 ΔFP、FPR 跨分層由遞增翻轉為遞減但代價是全距 +60%）
-- [20260831_P9油背像素比例bracket_inconclusive與凹性發現.md](wiki/experiments/20260831_P9油背像素比例bracket_inconclusive與凹性發現.md) — 訓練語料油汙:背景像素比例 ρ 首次敏感度檢驗（ρ∈{15, 23.0187, 30} 不等距 bracket、嚴格巢狀、六道建構閘全過、29.6 GPU-h）：主判定 inconclusive，但 S₃₀−S₂₃=−0.0201（CI 排除 0 但跨 −0.02）與曲率 C=+0.0174（CI 排除 0 但跨 +0.02，反應面呈凹形）兩項達統計顯著未達實質門檻；機制對照——1:15 虛警爆（FP+7.0%）、1:30 漏檢爆（FN+3.1%），precision 隨背景單調變好但 recall 於 rho23 達峰；現行 ρ=23.02 三水位中 S 最高，因 protocol continuity 暫留但不得稱最優；exposure audit 判定 NOT_CENSORED 但 rho15 少拿 42% optimizer 更新
-- [20260831_週結_背景patch配額三部曲P7P8P9.md](wiki/experiments/20260831_週結_背景patch配額三部曲P7P8P9.md) — **週結**（08-24~08-31）：P7（分佈）不予採用 → P8（擴充候選池）因磁碟配額故障被裁決全砍 → P9（水位）inconclusive 的完整時間軸；三個方法論教訓——加權會製造雜訊假象、顯著≠實質、exposure audit 是詮釋閘門非附錄
-- [20260904_P10油背像素比例六點格_峰位辨識但增益不足.md](wiki/experiments/20260904_P10油背像素比例六點格_峰位辨識但增益不足.md) — P9 bracket {15,23.0187,30} 細化為六點格 {15,17,19,21,23.0187,30}（本批次真訓練 rho17/19/21，各 3 折，2026-09-01~03，9 run 全過建構閘與回歸閘）：E1 峰位 ρ*=19.751（bootstrap CI [18.873,21.091] 排除正典）、E3 選擇機率 0.9255＝峰位「有」被辨識，但 E2 峰增益 G=+0.0064（同時 CI 跨 0 且未過 ±0.02）與六臂預註冊換值規則全不合格，判定 `RETAIN_23.0187_protocol_continuity`；事前功效分析（ρ≈20.54/+0.0020）與事後（ρ*=20.565/+0.0023）幾乎完全命中；待使用者裁決 ρ 軸是否正式結案為已耗盡的槓桿
-- [20260716_資料溯源洩漏與評估合約v1.md](wiki/experiments/20260716_資料溯源洩漏與評估合約v1.md) — 355-scene 事件層級溯源稽核（僅 12 事件群、350/355 姊妹景近重複、external-84 假設作廢）、Evaluation Contract v1.0（12 事件群 cluster bootstrap 取代舊雙 gate）、grouped replay 結果（tversky 顯著、Prithvi+UPerNet 顯著、單純換骨幹打平）、非對稱閘控雙軌 backbone 政策決策
-- [20260718_訓練不可重現根因與決定性修復.md](wiki/experiments/20260718_訓練不可重現根因與決定性修復.md) — 訓練不可重現根因定位：Albumentations 2.0.8 Compose 內部 RNG 未鎖（commit ba25391 修復，370 tensor 逐 bit 相同驗收通過）；此前所有 grid/screen 掃描降為 legacy、「Dice 勝 Tversky」結論撤回；決定性正本重跑中（baseline 3-fold 完成、tversky 3-fold 訓練中，07-25 看門狗防停電）
-- [20260913_P13海域來源敏感度_只部分回答.md](wiki/experiments/20260913_P13海域來源敏感度_只部分回答.md) — P13 patch-balanced 台灣 source-group sensitivity 8 arms（A/B×G1/G2/G3/Mixed）結案：判定「只部分回答」，不得稱純海域效應，只能稱 source-group composition association；2026-09-18 依新制「實驗九步驟卡」事後補寫，1-6/7-9 分別重排自 `.agents/decisions/` 兩份決議正本
-- [20260915_P14_GoM_vs_NonGoM_full_ablation_主端點未計.md](wiki/experiments/20260915_P14_GoM_vs_NonGoM_full_ablation_主端點未計.md) — P14 GoM-only vs NonGoM-only full-source 兩臂訓練與 Taiwan post-test 已完成，但正式主端點 event-macro Oil IoU 尚未計算；2026-09-18 事後補寫九步驟卡，第7-9步留白待計算
-- [20260925_P18_台灣holdout比例19_21_23_不可判定.md](wiki/experiments/20260925_P18_台灣holdout比例19_21_23_不可判定.md) — P18 台灣 holdout × 背景配額比例 ρ∈{19,21,23} 結案九步驟卡（第7-9步）：best.pt 三組 pairwise event-macro Oil IoU 皆不可判定，且對 checkpoint 規則敏感（last.pt 19−21 支持19）；不收線、不採用新比例
+## 資料集
 
----
+- [dataset_split_strategy](wiki/datasets/dataset_split_strategy.md) — 資料範圍、處理及評估使用方式。
+- [ms6_sen2like](wiki/datasets/ms6_sen2like.md) — 資料範圍、處理及評估使用方式。
 
-## 模型（wiki/models/）
+## Pipeline 與處理流程
 
-- [DeepLabV3+.md](wiki/models/DeepLabV3+.md) — DeepLabV3+ 工程紀錄：ResNet50 骨幹、8 通道輸入（B01/02/03/04/08/8A/11/12）、class_weights=[13.0,1.0]、FocalLoss、Sliding Window 推論設定
-- [OSDMamba.md](wiki/models/OSDMamba.md) — OSDMamba 工程紀錄：SwinUMambaD 配置、Dice+Focal 聯合損失、EMA、RTX 5090 踩坑與對策
+- [GT_expand_pipeline](wiki/pipeline/GT_expand_pipeline.md) — 處理流程、輸入輸出與操作說明。
+- [GT_expand_workflow_onboarding](wiki/pipeline/GT_expand_workflow_onboarding.md) — 處理流程、輸入輸出與操作說明。
+- [OIL_PROJECT_MutiBand_0422_VRT_training](wiki/pipeline/OIL_PROJECT_MutiBand_0422_VRT_training.md) — 處理流程、輸入輸出與操作說明。
+- [OIL_PROJECT_VRT_0422](wiki/pipeline/OIL_PROJECT_VRT_0422.md) — 處理流程、輸入輸出與操作說明。
+- [VRT_pipeline_01_前處理](wiki/pipeline/VRT_pipeline_01_前處理.md) — 處理流程、輸入輸出與操作說明。
+- [VRT_pipeline_02_模型訓練](wiki/pipeline/VRT_pipeline_02_模型訓練.md) — 處理流程、輸入輸出與操作說明。
+- [VRT_pipeline_03_重組評估](wiki/pipeline/VRT_pipeline_03_重組評估.md) — 處理流程、輸入輸出與操作說明。
+- [add_new_data](wiki/pipeline/add_new_data.md) — 處理流程、輸入輸出與操作說明。
+- [annotation_workflow](wiki/pipeline/annotation_workflow.md) — 處理流程、輸入輸出與操作說明。
+- [project_overview](wiki/pipeline/project_overview.md) — 處理流程、輸入輸出與操作說明。
+- [sen2like](wiki/pipeline/sen2like.md) — 處理流程、輸入輸出與操作說明。
 
----
+## 技術概念
 
-## 資料集（wiki/datasets/）
+- [acolite_vs_sen2like](wiki/concepts/acolite_vs_sen2like.md) — 概念定義、方法比較及本案應用。
+- [cloud_optimized_geotiff](wiki/concepts/cloud_optimized_geotiff.md) — 概念定義、方法比較及本案應用。
+- [deeplabv3plus_358clean_overfitting_改善方向](wiki/concepts/deeplabv3plus_358clean_overfitting_改善方向.md) — 概念定義、方法比較及本案應用。
+- [deeprx_vae_架構與運作機制](wiki/concepts/deeprx_vae_架構與運作機制.md) — 概念定義、方法比較及本案應用。
+- [hard_negative_mining](wiki/concepts/hard_negative_mining.md) — 概念定義、方法比較及本案應用。
+- [iforest_架構與運作機制](wiki/concepts/iforest_架構與運作機制.md) — 概念定義、方法比較及本案應用。
+- [parameter_efficient_fine_tuning_遙測](wiki/concepts/parameter_efficient_fine_tuning_遙測.md) — 概念定義、方法比較及本案應用。
+- [self_supervised_pretraining_遙測](wiki/concepts/self_supervised_pretraining_遙測.md) — 概念定義、方法比較及本案應用。
+- [unsupervised_oil_detection](wiki/concepts/unsupervised_oil_detection.md) — 概念定義、方法比較及本案應用。
+- [分割損失函數與類別不平衡](wiki/concepts/分割損失函數與類別不平衡.md) — 概念定義、方法比較及本案應用。
+- [尺度自適應_Global-Local分割](wiki/concepts/尺度自適應_Global-Local分割.md) — 概念定義、方法比較及本案應用。
+- [跨海域_source-only_zero-shot油污偵測](wiki/concepts/跨海域_source-only_zero-shot油污偵測.md) — 概念定義、方法比較及本案應用。
 
-- [ms6_sen2like.md](wiki/datasets/ms6_sen2like.md) — MS6_sen2like 8-band 資料集：路徑、波段定義、Mask 映射與 COG 狀態；2026-07-10 補 Dataset Manifest 制度（445 場景，issues=0）、5 張 2026 NOAA Atlantic 新場景入庫記錄、JSON 雙位置盤點
-- [dataset_split_strategy.md](wiki/datasets/dataset_split_strategy.md) — 海面油汙偵測資料集切割策略規劃：完全隨機 (K-Fold)、特定事件留出 (Leave-One-Event-Out)、時序預測切割 (Temporal Split)；2026-07-10 補策略四（油汙面積分層 3-fold，分支 B 現行主用）；**2026-07-24 補充**：2026-07-16 實測發現 scene-level 切割不等於統計獨立，94~98% test scene 有同事件姊妹景洩漏
+## 模型
 
----
+- [DeepLabV3+](wiki/models/DeepLabV3+.md) — 模型架構與本案接入說明。
+- [OSDMamba](wiki/models/OSDMamba.md) — 模型架構與本案接入說明。
 
-## 技術概念（wiki/concepts/）
+## 文獻
 
-- [unsupervised_oil_detection.md](wiki/concepts/unsupervised_oil_detection.md) — Unsupervised 油汙偵測方法總覽：iForest / OSI / RX / VAE 比較、雲遮罩替代方案（NDWI+Blue）、S2 實施路線、文獻缺口分析
-- [cloud_optimized_geotiff.md](wiki/concepts/cloud_optimized_geotiff.md) — Strip TIF vs COG TIF：磁碟排列方式差異（index 粒度）、為何 COG 能直接跳到指定區塊、ASCII 圖解、在專案的 I/O 加速實測（9×）、與 VRT 的關係
-- [acolite_vs_sen2like.md](wiki/concepts/acolite_vs_sen2like.md) — Acolite vs Sen2Like 格式差異：像素值單位（float32 vs uint16×10000）、波段數（11 vs 8）、SWIR 解析度（20m vs 10m Fusion）、大氣校正方向、標注對齊說明
-- [hard_negative_mining.md](wiki/concepts/hard_negative_mining.md) — 困難樣本挖掘：降低誤判率的 HNM 五步驟流程說明
-- [iforest_架構與運作機制.md](wiki/concepts/iforest_架構與運作機制.md) — iForest 深入理解：樹結構本質、建樹過程（含 8 像素具體例子）、Duan 2022 對 GM01 完整 10 步驟、訓測同源為何不是資料外洩、contamination 才是真正失敗點
-- [deeprx_vae_架構與運作機制.md](wiki/concepts/deeprx_vae_架構與運作機制.md) — Deep-RX 深入理解：VAE 架構（reparam trick / KL 約束）、San Diego I 完整流程、訓測同源爭議的誠實討論、論文評估方式的學術批評、Background-Only Training 洞察（v9 已實作）、v9 完整 12 步驟流程（per-scene VAE + Mahalanobis + EM + NDOI）、論文 vs 真實場景複雜度差異（one anomaly vs multi-anomaly）、v3 濫抓四大根本原因與 v9 對應解法
-- [deeplabv3plus_358clean_overfitting_改善方向.md](wiki/concepts/deeplabv3plus_358clean_overfitting_改善方向.md) — DeepLabV3+ 358-clean 訓練改善方向統整：overfitting 根本診斷（初始化+資料量錯位）、A~C 三組改善方向表（依 ROI 排序）、A1 pre-trained backbone 完整實作細節（input conv 改造 code、differential lr、兩階段 fine-tune）
-- [self_supervised_pretraining_遙測.md](wiki/concepts/self_supervised_pretraining_遙測.md) — 遙測 SSL 預訓練總覽：backbone 概念、MoCo/DINO/MAE/data2vec 四法比較、Linear Probing vs Fine-tuning 對照表、SSL4EO-S12 實測佐證 pretrained backbone 效益、「SSL 尚未用於光學油汙偵測」研究缺口
-- [parameter_efficient_fine_tuning_遙測.md](wiki/concepts/parameter_efficient_fine_tuning_遙測.md) — 遙測基礎模型 PEFT 概念：Frozen／Full fine-tuning／PEFT 差異、LoRA／Adapter／Prompt 方法家族，以及與 Prithvi 油污分割和 source-only protocol 的關係；目前僅完成 Abstract／Introduction 層級整理
-- [分割損失函數與類別不平衡.md](wiki/concepts/分割損失函數與類別不平衡.md) — Class re-weighting / Focal 調變 / Tversky 不對稱化三種機制對照、Dice vs Tversky 公式與 α/β 意義、本專案 DeepLabV3+/OSDMamba 現行損失設計盤點與 Tversky 消融方向
-- [跨海域_source-only_zero-shot油污偵測.md](wiki/concepts/跨海域_source-only_zero-shot油污偵測.md) — 嚴格海外 source-only、台灣 target-blind 問題定義；區分 zero-shot／UDA／few-shot，整理第一輪六篇光學文獻的 protocol 證據與閱讀順序
-- [尺度自適應_Global-Local分割.md](wiki/concepts/尺度自適應_Global-Local分割.md) — GeoAgent 的 global–local 雙分支與動態尺度路由；整理 fixed／oracle／supervised router／contextual bandit／A2C 階梯，提出 10m local + 20/30m context 的 Prithvi 尺度對齊假說
+- [Chang2024_MorphologicalAttention_UNet_SAR](wiki/papers/Chang2024_MorphologicalAttention_UNet_SAR.md) — 論文方法、結果與本案關聯。
+- [Chou2021_U-Net光學海上油污](wiki/papers/Chou2021_U-Net光學海上油污.md) — 論文方法、結果與本案關聯。
+- [Du2022_CBF-CNN_HY1C](wiki/papers/Du2022_CBF-CNN_HY1C.md) — 論文方法、結果與本案關聯。
+- [Du2025_MS3OSD](wiki/papers/Du2025_MS3OSD.md) — 論文方法、結果與本案關聯。
+- [Duan2022_HOSD_IsolationForest](wiki/papers/Duan2022_HOSD_IsolationForest.md) — 論文方法、結果與本案關聯。
+- [IsolationForest_Liu2008](wiki/papers/IsolationForest_Liu2008.md) — 論文方法、結果與本案關聯。
+- [Kang2024_PlanetScope_CNN_Transformer](wiki/papers/Kang2024_PlanetScope_CNN_Transformer.md) — 論文方法、結果與本案關聯。
+- [Lee2025_NFINDR_SAM_小型油污](wiki/papers/Lee2025_NFINDR_SAM_小型油污.md) — 論文方法、結果與本案關聯。
+- [Liu2023_GeoAgent_尺度自適應分割](wiki/papers/Liu2023_GeoAgent_尺度自適應分割.md) — 論文方法、結果與本案關聯。
+- [MartiEscofet2025_PEFT_GeoFM](wiki/papers/MartiEscofet2025_PEFT_GeoFM.md) — 論文方法、結果與本案關聯。
+- [OSDMamba_摘要](wiki/papers/OSDMamba_摘要.md) — 論文方法、結果與本案關聯。
+- [Salehi2017_TverskyLoss](wiki/papers/Salehi2017_TverskyLoss.md) — 論文方法、結果與本案關聯。
+- [Song_DeepRX_Hyperspectral_Anomaly](wiki/papers/Song_DeepRX_Hyperspectral_Anomaly.md) — 論文方法、結果與本案關聯。
+- [Sun2024_中解析度光學油污分割](wiki/papers/Sun2024_中解析度光學油污分割.md) — 論文方法、結果與本案關聯。
+- [Szwarcman2026_PrithviEO2](wiki/papers/Szwarcman2026_PrithviEO2.md) — 論文方法、結果與本案關聯。
+- [Wang2023_SSL4EO-S12](wiki/papers/Wang2023_SSL4EO-S12.md) — 論文方法、結果與本案關聯。
+- [Wang2024_中國海多感測器油污製圖](wiki/papers/Wang2024_中國海多感測器油污製圖.md) — 論文方法、結果與本案關聯。
+- [柯弈仲2008_光學衛星影像海洋異常物偵測](wiki/papers/柯弈仲2008_光學衛星影像海洋異常物偵測.md) — 論文方法、結果與本案關聯。
 
----
+## 環境
 
-## 文獻摘要（wiki/papers/）
+- [Claude_MCP_Docker_Fix](wiki/environment/Claude_MCP_Docker_Fix.md) — 環境設定與問題修復紀錄。
+- [Docker_環境設定](wiki/environment/Docker_環境設定.md) — 環境設定與問題修復紀錄。
+- [Gemini_MCP_Docker_Fix](wiki/environment/Gemini_MCP_Docker_Fix.md) — 環境設定與問題修復紀錄。
 
-- [IsolationForest_Liu2008.md](wiki/papers/IsolationForest_Liu2008.md) — Isolation Forest 原始論文（Liu et al. 2008/2012）：演算法原理、anomaly score 公式、sklearn 參數對照、在本專案 S2 油汙偵測的實測結果
-- [Duan2022_HOSD_IsolationForest.md](wiki/papers/Duan2022_HOSD_IsolationForest.md) — Duan et al. 2022：HOSD 高光譜資料集 + Isolation Forest Unsupervised 油汙偵測；iForest 單步 AUC=0.99（224 波段）
-- [Song_DeepRX_Hyperspectral_Anomaly.md](wiki/papers/Song_DeepRX_Hyperspectral_Anomaly.md) — Song et al. 2023：Deep-RX 高光譜異常偵測，VAE + RX 結合，深度學習版馬氏距離異常評分
-- [柯弈仲2008_光學衛星影像海洋異常物偵測.md](wiki/papers/柯弈仲2008_光學衛星影像海洋異常物偵測.md) — 柯弈仲 2008（NCU 碩論，指導：陳繼藩）：光學衛星影像海洋異常物偵測，RX + EM + Region Growing
-- [Wang2023_SSL4EO-S12.md](wiki/papers/Wang2023_SSL4EO-S12.md) — Wang et al. 2023：全球尺度多模態多時相 Sentinel-1/2 自監督預訓練資料集（25萬地點/300萬patch），MoCo/DINO/MAE/data2vec × ResNet50/ViT 全面 benchmark；確認「SSL 尚未應用於光學海面油汙偵測」的研究缺口
-- [Salehi2017_TverskyLoss.md](wiki/papers/Salehi2017_TverskyLoss.md) — Salehi et al. 2017：Tversky loss（arXiv:1706.05721），以 α/β 取代 Dice 對稱權重直接控制 FP/FN 懲罰；3D U-Net MS 病灶分割 α=0.3/β=0.7 全面優於 Dice loss（α=β=0.5）
-- [Du2022_CBF-CNN_HY1C.md](wiki/papers/Du2022_CBF-CNN_HY1C.md) — Du et al. 2022：HY-1C VIS+NIR、class-balanced CNN；多區域但各區域重新訓練，不是 target-blind transfer
-- [Sun2024_中解析度光學油污分割.md](wiki/papers/Sun2024_中解析度光學油污分割.md) — Sun et al. 2024：S2/L8/L9 六波段、全球十事件、U-Net／DeepLabV3+／BiSeNetV2；感測器最接近本專案，但未證明 sealed-region zero-shot
-- [Kang2024_PlanetScope_CNN_Transformer.md](wiki/papers/Kang2024_PlanetScope_CNN_Transformer.md) — Kang et al. 2024：PlanetScope RGB+NIR；Swin-UPerNet 優於 DeepLabV3+，但採 random patch CV
-- [Wang2024_中國海多感測器油污製圖.md](wiki/papers/Wang2024_中國海多感測器油污製圖.md) — Wang et al. 2024：七種光學感測器的中國海長期製圖；split、完整波段與指標待全文補完
-- [Du2025_MS3OSD.md](wiki/papers/Du2025_MS3OSD.md) — Du et al. 2025：HY-1C/D UV–VIS–NIR 多感測器融合與 spatial-spectral 模型；四海域但未證明 leave-one-region-out
-- [Chou2021_U-Net光學海上油污.md](wiki/papers/Chou2021_U-Net光學海上油污.md) — 周芷蘭 2021：成大光學 RGB U-Net 碩論；正式題名與摘要未證實 transfer learning，作為台灣 prior art
-- [Chang2024_MorphologicalAttention_UNet_SAR.md](wiki/papers/Chang2024_MorphologicalAttention_UNet_SAR.md) — Chang et al. 2024：Morphological Attention FA-MobileUNet 的 SAR 油污分割；已讀 Abstract／Introduction，台灣事件為應用驗證但 target-blind protocol 待 Methods 判定
-- [Szwarcman2026_PrithviEO2.md](wiki/papers/Szwarcman2026_PrithviEO2.md) — Szwarcman et al. 2024（arXiv:2412.02732v3）：Prithvi-EO-2.0 地理空間基礎模型，HLS 4.2M 樣本 MAE 預訓練、3D 時空 embedding + 時間/地理 metadata bias，300M/600M 兩規模；GEO-Bench 較前代 +8%，小樣本（Landslide4Sense 50 張）優勢最明顯，SAR 早期融合無效；**本專案固定對照組所用 encoder 的來源論文**，並記錄假設殺手（預訓練刻意降採樣 Sea/同質水體，可能不利油膜細微紋理表徵）
-- [MartiEscofet2025_PEFT_GeoFM.md](wiki/papers/MartiEscofet2025_PEFT_GeoFM.md) — Marti Escofet et al. 2025（arXiv:2504.17397v2）：比較 GeoFM 的參數高效率微調，聚焦適配成本、預訓練表徵保留與未見地理區域泛化；目前只完成 Abstract／Introduction 部分研讀，方法與結果待確認
-- [Lee2025_NFINDR_SAM_小型油污.md](wiki/papers/Lee2025_NFINDR_SAM_小型油污.md) — Lee et al. 2025：Sentinel-2 land/cloud/ship masks + N-FINDR（p=2）+ SAM；高同景 proxy F1 不構成跨事件低誤警證據，最適合作 oil-specific verifier
-- [Liu2023_GeoAgent_尺度自適應分割.md](wiki/papers/Liu2023_GeoAgent_尺度自適應分割.md) — Liu et al. 2023（ICCV）：以 A2C Scale Control Agent 為各 patch 選 context 倍率，再由共享權重 global–local 雙分支分割；本專案最可借為 10m local + 30m Prithvi-aligned context，RL 應在 fixed/oracle 驗證後才導入
+## 分析輸出
 
----
+- [20260711_AI協作Harness現況快照](outputs/20260711_AI協作Harness現況快照.md) — 分析與背景資料。
 
-## 環境設定（wiki/environment/）
+## 協作導覽
 
-- [Docker_環境設定.md](wiki/environment/Docker_環境設定.md) — Docker 環境與 MCP 設定紀錄：基礎映像檔、全域套件、CUDA 核心算子、MCP 自動化指令
+- [README](.agents/README.md) — 協作文件、agent 與 skill 的入口。
+- [handoff](.agents/handoff.md) — 最近工作與接手摘要；舊條目保留歷史。
+- [consensus](.agents/consensus.md) — 協商紀錄與逐案決議的入口。
 
----
+## 舊版獨立筆記
 
-## 分析輸出（outputs/）
-
-- [20260711_AI協作Harness現況快照.md](outputs/20260711_AI協作Harness現況快照.md) — 2026-07-11 狀態快照：雙 harness（Claude Code × Antigravity）+ institution 正本架構、研究現況（分支A/B、tversky/cw31 數字、v3plus 訓練進行中）、Claude 端 subagent 清單、Claude/agy/codex 模型角色分工與調度原則
+- [sen2like](%20sen2like.md) — 舊版 Sen2Like 獨立筆記。

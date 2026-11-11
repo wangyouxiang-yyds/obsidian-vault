@@ -15,13 +15,13 @@ tags: [self-supervised-learning, foundation-model, pretraining, sentinel-1, sent
 
 ## 核心貢獻
 
-提出 SSL4EO-S12：一個全球尺度、多模態（SAR + 光學）、多時相（4 季）的 Sentinel-1/2 無標註資料集（25 萬個地點、約 300 萬張 patch），專為遙測領域的自監督預訓練（Self-Supervised Learning, SSL）設計。同時系統性地在 EuroSAT、BigEarthNet、So2Sat-LCZ42（場景分類）、DFC2020（語意分割）、OSCD（變化偵測）等下游任務上，比較 MoCo-v2/v3、DINO、MAE、data2vec 四種 SSL 演算法搭配 ResNet50/ViT-S 兩種 backbone 的 linear probing 與 fine-tuning 表現，並與既有資料集（ImageNet、SEN12MS、[[SeCo]]、BigEarthNet 自身）做對照。核心論點：**遙測影像有自己的統計特性（多波段、多時相、SAR/光學互補），直接沿用電腦視覺（ImageNet）預訓練會有 domain gap，而遙測領域專屬、大規模、低地理重疊的預訓練資料集能穩定帶來下游任務增益。**
+提出 SSL4EO-S12：一個全球尺度、多模態（SAR + 光學）、多時相（4 季）的 Sentinel-1/2 無標註資料集（25 萬個地點、約 300 萬張 patch），專為遙測領域的自監督預訓練（Self-Supervised Learning, SSL）設計。同時系統性地在 EuroSAT、BigEarthNet、So2Sat-LCZ42（場景分類）、DFC2020（語意分割）、OSCD（變化偵測）等下游任務上，比較 MoCo-v2/v3、DINO、MAE、data2vec 四種 SSL 演算法搭配 ResNet50/ViT-S 兩種 backbone 的 linear probing 與 fine-tuning 表現，並與既有資料集（ImageNet、SEN12MS、SeCo、BigEarthNet 自身）做對照。核心論點：**遙測影像有自己的統計特性（多波段、多時相、SAR/光學互補），直接沿用電腦視覺（ImageNet）預訓練會有 domain gap，而遙測領域專屬、大規模、低地理重疊的預訓練資料集能穩定帶來下游任務增益。**
 
 ---
 
 ## 關鍵方法
 
-**資料收集**：沿用 [[SeCo]] 提供的 baseline（用 Google Earth Engine 下載處理），但做了兩項關鍵改良：
+**資料收集**：沿用 SeCo 提供的 baseline（用 Google Earth Engine 下載處理），但做了兩項關鍵改良：
 1. **Overlap filtering**：以全球人口前 10,000 大城市為中心，用高斯分布抽樣座標，再套用 grid search 演算法過濾掉地理重疊的 patch（SeCo/SEN12MS 都有嚴重的 patch 重疊問題）
 2. **多感測器**：同時收集 Sentinel-1 GRD（VH/VV，10m）、Sentinel-2 L1C（13 波段，TOA 未校正）、Sentinel-2 L2A（12 波段，已大氣校正）三種資料，四季各一次，最終約 100 萬組 S1/S2-L1C/S2-L2A 三聯資料。
 
@@ -49,7 +49,7 @@ MAE/data2vec 因遮罩機制需要 token 結構，只能用在 ViT，無法套�
 
 ## 重要數據/結果
 
-**Linear probing（Table V，RGB only）**：SSL4EO-S12 全面領先——比 ImageNet 高約 10%，比 [[SeCo]] 高約 6%，比 SEN12MS 高 1.7%–3.5%（EuroSAT/BigEarthNet-10%/BigEarthNet-100%）。
+**Linear probing（Table V，RGB only）**：SSL4EO-S12 全面領先——比 ImageNet 高約 10%，比 SeCo 高約 6%，比 SEN12MS 高 1.7%–3.5%（EuroSAT/BigEarthNet-10%/BigEarthNet-100%）。
 
 **DFC2020 語意分割（Table VI，DeepLabV3+ 分割頭，ResNet50+MoCo-v2 預訓練，OA/AA/mIoU）**：
 | 資料集 | OA | AA | mIoU |

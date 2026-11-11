@@ -1,221 +1,136 @@
 # CLAUDE.md — 油汙偵測研究 Wiki 維護規則
 
 你是這個研究 Wiki 的維護者。每次對話開始時請先讀取這份文件，了解 Wiki 的結構與規則。
+Codex 經 `AGENTS.md` 也讀本檔；規則與 harness 無關，雙方都照做。
+
+> **更新節奏（使用者 2026-11-11 裁決）**：本檔每半個月檢查並更新一次。
+> - 最後全面更新：**2026-11-11**　下次檢查：**2026-11-25**
+> - 「規則」各節（目錄、記錄格式、Git、啟動）只在制度改變時修改；
+>   「§6 目前研究基線快照」每半月依近期結論更新，舊內容不在本檔保留（歷史在 wiki 頁面與 log.md）。
+> - 實驗結論變動很快：任何「最新數字／目前做到哪」以 `.agents/handoff.md` 與
+>   `/home/alanyh/.agents/institution/research/oil_spill_project_status.md` 為準，不以本檔為準。
 
 ---
 
-## 專案背景
+## 1. 專案背景
 
-**研究目標**：利用多光譜衛星影像（Sentinel-2 / Landsat 8/9）進行海面油汙自動偵測，最終訓練 Deeplabv3+ 或 OSDmamba 語義分割模型。
+**研究目標**：用多光譜衛星影像（Sentinel-2 / Landsat 8/9，經 Sen2Like 處理）做海面油汙語義分割。
+主要測試場景為臺灣；訓練資料以全球（排除臺灣）為主，其中墨西哥灣（GoM）佔大宗。
 
-**資料來源**：Sen2Like 處理後的多波段 TIF 檔案，統一為 11 個波段（443/492/560/665/704/740/783/833/865/1614/2202 nm），解析度對齊至 10m（10980×10980）。
-
-**Pipeline 全貌**：
-```
-原始衛星影像 (S2/L8/L9)
-    ↓ Sen2Like 處理（大氣校正、光譜一致化、Fusion）
-    ↓ stack_multiband_tif.py（11 波段疊合）
-    ↓ patch_from_stacked_tif.py（切 256×256 patch）
-    ↓ Hard_Negative_Mining（HNM 四步驟）
-    ↓ Deeplabv3+ or OSDmamba 訓練
-    ↓ 油汙偵測結果
-```
+**程式碼位置**（vault 只放知識與紀錄，不放程式）：
+- 主線 repo：`/mnt/backup/alanyh/oil_IR_Fullband/OIL_PROJECT_MutiBand_GT_expand`
+- 舊版 0420／0422（11 波段、sliding-window）已非主線，說明保留在 `wiki/pipeline/` 對應頁面，不再在本檔維護。
 
 ---
 
-## Wiki 目錄結構
+## 2. Wiki 目錄結構
 
 ```
 obsidian-vault/
-├── CLAUDE.md                  ← 本文件（規則文件，勿修改內容格式）
-├── index.md                   ← 所有頁面的目錄（每次新增頁面後更新）
-├── log.md                     ← 操作紀錄（append-only，每次操作後追加）
-├── raw/                       ← 原始資料（只讀，不修改）
-│   ├── papers/                ← 論文 PDF 或摘要
-│   └── assets/                ← 影像、圖表
+├── CLAUDE.md          ← 本文件（規則正本；Codex 經 AGENTS.md 讀本檔）
+├── AGENTS.md          ← Codex 薄索引
+├── index.md           ← 頁面目錄（只放連結，格式見 §3.1）
+├── log.md             ← 操作紀錄（append-only，格式見 §3.2）
+├── raw/               ← 原始資料（只讀）：papers/、assets/
 ├── wiki/
-│   ├── experiments/           ← 實驗紀錄
-│   ├── pipeline/              ← Pipeline 各步驟說明
-│   ├── models/                ← 模型架構頁面
-│   ├── datasets/              ← 資料集說明
-│   ├── concepts/              ← 技術概念頁面
-│   └── papers/                ← 文獻摘要頁面
-└── outputs/                   ← 分析結果、比較表、圖表
+│   ├── experiments/   ← 實驗結果卡（九步驟卡 7–9）與執行紀錄
+│   ├── pipeline/      ← 流程與 SOP
+│   ├── models/        ← 模型工程紀錄
+│   ├── datasets/      ← 資料集說明
+│   ├── concepts/      ← 概念頁
+│   ├── papers/        ← 文獻摘要
+│   └── environment/   ← 環境設定
+├── outputs/           ← 分析結果、比較表、快照
+└── .agents/           ← 雙 AI 協作：consensus.md、handoff.md、decisions/（九步驟卡 1–6、裁決）、agents/、skills/
 ```
 
 ---
 
-## 頁面格式規範
+## 3. 記錄規則（⚠ 2026-11 曾漂移，此節為校正後正本）
 
-### 實驗紀錄（wiki/experiments/）
-檔名格式：`YYYYMMDD_實驗簡述.md`
+### 3.1 index.md — 只當目錄
+- **每個 vault 內頁面一行**：`- [頁面標題](相對路徑.md) — 一句話摘要`，整行約 150 字以內。
+- 只連 **vault 內存在的檔案**。repo 路徑（如 `analysis/...`）不可當連結，需要時寫在頁面內文並用 `code` 格式。
+- **裁決、數字、執行狀態不寫進 index**：裁決寫 `.agents/decisions/`（或附加到相關 decisions 檔）＋ log.md；
+  數字與狀態寫在對應頁面。頁面內容更新時，index 那一行只在標題或一句話摘要失準時才改。
+- 同一頁面只有一行；新結果更新既有行，不另加行。
 
-```markdown
+### 3.2 log.md — 操作紀錄
+- 每筆一個標題：`## [YYYY-MM-DD] 類型 | 一句話說明`，下面最多 3 行條列（改了哪些檔、指向哪頁）。
+- 類型：`ingest`、`experiment`、`prereg`、`result`、`decision`、`correction`、`writeback`、`lint`、`harness`。
+- **不要**用 `- YYYY-MM-DD｜…` 條列體記新紀錄（2026-11-01～11-11 曾如此，已不再沿用；舊紀錄不改）。
+- 細節（數字、時間線、seed 結果）寫在 wiki 頁面，log 只留指標。只能 append，不改舊紀錄。
+
+### 3.3 實驗紀錄（九步驟卡）
+- 1–6（設計，launch 前凍結）→ `.agents/decisions/YYYYMMDD_主題.md`
+- 7–9（結果，結果出來才填）→ `wiki/experiments/YYYYMMDD_主題.md`，並連回 decisions 檔
+- 欄位與判準：`/home/alanyh/.agents/institution/templates/experiment_card.md`、`20_judgment_rubrics.md` R6
+- 實驗結案、共識收斂、process 啟停、資料清理：**當天**回寫 log.md＋handoff.md（＋ institution 現況檔）
+
+### 3.4 頁面 frontmatter
+```yaml
 ---
 date: YYYY-MM-DD
-type: experiment
-stage: [preprocess | patching | HNM | training | evaluation]
-status: [running | completed | failed]
-tags: [相關標籤]
+type: experiment | model | paper | concept | dataset | environment | pipeline | summary
+tags: [kebab-case 英文]
+# 實驗頁另加：
+stage: preprocess | training | evaluation | supervised | unsupervised
+status: running | completed | failed | abandoned   # 用英文，不寫「完成」
 ---
-
-# 實驗名稱
-
-## 目標
-本次實驗想驗證什麼？
-
-## 設定
-- 腳本：`xxx.py`
-- 關鍵參數：
-  - PATCH_SIZE: 256
-  - OVERLAP: 64
-  - OIL_TO_BG_RATIO: 1.5
-  - NUM_WORKERS: 2
-
-## 結果
-- Oil patches: 
-- BG patches: 
-- 實際比例: 
-
-## 觀察與結論
-
-## 下一步
 ```
-
-### 概念頁面（wiki/concepts/）
-```markdown
----
-type: concept
-tags: []
-related: []
----
-
-# 概念名稱
-
-## 一句話定義
-
-## 詳細說明
-
-## 在本專案的應用
-
-## 相關頁面
-```
-
-### 文獻摘要（wiki/papers/）
-```markdown
----
-type: paper
-title: 
-authors: 
-year: 
-tags: []
----
-
-# 論文標題
-
-## 核心貢獻
-
-## 與本專案的關聯
-
-## 關鍵方法
-
-## 重要數據/結果
-```
+- 實驗頁章節：1 背景／2 方法／3 關鍵參數／4 量化結果／5 觀察與結論／6 後續方向／7 檔案位置／相關頁面
+- 概念頁：一句話定義／詳細說明／在本專案的應用／相關頁面
+- 文獻頁：基本資訊／研究問題／方法／主要結果／與本專案對照／啟發／相關筆記
+- 寫 `[[wikilink]]` 前先確認目標存在。
 
 ---
 
-## 操作規則
+## 4. 操作流程
 
-### 新增論文時（Ingest）
-1. 閱讀論文，與使用者討論關鍵重點
-2. 在 `wiki/papers/` 建立摘要頁面
-3. 更新 `wiki/concepts/` 中相關概念頁面
-4. 更新 `index.md`
-5. 在 `log.md` 追加一筆紀錄
-
-### 記錄實驗時
-1. 在 `wiki/experiments/` 建立新頁面
-2. 填入設定參數與結果
-3. 更新 `index.md`
-4. 在 `log.md` 追加一筆紀錄
-
-### 回答問題時
-1. 先讀取 `index.md` 找相關頁面
-2. 讀取相關頁面合成答案
-3. 若答案有價值，存成新頁面至 `outputs/`
-
-### log.md 格式
-每筆紀錄以 `## [YYYY-MM-DD] 操作類型 | 說明` 開頭，例如：
-```
-## [2026-05-04] ingest | 論文：SegFormer oil spill detection
-## [2026-05-04] experiment | patch_from_stacked_tif_0421 測試集切割
-## [2026-05-04] lint | 檢查孤立頁面與過時內容
-```
+- **寫入權限**：Claude 與 Codex 對 vault 的任何寫入一律經各自的 `obsidian-vault-manager` agent；
+  緊急繞過（break-glass）須在 log.md 記原因。
+- **新增論文（ingest）**：讀論文並與使用者討論重點 → `wiki/papers/` 建頁 → 更新相關 concepts → index 一行 → log 一筆
+- **記錄實驗**：依 §3.3 → index 一行 → log 一筆
+- **回答問題**：先讀 index.md 找頁 → 讀相關頁面合成答案 → 有保存價值才存到 `outputs/`
+- 不確定的技術細節先問使用者，不要猜。重大決策與 Codex 協商（`.agents/consensus.md`），工作段落結束更新 `.agents/handoff.md`。
 
 ---
 
-## 本專案關鍵技術知識
+## 5. Git 規則
 
-### 波段順序（11 bands，升序）
-| Index | 波長(nm) | 對應 S2 波段 | 解析度 |
-|-------|----------|-------------|--------|
-| 1 | 443 | B01 | 60m→10m |
-| 2 | 492 | B02 | 10m |
-| 3 | 560 | B03 | 10m |
-| 4 | 665 | B04 | 10m |
-| 5 | 704 | B05 | 20m→10m |
-| 6 | 740 | B06 | 20m→10m |
-| 7 | 783 | B07 | 20m→10m |
-| 8 | 833 | B8A | 10m |
-| 9 | 865 | B8A/B05 | 20m→10m |
-| 10 | 1614 | B11 | 20m→10m(Fused) |
-| 11 | 2202 | B12 | 20m→10m(Fused) |
-
-### Mask 像素值定義
-- `128` = Oil（油汙，正樣本）
-- `64` = Background（已標記背景）
-- `192` = Others（船隻等次要類別）
-- `0` = 未標記區域
-
-### Patching 關鍵參數
-- PATCH_SIZE: 256
-- OVERLAP: 64（油汙 patch 使用，背景不重疊）
-- OIL_TO_BG_RATIO: 1.5（balanced 模式，每個油汙 patch 對應 1.5 個背景）
-- 斷點續傳：`.scene_status/` 目錄下的 JSON 標記檔
-
-### HNM 四步驟
-- Step 2：100% 正樣本 + 10% 隨機背景 → V1 訓練集
-- Step 3：訓練 Probe 模型 V1（支援 Resume）
-- Step 4：掃描純背景，conf > threshold 的誤判 → Hard Negatives
-- Step 5：Golden Dataset 組裝（嚴格防止 data leakage）
+- 寫入完成後回報 `git status`／diff 摘要；**commit 與 push 都要使用者明確授權**，不自動 `git add . && push`。
+- 只 `git add` 明列的檔案；commit 訊息格式 `[claude|codex|user] 範圍: 說明`。
+- ⚠ 本 vault 的 GitHub repo 是**公開**的：不寫帳密、token、私人資料。
 
 ---
 
-## Git 同步規則
+## 6. 目前研究基線快照（每半月更新；本版 2026-11-11）
 
-每次 Claude 完成一批 Wiki 更新後，執行：
-```bash
-cd /home/alanyh/obsidian-vault
-git add .
-git commit -m "wiki: [說明更新內容]"
-git push
-```
+> 只放「寫筆記時需要對齊的口徑與設定」，不放最新實驗數字。
+
+**資料與標籤**
+- VRT 8 槽：B01、B02、B03、B04、B08、B8A、B11、B12；DN＝反射率×10000＋1000（算光譜指數前要先扣 1000）。
+- 模型輸入 6 波段：B02／B03／B04／B8A／B11／B12（/10000 後用 Prithvi 官方 mean/std）。
+- 本地 mask：原始值 0＝油；1、2、255＝背景；影像無效像素在 loss 與計分時為 ignore（255）。
+- 舊版 mask 定義（128 油／64 背景／192 其他）屬 0420/0422 舊 pipeline，勿套用到現行資料。
+
+**基線流程（P44，2026-11-10 裁決為 baseline：自然比例、不挑背景）**
+- 取樣：每景以 3,840×3,840 ROI 框住油區；TRAIN 在 ROI 內 256 窗、步距 128 滑窗；全球排除臺灣。
+- 模型：Prithvi-EO-2.0-300M ＋ DeepLabV3 ASPP(6,12,18)，第 23 層；Tversky α0.3／β0.7。
+- 臺灣測試：ROI 內步距 128＋翻轉 TTA。
+- 卡片：repo `analysis/p44_roi_sliding_global_20261106/P44_CARD_DRAFT.md`；vault `.agents/decisions/20261106_P44_ROI重疊滑窗全球排除臺灣設計.md`
+
+**評估口徑**
+- 每個 run 內像素加總算一次 OilIoU，再跨 seed／fold 取平均（2026-10-11 起；舊卡原判定不回頭改）。
+- 臺灣結果分兩欄呈現：**大林（2 張）**與**其他 22 張**（2026-11-11 起；不再列 24／19／5）。
+- 單 seed 結果標「描述性」；seed 間差距可達 ±0.1 級，比較時須報全部 seed 並揭露塌縮的 seed。
+
+**用語**：並列訓練設定稱「組」，單次執行稱 run／次（不用「臂」）。
 
 ---
 
-## 注意事項
+## 7. 注意事項
 
-- `raw/` 目錄下的檔案**只讀**，不可修改
-- `log.md` 只能 append，不可修改舊紀錄
-- 每次新增頁面後必須更新 `index.md`
-- 不確定的技術細節請詢問使用者後再寫入，不要猜測
-- 重大決策須與 Codex 協商取得共識，規則見 `.agents/consensus.md`。
-- 工作段落結束時更新 `.agents/handoff.md`；接手他方工作前先讀該檔。
-
-
-## 啟動規則
-
-每次 Claude Code 在以下目錄啟動時，自動執行：
-1. 讀取本文件（CLAUDE.md）
-2. 讀取 index.md 了解目前 wiki 狀態
-3. 等待使用者指令，不要主動修改任何檔案
+- `raw/` 只讀；`log.md` 只 append；新增頁面後更新 index（§3.1）。
+- 每次對話開始：讀本檔 → index.md → `.agents/handoff.md` 最近一段；等待使用者指令，不要主動修改任何檔案。
+- 發現本檔「下次檢查」日期已過：提醒使用者本檔該更新了。

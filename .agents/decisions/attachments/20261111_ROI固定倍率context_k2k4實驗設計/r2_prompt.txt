@@ -1,0 +1,26 @@
+【第 2 回合】主持方 Claude。你的盲提案整體我接受作為候選稿 v1 的骨架（K1 同碼對照、共用 encoder＋zero-init channel γ residual、grid-sample 對齊 g_j=((2j+1)/16−1)/k、context 讀 ROI 外但不跨 VRT、area downsample＋valid 加權、RRC 中心 Δ/k 映射、batch16 不得用梯度累積替代、derangement 反事實、non-executed vs scientific null 區分、VAL FN 前置拆解、臺灣分大林／其他22 且只在 VAL 判定凍結後讀）。以下是我要求的修改（M）與疑問（Q），請逐條回應。
+
+M1【算力：改兩階段 seed，事前登記】15 runs×11–17h＝7–11 天且必須序列跑，代價高。改為：
+ Stage A：S42/S43/S44 × {K1,K2,K4} = 9 runs（Latin 順序照你提的）。
+ Stage A 期中規則（只准提前停，不准提前宣告支持）：若 K2 與 K4 在 3 seed 中「每個 seed 的 Δ 皆 ≤0」→ 判否定、結案，不跑 Stage B。否則一律進 Stage B：S45/S46 × 3 組 = 6 runs，最終判定用 5 seed、沿用你的門檻。
+ Stage A 不讀臺灣、不做 derangement 以外的任何看結果後調整。
+ 請判斷此停止規則是否會造成偏誤；若要更嚴（例如需 mean Δ ≤ −0.01）請提。
+
+M2【derangement 只對候選組做】門檻 1–4 都過的倍率才需要跑 derangement（只在 VAL、推論層，不訓練），未過者不跑，以省推論時間。derangement 定義需凍結：同一 VAL 內，以 context valid-coverage 十分位分層、跨具名事件群的固定 permutation（seed 20261111），每個 local 窗配另一事件窗的 context。若某層無跨事件可配對窗則該層併入相鄰層，規則事前寫死。
+
+M3【I/O 風險】K4 每樣本讀 1024² 8 波段＝local 的 16 倍像素，DataLoader（8 workers、rasterio VRT）可能成為瓶頸而非 GPU。我提議 preflight 同時量 400-step data-only throughput；若 K4 低於 GPU 速度，允許的處置只限：增加 workers、讀取時以 rasterio out_shape 直接降採樣（等價 area？需你確認 rasterio average resampling 與 area 是否可視為同一算子，或必須讀全解析度再 torch area 下採樣）。不得預先快取成不同解析度的檔案而改變數值，除非通過數值等價測試（max abs ≤1e-6）。
+
+M4【VAL 選模也要帶 context】訓練中 VAL（stride 256、無 TTA）與測試推論（stride 128＋TTA）都必須用同一 context 讀取路徑；TTA 的 flip 要同步作用在 local 與 context。請確認你同意，且 K1 的 TTA 也做雙 forward。
+
+M5【legacy 參照】P44 S42/P48 S43/S44 只當 sanity：K1 每 seed 的 VAL IoU 與同 seed P44 的差若 >0.05，記錄為「雙分支改變了基線行為」的描述，不作判定依據、不作 non-executed 理由。同意否？
+
+Q1 你提的 Stage 前置「VAL FN 拆解用所有非 collapse P44 seed」＝P44 S42 與 P48 S43（S44 塌縮）。需 GPU 對 VAL 37 景重跑推論（stride 128＋TTA，與臺灣同算子），P51 結束後跑。你同意只用這兩個 seed 嗎？若兩 seed 結論不一致，判定規則為何？
+
+Q2 collapse 的 seed 在 mean Δ 中照算（不剔除），對嗎？若 K1 該 seed collapse 而 K4 沒有，Δ 會很大正值——是否需要以 median 與 4/5 規則為主、mean 為輔？你已有三條件並列，請確認不需要再改。
+
+Q3 你的 adoption 門檻「VAL 平均 absolute oil-logit change ≥0.01」是 γ=0 vs full 的推論差嗎？請給精確定義（在哪些像素平均、TTA 前後）。
+
+請以候選稿 v2（＝你的 v1＋以上你同意的修改）結尾簡列差異，並附：
+---VERDICT---
+STANCE / BLOCKING / RESTATE（複述我方最強論點）/ CONFIDENCE
+---END---

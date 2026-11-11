@@ -1,0 +1,55 @@
+你是 Codex，依 vault `.agents/consensus.md` v2.1 參與正式共識協商。本輪是【第 1 回合盲提案】：請獨立提出完整實驗設計，不要等我的方案。主持方：Claude Code（Opus 5.5）。對手方：你。
+（你的沙箱可能讀不到本機檔，所需事實已全部內嵌如下；若你能讀檔可補充，但不得以讀不到為由延後。）
+
+# 議題
+使用者決定：在現行 P44 ROI 滑窗架構上，測試 GeoAgent 式「patch 外 context」是否有用，**先不導入 RL／尺度選擇器**，只做固定倍率，倍率由使用者指定為 **k=2（讀 512×512）與 k=4（讀 1024×1024）**。請設計這個實驗（組別、架構、對齊、資料增強、取樣、seed、主終點與門檻、non-executed 判準、前置條件、算力），只做設計，不寫碼不啟動。
+
+# 背景一：GeoAgent（Liu et al., ICCV 2023, Seeing Beyond the Patch）
+- 雙分支共用權重分割網路：local patch 原解析度；context 以 patch 為中心擴大 a 倍再降採樣回同尺寸；context 特徵依地理位置切出對應 local 的區域後與 local 特徵 concat→3×3 conv→1×1 conv→softmax。
+- Scale Control Agent（A2C）看整景縮圖＋位置 mask 決定 a；reward=相對 local-only 的分數改善（需像素 GT）。
+- 消融：context-only 隨倍率增加掉分；固定尺度有時傷害、最佳尺度隨資料集變；random scale 優於 local-only；GeoAgent 最好。三個 1–4 m GF-2 多類 LULC 資料集 mIoU +5～+13；無重複實驗、無算力公平。
+
+# 背景二：本專案歷史（P11，GT-centric 時代）
+- 2026-08-31 Claude×Codex 三輪共識（僅設計）：local 256@10m；context 同中心 768 讀取、area 縮回 256（3×）；local/context 共用 Prithvi final tap；context 中央 1/3 用固定決定性線性算子重採樣到 16×16；F = F_local + γ⊙C_aligned，γ 1024-ch fp32 zero-init／no-WD／head-LR；ASPP 不動；整景 thumbnail 與 A2C 不適用（只有約 12 個事件群，縮圖易成事件指紋）。
+- 09-02 擴成 Track A/B；09-08 attempt1 判 non-executed（val dataset 漏 BG→油密度 16×、early stop 凍在 epoch1）；attempt2 啟動後結果查無紀錄。即：context 在本專案從未被有效測過。
+
+# 背景三：現行 P44 架構（使用者 11-10 定為基線）
+- 模型：Prithvi-EO-2.0-300M encoder（6 波段 B02/B03/B04/B8A/B11/B12，從 8 波段 VRT 取；16px patch → 16×16 tokens×1024，取第 23 層）＋ DeepLabV3 ASPP(6,12,18) head，2 類。輸入 256×256@10m。
+- 取樣：以 GT 最大單一連通油區長邊 3,430 → ROI 3840×3840（多油區 first-fit 可多 ROI），ROI 內步距 128 滑窗，**背景不挑（自然比例）**。TRAIN 298 景／265,496 窗，VAL 37 景／8,724 窗（tile／具名事件整組抽）；全球資料排除臺灣（+菲律賓）。含油窗約 2.7%；每 batch 有油的比例約 0.34；油像素佔訓練像素約 0.19%。
+- 訓練：batch 16、AdamW（enc lr 5e-6、head 5e-5、wd 1e-3）、AMP、clip 1.0、Cosine；virtual epoch=4000 steps，最多 40 VE，patience 8；Tversky α0.3/β0.7（batch 加總；已知全背景 batch 梯度≈0）。增強：RandomResizedCrop(256,(0.9,1),p.5)、H/V flip、RandRot90 p.8、GaussNoise、BrightnessContrast。約 10.6 it/s，每 VE 約 6.3 分＋VAL 2 分。
+- 選模：VAL ROI 拼接（stride 256、無 TTA）pooled 油 IoU。測試推論：stride 128＋TTA(orig/hflip/vflip)，logit 平均拼接。
+- 讀圖：rasterio VRT window（boundless fill 0）；無效像素→ignore 255。VRT DN 有 +1000 offset（對光譜指數重要，對正規化輸入無影響）。
+- 結果（臺灣 ROI 口徑，pooled 油 IoU）：P44 三 seed S42/S43/S44 = 0.300／0.351／0.045（S44 塌縮全背景）。VAL best（S42）pooled IoU 0.188、P 0.44、R 0.25、pred/gt 0.56（嚴重漏判）。
+- 其他 ROI 實驗：P45 每 batch 固定油窗 k=4 臺灣 0.238（worse）；P46/P48 H1′（1:1 隨機背景＋0.5 OOF HNM）三 seed 0.311±0.014 vs P44 0.232±0.164 = indistinguishable；P50 換 UperNet head not better。P51（GoM-only）目前在 GPU 上跑三 seed。
+
+# 背景四：觸發本案的診斷（Claude 11-10 唯讀分析，P44_best S42 臺灣預測）
+- 臺灣 24 張 GT 油像素 1,459,929，recall 0.503。依「以該像素為中心 256 方框內 GT 油佔比」分：<5% R .67；5–20% R .61；20–50% R .66；50–80% R .58；**≥80% R .14，佔全部 FN 43%**。依離油邊距離：1–2px R .53，3–5 .62，6–10 .69，11–20 .74，**>20px R .36，佔 FN 65%**。
+- **≥80% 那格的 FN 100% 來自中油大林兩張（同日兩 tile，各約 42.5 萬 px 一個連通體）**；圖上邊緣抓到、中心大片漏判，漏判區塊邊界呈方形（整窗都在油內時判背景）。其他 22 張的 FN 主要是小碎片整塊漏（<1k px 元件 44% 全漏）。
+- ⚠ 這是臺灣 GT 的描述性事後分析；institution 規則「設計增強不得用臺灣數字反推」。VAL 尚未做同樣拆解（只存了混淆矩陣，需重跑推論；GPU 目前被 P51 佔用）。
+
+# 背景五：制度／使用者規則
+- 訓練一個一個跑，不要同 GPU 並行。GPU 32 GB。
+- 臺灣成績只分「大林 2 張」與「其他 22 張」，各自 run 內像素加總 IoU、跨 seed 平均；不再報 24／19／5。
+- 實驗九步驟卡：1–6 開跑前凍結，Expected Evidence 必須是數字門檻；結論三分：支持／否定／不可判定。
+- 決定性：main_runner.set_global_seed＋CUBLAS_WORKSPACE_CONFIG 必帶；無 GPU bitwise 決定性。
+- 對照 baseline 已有 P44 S42／P48 S43／S44（同流程）。
+- 臺灣 ROI 是 GT 錨點（oracle-anchor），非部署設定。
+
+# 請你提出
+1. 組別與對照（是否要 k=2、k=4 各自一組，是否需要同碼 k=1 對照、random-k、或其他），seed 數，總 run 數與預估時間。
+2. 架構細節：融合方式、context 特徵對齊（k=2 中央 8×8、k=4 中央 4×4 token→16×16 的方法）、是否共用 encoder、γ 設計。
+3. context 讀取與邊界：超出 ROI／影像邊界的處理、無效像素、降採樣方法。
+4. 資料增強與 local/context 幾何一致性（RandomResizedCrop、rot90、flip 怎麼同步）。
+5. 取樣與記憶體（雙 forward 下 batch 16 是否可行、梯度累積是否破壞 parity）。
+6. 主終點、次終點、數字門檻（考慮 P44 seed 變異極大）；VAL 與臺灣角色；大林／其他 22 的判讀；是否要事前登記「大林內部 recall」類機制指標。
+7. non-executed 判準（例如 γ／context 貢獻量門檻）與 scientific null 的區分。
+8. 前置條件：VAL FN 拆解是否必須先做、過關條件為何。
+9. 你認為最大的風險與競爭解釋。
+
+回覆用繁體中文，結尾附：
+---VERDICT---
+STANCE: ACCEPT | REVISE | OBJECT（本輪為盲提案，請對「使用者指定的 k=2/k=4 固定倍率、無 RL」這個方向表態）
+BLOCKING: [編號清單]
+RESTATE: <一句話複述此方向最強的支持論點>
+CONFIDENCE: HIGH|MEDIUM|LOW
+---END---

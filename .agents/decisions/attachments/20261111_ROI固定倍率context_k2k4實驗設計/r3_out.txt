@@ -1,0 +1,13 @@
+同意此分類，設計共識已收斂。
+
+唯一文字性釐清：前200 steps的梯度 exposure因必須開始訓練才能量測，宜在 §launch gates 下標為「授權 launch 後的 probationary continuation gate」。未通過即停止、判 non-executed，不得繼續完整訓練。這不是設計分歧。
+
+其餘皆為 fail-closed launch gates；任一失敗不得自行放寬門檻、改 batch／算子、刪除 K4或推定新的使用者授權。VAL推論、prereg凍結／commit及 GPU launch三項授權彼此獨立。
+
+---VERDICT---
+STANCE: ACCEPT
+BLOCKING: []
+RESTATE: v3以同碼K1和配對seed直接隔離patch外資訊，並以兩階段futility規則節省算力，同時用不可放寬的幾何、數值、I/O、記憶體與梯度gates防止「實作沒真正施加treatment」被誤判為科學結果。
+CONFIDENCE: HIGH
+---END---
+EXIT 0

@@ -1,0 +1,165 @@
+整體同意。唯一需要收緊的是 M1：提前停止不會增加「假支持」，但可能把原本五 seed 下的「不可判定」提前寫成「否定」。以下把這點納入候選稿 v2。
+
+## M1：兩階段 seed
+
+同意兩階段設計，而且三組必須整組續跑，不能只延伸 Stage A 表現較好的倍率。
+
+由於最終支持門檻要求至少 4/5 個 paired Δ 為正，只要某倍率前三個 Δ 全部 `≤0`，它即使後兩個 seed 都改善，也不可能通過支持門檻。因此，兩倍率前三個 seed 全非正時提前停止，不會提高假陽性或漏掉一個能依既定規則被判支持的倍率。
+
+但它可能影響「否定／不可判定」的界線：S45/S46若出現很大的正效果，五-seed mean可能轉正，原規則會判不可判定而非否定。因此 v2採較嚴的提前停止條件：
+
+對 K2、K4兩者都同時滿足：
+
+- 三個 paired Δ 全部 `≤0`；且
+- 三-seed mean Δ `≤-0.010`。
+
+才提前結案為「預註冊 futility denial」。若全部非正但任一倍率 mean落在 `(-0.010,0]`，仍進 Stage B。
+
+這是事前登記的資源停止規則，不宣稱等同觀察完整五 seed後對平均效果的估計。Stage A不能提前宣告支持，也不能依結果改架構、門檻、augmentation或只延伸某一倍率。
+
+## M2：只對候選倍率做 derangement
+
+同意。只有完成五 seed後通過門檻1–4的倍率才執行 derangement；若兩個倍率都通過，兩者都做。未通過者不做，也不對其 context-use mechanism下結論。
+
+凍結方式如下：
+
+- 使用主 VAL operator：stride 256、無 TTA。
+- coverage定義為實際送入 encoder 前、area downsample後的 context valid fraction。
+- 每個倍率分別計算十分位。
+- 固定 permutation seed為 `20261111`。
+- context tensor及其 validity metadata一起置換；local影像、label及輸出位置不變。
+- 配對必須跨具名事件群。
+- 無法跨事件配對的 bin，按低至高掃描第一個不可行 bin，與可提供最多異事件候選窗的相鄰 bin合併；同數時選較低編號，邊界 bin只能向內合併；重複至全部可行。
+- permutation mapping存入實驗產物，所有 checkpoint使用同一 mapping。
+
+derangement後的平均 IoU下降仍須 `≥0.010`，且至少為該倍率相對 K1平均增益的50%。
+
+## M3：K4 I/O preflight
+
+同意400-step data-only benchmark，並與同設定下 GPU訓練消耗率比較。資料供應率若低於 GPU消耗率，或沒有至少約20%餘量，就視為 I/O bottleneck。
+
+`rasterio Resampling.average`和 full-read後的 area pooling在「整數倍率、完全對齊、全有效像素」時數學意義相同，但不能直接視為數值等價，原因包括：
+
+- GDAL/VRT可能選用 overview。
+- invalid/nodata的權重語義可能不同。
+- 邊界與部分有效 cell的處理不同。
+- 累加精度及運算順序不同。
+
+因此直接 `out_shape`只能作為待驗證實作。必須分別重採樣：
+
+\[
+N=\operatorname{average}(image\times valid),\quad
+D=\operatorname{average}(valid),\quad output=N/D
+\]
+
+並在 `D=0` 時使用既定 fill。
+
+等價測試至少涵蓋一般、ROI外、影像邊界及部分 invalid windows；判準為：
+
+- post-normalization float32輸入 max absolute difference `≤1e-6`；
+- output validity mask完全一致；
+- K1 identity測試仍通過。
+
+若失敗，K2/K4必須讀完整解析度後使用 reference area算子。不得放寬誤差、改用 bilinear或建立不同解析度快取。增加 workers可以，但不得因此改變 sampler順序或 RNG。
+
+## M4：所有 VAL／測試都帶 context
+
+完全同意。
+
+- 訓練期間 VAL：stride 256、無 TTA，但使用該組完整 context path。
+- 測試推論：stride 128＋orig/hflip/vflip，local與context同步 flip。
+- 每個 TTA輸出的 local logits先 inverse flip，再做 logit平均及 ROI拼接。
+- K1也必須執行雙 forward與相同 TTA，不得在 inference時把 context branch簡化成直接重用 local feature。
+- derangement仍使用主 VAL operator，即 stride 256、無 TTA。
+
+## M5：legacy sanity reference
+
+同意。
+
+對 S42–S44記錄：
+
+\[
+|IoU_{\mathrm{VAL}}(K1,s)-IoU_{\mathrm{VAL}}(legacy,s)|
+\]
+
+若大於 `0.05`，標註「雙分支／新 paired pipeline已改變基線行為」。它：
+
+- 不影響 K2/K4相對 K1的判定。
+- 不構成 non-executed。
+- 不觸發調參或重跑。
+- 只用來限制對 legacy P44絕對比較的解釋。
+
+## Q1：VAL FN拆解使用哪些 seed
+
+同意只用兩個非 collapse checkpoint：P44 S42及 P48 S43。S44全背景塌縮，無法提供「模型選擇性漏掉哪類油區」的有效診斷，不納入 phenotype gate。
+
+兩 seed各自以 stride 128＋orig/hflip/vflip重跑 VAL 37景。GT像素數與事件覆蓋是共同的 evaluability條件；recall gap和 FN share則逐 seed判定：
+
+- 兩 seed都通過既定 recall-gap及 FN-share門檻：可稱為 VAL確認的 dense-interior targeted experiment。
+- 兩 seed都未通過：仍可執行，但改稱 general fixed-context exploratory experiment。
+- 僅一個通過：機制前置證據判「不一致」，也只能採 general exploratory定位；不得以平均兩 seed後剛好過線恢復 targeted claim。
+
+這不改變主終點及數值門檻，只限制可宣稱的先驗機制。
+
+## Q2：collapse 是否照算
+
+對，collapse seed完整納入 mean、median及正負勝數，不剔除、不替換。
+
+若 K1 collapse而 K4沒有，大幅正 Δ是 context改善訓練穩定性的真實 paired outcome；但它不能單獨造成支持，因為仍須同時滿足：
+
+- 五-seed mean `≥+0.020`
+- median `≥+0.010`
+- 至少 4/5 paired Δ為正
+- treatment collapse數不高於 K1
+- derangement context-dependence門檻
+
+因此不需再把 mean降為純輔助指標；三個效果條件維持「全部必須通過」。
+
+## Q3：adoption logit change定義
+
+是同一個已訓練 checkpoint在 full context與 inference-time `γ=0`之間的差異，不重訓模型。
+
+為避免二類 logits共同平移影響解釋，v2改用 oil logit margin：
+
+\[
+m=z_{\mathrm{oil}}-z_{\mathrm{background}}
+\]
+
+在標準 VAL operator（stride 256、無 TTA）下，分別產生 full及 γ=0 logits，先完成相同 ROI拼接，再計算：
+
+\[
+A_{\mathrm{logit}}=
+\frac{1}{2}\left[
+\operatorname{mean}_{y=oil}|m_{full}-m_{\gamma=0}|+
+\operatorname{mean}_{y=background}|m_{full}-m_{\gamma=0}|
+\right]
+\]
+
+- 只計算非 ignore、有效 VAL像素。
+- 採 class-balanced平均，避免約99%以上的背景淹沒油像素變化。
+- adoption門檻為 `A_logit ≥0.01`。
+- 另保留 `median_window RMS(γ⊙C)/RMS(F_local) ≥0.01`。
+- 未達 adoption但梯度 exposure正常，仍是 scientific null，不是 non-executed。
+
+臺灣或其他 TTA診斷若另行計算，必須先 inverse-transform每個 TTA logits、做 logit平均及 ROI拼接，最後才計算 margin差；但它不取代上述無 TTA的 adoption門檻。
+
+## 候選稿 v2 相對 v1的差異
+
+- 5 seed改為預註冊 Stage A 9 runs＋必要時 Stage B 6 runs。
+- Stage A提前停止增加雙倍率 mean `≤-0.010`條件，並明定為 futility denial。
+- derangement只對通過五-seed門檻1–4的候選倍率執行。
+- 加入 K4 400-step data-only benchmark及 rasterio-average數值等價規範。
+- 明定訓練 VAL、測試 TTA及 K1全部使用雙分支 context path。
+- legacy差異超過0.05只作描述性警示。
+- VAL phenotype只使用兩個非 collapse seed；不一致時降為 general exploratory。
+- adoption改成 γ=0 vs full的 class-balanced oil-logit-margin差。
+
+其餘 v1內容，包括三組架構、grid-sample公式、RRC `Δ/k`、batch16語義、non-executed區分、臺灣兩群報告及最終五-seed判定門檻，全部維持。
+
+---VERDICT---
+STANCE: ACCEPT
+BLOCKING: [1. Stage A提前停止須採「全Δ≤0且兩倍率mean≤−0.010」並標為futility denial, 2. 開跑前凍結兩個非collapse seed的VAL phenotype定位, 3. K4必須通過I/O數值等價與batch16記憶體preflight]
+RESTATE: 兩階段設計最強之處是前三個seed若讓兩個倍率都失去達成4/5正向勝數的可能，就能停止昂貴訓練而不增加假支持，並仍以同碼K1隔離真正的patch外資訊。
+CONFIDENCE: HIGH
+---END---
+EXIT 0

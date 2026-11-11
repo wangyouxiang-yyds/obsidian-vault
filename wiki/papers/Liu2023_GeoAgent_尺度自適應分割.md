@@ -179,3 +179,4 @@ GeoAgent 用 SCA 對每個 patch 選擇 context 倍率，再由共享權重的 l
 - [[20260731_ASPP_rate適配實驗]] — patch 內 receptive field 實驗；大尺度 context 有用但仍受 patch 邊界限制
 - [[GT_expand_pipeline]] — 現行 256×256 GT-centric patch 與評估流程
 - [[20260716_資料溯源洩漏與評估合約v1]] — 12-event cluster bootstrap 與正式主終點
+- [[20261111_ROI固定倍率context_k2k4實驗設計]] — 2026-11-11 ROI 固定倍率 context（k=2/k=4，無 RL）實驗設計共識
