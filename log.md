@@ -762,3 +762,9 @@
 
 ## [2026-11-11] decision | ROI context k2/k4 融合改為論文 branch aggregation（v5）
 - 使用者裁決改用 GeoAgent 論文 branch aggregation，γ 版（F_local+γ⊙C）作廢；Claude×Codex R4 REVISE→R5 ACCEPT／BLOCKING=[]，未授權執行。詳見 `.agents/decisions/20261111_ROI固定倍率context_k2k4實驗設計.md` 文末「設計變更」節，附件補入 r4／r5。
+
+## [2026-11-11] decision | vault 知識庫修復 WP0 目標設計定案（D0–D5，使用者裁決）
+- 新增 `.agents/decisions/20261111_vault知識庫修復_WP0目標設計.md`；WP1 起分工待使用者討論，未開始
+
+## [2026-11-11] harness | Codex vault-manager 寫入規則修正（WP5，使用者要求）
+- `.codex/agents/obsidian-vault-manager.toml`：改為「先嘗試寫入、實際權限錯誤才停」，加 `[sandbox_workspace_write] writable_roots` 指向 vault，移除同 inode 別名寫法；根因＝舊指示依 parent 宣告的 workspace roots 自行停止、從未嘗試寫入

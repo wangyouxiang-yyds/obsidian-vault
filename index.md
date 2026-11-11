@@ -75,6 +75,7 @@
 
 ## 實驗設計與逐案決策
 
+- [vault 知識庫修復 WP0 目標設計](.agents/decisions/20261111_vault知識庫修復_WP0目標設計.md) — D0 index/log 只指路；D1 常青知識頁；D2 作廢可復原；D3 status 值域；D4 ingest 改寫知識頁；D5 半月 lint
 - [20261111_ROI固定倍率context_k2k4實驗設計](.agents/decisions/20261111_ROI固定倍率context_k2k4實驗設計.md) — 固定倍率 context 實驗的對照、判準與前置驗收。
 - [20261111_P51_GoM_only_ROI資料制度_設計](.agents/decisions/20261111_P51_GoM_only_ROI資料制度_設計.md) — P51 凍結設計卡的 vault 鏡像與原件指標。
 - [20261108_P48補seed_H1與P44](.agents/decisions/20261108_P48補seed_H1與P44.md) — 事前設計、協商或研究裁決。
