@@ -10,9 +10,11 @@
 4. 研究或實驗工作另讀 `research/oil_spill_project_status.md`；任一主要 harness 不可用時讀 `40_harness_continuity.md`。
 5. 寫入前檢查本 vault 的 `git status` 與最近提交，保留他人的未提交修改。
 
+**例外（2026-11-11 vault 修復 WP1）**：被派工的 `obsidian-vault-manager` 子代理不必重讀第 3–4 項全文；派工的主代理仍須完整讀過，並把與任務相關的 institution 限制寫進交辦。子代理照 `.codex/agents/obsidian-vault-manager.toml` 的 startup 執行（含讀取現況檔中該實驗的所有相關段落）。
+
 ## 權威來源與寫入
 
-- 研究即時狀態以 institution 的 `research/oil_spill_project_status.md` 為準；`.agents/handoff.md` 是交接摘要，`index.md` 只是頁面目錄。
+- 研究即時狀態以 institution 的 `research/oil_spill_project_status.md` 為準；`.agents/handoff.md` 是交接摘要（操作狀態與共識一行摘要，不是研究證據），`index.md` 只是頁面目錄。
 - 實驗設計 1–6 存 `.agents/decisions/`；結果 7–9 存 `wiki/experiments/`。已凍結的設計卡不可因後續結果改寫。
 - vault 寫入按 `CLAUDE.md` §4 經 `obsidian-vault-manager`；若環境使該路由無法使用，例外寫入須在 `log.md` 記錄原因。
 - kill／launch、刪除、commit／push、出版及不可逆資料或方法變更須使用者明確授權。本 vault 的 `CLAUDE.md` §5 另要求 commit／push 先取得授權。

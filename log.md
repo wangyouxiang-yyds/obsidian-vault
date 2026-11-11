@@ -768,3 +768,6 @@
 
 ## [2026-11-11] harness | Codex vault-manager 寫入規則修正（WP5，使用者要求）
 - `.codex/agents/obsidian-vault-manager.toml`：改為「先嘗試寫入、實際權限錯誤才停」，加 `[sandbox_workspace_write] writable_roots` 指向 vault，移除同 inode 別名寫法；根因＝舊指示依 parent 宣告的 workspace roots 自行停止、從未嘗試寫入
+
+## [2026-11-11] harness | WP1 規則落地：CLAUDE.md、AGENTS.md、vault-manager 兩份正本改版（Claude×Codex 共識 R4 ACCEPT）
+- 決策紀錄 `.agents/decisions/20261111_vault知識庫修復_WP1規則落地_共識.md`；institution 實驗卡範本／30_maintenance／README 同步（institution repo）

@@ -75,6 +75,7 @@
 
 ## 實驗設計與逐案決策
 
+- [vault 知識庫修復 WP1 規則落地（共識）](.agents/decisions/20261111_vault知識庫修復_WP1規則落地_共識.md) — Claude×Codex 4 回合收斂；CLAUDE.md／AGENTS.md／vault-manager 兩份正本／實驗卡範本落地 D0–D5
 - [vault 知識庫修復 WP0 目標設計](.agents/decisions/20261111_vault知識庫修復_WP0目標設計.md) — D0 index/log 只指路；D1 常青知識頁；D2 作廢可復原；D3 status 值域；D4 ingest 改寫知識頁；D5 半月 lint
 - [20261111_ROI固定倍率context_k2k4實驗設計](.agents/decisions/20261111_ROI固定倍率context_k2k4實驗設計.md) — 固定倍率 context 實驗的對照、判準與前置驗收。
 - [20261111_P51_GoM_only_ROI資料制度_設計](.agents/decisions/20261111_P51_GoM_only_ROI資料制度_設計.md) — P51 凍結設計卡的 vault 鏡像與原件指標。

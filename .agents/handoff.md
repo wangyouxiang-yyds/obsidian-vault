@@ -7,6 +7,7 @@
 
 ## 目前狀態(每次更新覆蓋本節;本節只是摘要,研究細節唯一正本=institution research/oil_spill_project_status.md)
 
+- STATUS_AS_OF:2026-11-11 15:47 Asia/Taipei（更新者:Claude 主 harness 經 obsidian-vault-manager）：vault 知識庫修復 WP1 規則落地已套用（CLAUDE.md、AGENTS.md、vault-manager 兩份正本；決策檔 `.agents/decisions/20261111_vault知識庫修復_WP1規則落地_共識.md`）；下一步 WP2（vault-manager 記憶校正），WP3／WP4 分工待使用者。
 - STATUS_AS_OF:2026-11-11 15:20 Asia/Taipei（更新者:Claude 主 harness 經 obsidian-vault-manager）：vault 知識庫修復 WP0 目標設計定案（D0–D5，使用者 2026-11-11 裁決），決策檔 `.agents/decisions/20261111_vault知識庫修復_WP0目標設計.md`；WP1–WP7 分工待使用者討論，尚未開始。
 - STATUS_AS_OF:2026-11-11 14:31 Asia/Taipei（Codex 文件回填）：依使用者要求補 `outputs/` 的當代 harness 與 GT-centric 階段快照、資料集風／海流和標記清冊、Docker/Codex 遠端故障紀錄、模型路線及 Sen2Like→GT-centric／ROI 新資料路由，並更新 vault 維護規則與 index/log。`wiki/papers/` 未動；本次只整理既有證據，未改主線 Dockerfile、資料、split、模型、訓練或 process。兩個 vault 掛載路徑 inode 相同，但此 session 的 vault-manager 仍載入舊規則而停止寫入；alias 規則已更新於 `.codex/agents/obsidian-vault-manager.toml`，**尚未驗證重載後可寫**。**P51 的下方 13:51 觀察已過時，本次未重新檢查其現況，不得據此宣稱仍在跑或已有結果。** vault 本次尚未 commit／push。
 - STATUS_AS_OF:2026-11-11 13:51 Asia/Taipei（Codex 唯讀查核）：P51 launcher PID 1925228 仍在；S42 訓練檔及預測輸出已出現，S43 訓練 log 最後更新 13:51。此為當下檔案／process 觀察，非 S42 指標驗收或 P51 結果。最新進展須重查 process 與 `/home/alanyh/oil_dataset/new/_p51_gom_only_roi_20261111/`；下方較舊 STATUS_AS_OF 條目保留為歷史。vault 導覽已補 P51 凍結卡鏡像、分折與封存測試頁、研究問題入口；新頁從 `index.md` 進入。
@@ -311,3 +312,4 @@
 - 2026-11-01 P37 Lane A 完成（使用者已授權）：臺灣 19 景／270 窗 GT，final pooled OilIoU 0.3563（P 0.814／R 0.388／F1 0.525，IoU=0 景 0），GoM-val-best 0.3224；all-oil floor 0.1582、門檻 0.2082 → **判定 support baseline adequacy**（僅可當 LFMDA 後續對照基線，非跨域效益；單 seed、GT-derived ROI、不併 24 景）。誤差以漏判為主。輸出 `/home/alanyh/oil_dataset/new/_lfmda_sourceonly_20261101/target_eval_final_best.json`（sha ff36cb9d…），GT_expand 7030a77 未 push。結果頁 `wiki/experiments/20261101_P37_LFMDA_SegFormerB2_sourceonly_結果.md`。Next 待使用者決定：以 P37 final 為對照設計完整 LFMDA 新卡（開跑前凍結 1–6 並與 Codex 協商）；可查 0801 L9／0529 L8 低分景影像原因（不需讀 GT）。
 
 - 2026-11-11 ROI 固定倍率 context（GeoAgent 雙分支 k=2/k=4，無 RL）實驗設計：Claude×Codex 三輪收斂 ACCEPT/BLOCKING=[]；K1/K2/K4、Stage A 9 runs＋futility 停止、Stage B 6 runs；前置 VAL FN 拆解；未授權執行。→ decisions/20261111_ROI固定倍率context_k2k4實驗設計.md
+- 2026-11-11 vault 知識庫修復 WP1 規則落地：Claude 主持起草、Codex（gpt-5.6-sol high）4 回合審查後 ACCEPT／BLOCKING []。結論：D0–D5 寫入 CLAUDE.md 與兩份 vault-manager 正本，子代理 startup 改由主代理傳遞 institution 限制。雙方立場：Claude 負責起草與落地，Codex 負責審查，R4 無異議。→ [[20261111_vault知識庫修復_WP1規則落地_共識]]
