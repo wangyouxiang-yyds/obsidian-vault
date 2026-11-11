@@ -8,7 +8,7 @@ project: OIL_PROJECT_MutiBand_GT_expand
 
 # GT_expand Workflow 新人導覽
 
-> 本頁以 2026-09-05 的 GT-centric 工作流為主；新景進 GT-centric 或 ROI 3840 的現行分類先看 [新資料處理路由](../../outputs/20261111_新資料處理路由_GT-centric與ROI.md)。頁內稱「目前」的 split 或數量須以對應日期與現行清單核對。
+> 本頁以 2026-09-05 的 GT-centric 工作流為主；新景進 GT-centric 或 ROI 3840 的現行分類先看 [新資料處理路由](新資料處理路由.md)。頁內稱「目前」的 split 或數量須以對應日期與現行清單核對。
 
 > 本頁是一份隨 workflow trace 逐段補寫的新人文件。內容以目前實際資料、程式與設定為準；尚未確認的環節會明確標為待確認，不以歷史筆記補空白。
 
@@ -169,3 +169,7 @@ MS6_sen2like/{NOAA資料群}/{YEAR}/{SCENE_ID}/
 - Manifest：`preprocess/build_manifest.py`
 - 訓練資料讀取：`main/deeplab_adapter.py`
 - Reconstruction 資料讀取：`main/recon_gt_aware_module.py`
+
+## 變更紀錄
+
+- 2026-11-11｜導覽句由已作廢快照改指現行知識頁｜依據 log.md 2026-11-11 harness WP3 收尾

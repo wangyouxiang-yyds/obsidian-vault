@@ -790,3 +790,6 @@
 ## [2026-11-11] harness | WP3 收尾
 - 6 頁舊實驗卡 status 正規化為 `abandoned`；12 頁已作廢日期快照由 `wiki/` 搬至 `outputs/`（路徑型連結、index、`wiki/corrections.md` 已同步）。
 - 刪除 3 個 .bak（`.agents/consensus.md.bak-20260718`、`.agents/handoff.md.bak-20260718`、`.agents/handoff.md.bak-20260825`，內容在 git 歷史）。
+
+## [2026-11-11] harness | 導覽句改指現行知識頁
+- 7 頁（models: DeepLabV3+／OSDMamba／Prithvi_DeepLabV3；pipeline: project_overview／add_new_data／GT_expand_workflow_onboarding；datasets: ms6_sen2like）指向 `outputs/20261111_*` 快照的導覽連結改指現行知識頁。

@@ -7,7 +7,7 @@ related: [OIL_PROJECT_VRT_0422.md, annotation_workflow.md]
 
 # 新增 Sen2Like 資料流程
 
-> 本頁保留早期 Sen2Like 入庫腳本步驟；新景要進 GT-centric 或 ROI 3840、如何處理來源與 test-only，先讀 [新資料處理路由](../../outputs/20261111_新資料處理路由_GT-centric與ROI.md)。頁內歷史路徑／數量需依目前 manifest 與腳本核對後才執行。
+> 本頁保留早期 Sen2Like 入庫腳本步驟；新景要進 GT-centric 或 ROI 3840、如何處理來源與 test-only，先讀 [新資料處理路由](新資料處理路由.md)。頁內歷史路徑／數量需依目前 manifest 與腳本核對後才執行。
 
 > 每次有新場景進來時，依序執行以下步驟。Step 1/2 有防呆（自動跳過已處理），可對整個目錄重跑。Step 3 每次都必須重跑。
 
@@ -147,3 +147,7 @@ Step 4  generate_nirRG_png.py    NIR-R-G 視覺化 PNG
 | COG 轉換腳本 | `/home/alanyh/oil_dataset/new/full_band/convert_to_cog.py` |
 | VRT 建置腳本 | `preprocess/build_vrt_ms6.py` |
 | COG 轉換 log | `/home/alanyh/oil_dataset/new/full_band/cog_convert.log` |
+
+## 變更紀錄
+
+- 2026-11-11｜導覽句由已作廢快照改指現行知識頁｜依據 log.md 2026-11-11 harness WP3 收尾

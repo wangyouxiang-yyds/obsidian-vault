@@ -5,7 +5,7 @@ tags: [overview, OSDMamba, DeepLabV3+, multiband, segmentation]
 
 # OIL_PROJECT_MutiBand_0420 專案概述
 
-> 這是 0420／11 波段歷史專案概述，不是目前主線。現行新資料處理與 ROI 3840 路由見 [新資料處理路由](../../outputs/20261111_新資料處理路由_GT-centric與ROI.md)。
+> 這是 0420／11 波段歷史專案概述，不是目前主線。現行新資料處理與 ROI 3840 路由見 [新資料處理路由](新資料處理路由.md)。
 
 ## 專案目標
 
@@ -160,3 +160,7 @@ OIL_PROJECT_MutiBand_0420/
 - [wiki/experiments/20260429_OSDMamba整合至0420.md](../experiments/20260429_OSDMamba整合至0420.md)
 - [wiki/experiments/20260430_訓練效能優化.md](../experiments/20260430_訓練效能優化.md)
 - [wiki/experiments/20260501_大圖重組效能優化.md](../experiments/20260501_大圖重組效能優化.md)
+
+## 變更紀錄
+
+- 2026-11-11｜導覽句由已作廢快照改指現行知識頁｜依據 log.md 2026-11-11 harness WP3 收尾

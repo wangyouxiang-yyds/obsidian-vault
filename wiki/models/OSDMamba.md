@@ -10,7 +10,7 @@ superseded_by: "[[早期模型_DeepLabV3+_OSDMamba]]"
 
 # OSDMamba（工程紀錄）
 
-> 本頁保留早期 OSDMamba／11 波段路線的工程紀錄，並非現行 ROI 3840 模型。現行模型導覽見 [模型路線總覽](../../outputs/20261111_模型路線總覽.md)。
+> 本頁保留早期 OSDMamba／11 波段路線的工程紀錄，並非現行 ROI 3840 模型。現行模型導覽見 [模型路線總覽](模型路線總覽.md)。
 
 ## 一句話定義
 
@@ -140,3 +140,7 @@ pip install -e /path/to/causal-conv1d --no-build-isolation
 - [OSDMamba 論文摘要](../papers/OSDMamba_摘要.md) — 學術架構說明
 - [20260429_OSDMamba整合至0420.md](../experiments/20260429_OSDMamba整合至0420.md) — 移植工作紀錄
 - [20260430_訓練效能優化.md](../experiments/20260430_訓練效能優化.md) — 訓練速度優化
+
+## 變更紀錄
+
+- 2026-11-11｜導覽句由已作廢快照改指現行知識頁｜依據 log.md 2026-11-11 harness WP3 收尾
