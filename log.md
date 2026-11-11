@@ -750,3 +750,15 @@
 ## [2026-11-11] writeback | P44–P48 結果補入實驗頁
 - 新增 `wiki/experiments/20261106_P44_ROI自然比例基線_結果.md` 至 `20261109_P48_H1prime與P44補seed_結果.md` 共五頁，連回原設計／決策卡；更新 `index.md` 與研究問題入口。
 - `wiki/papers/Wang2023_SSL4EO-S12.md` 三處無目標的 `[[SeCo]]` 改為純文字，修復 Obsidian 斷鏈；不改論文主張。
+
+## [2026-11-11] writeback | 回填 GT-centric、資料、環境、模型與新資料路由
+- 新增兩份 `outputs/` 快照，以及 `wiki/datasets/` 逐景風海流／標記清冊和 457 景 CSV 快照、`wiki/environment/` Docker/Codex 遠端紀錄、`wiki/models/` 模型路線、`wiki/pipeline/` 新資料路由；更新舊頁歷史提示及 `index.md`。
+- 更新 `CLAUDE.md` 與 vault-manager 角色的內容頁驗收要求，並在 `.agents/handoff.md` 標記 P51 舊 process 觀察過時；`wiki/papers/`、主線 Dockerfile、資料與 process 未動。
+- 例外路由：此工作階段 vault 不在子代理宣告的可寫 workspace roots，沿用先前已核實的阻斷條件，由主代理依 `CLAUDE.md` §4 直接寫入並做連結／內容核對；未 commit／push。
+
+## [2026-11-11] harness | Codex vault-manager 掛載別名驗證
+- `/home/alanyh/obsidian-vault` 與 workspace 內 `/mnt/backup/alanyh/.container_state/oil_deeplab/obsidian-vault` 的 device:inode 同為 `66307:26214429`；已在 Codex adapter 寫入同 inode 別名規則。
+- 本 session 新派出的 vault-manager 仍載入舊 developer instruction，因 canonical 路徑不在 writable roots 而停止；**未能驗證代理實際可寫**。本筆由主代理追加，後續重載角色後需再驗證；未 commit／push。
+
+## [2026-11-11] decision | ROI context k2/k4 融合改為論文 branch aggregation（v5）
+- 使用者裁決改用 GeoAgent 論文 branch aggregation，γ 版（F_local+γ⊙C）作廢；Claude×Codex R4 REVISE→R5 ACCEPT／BLOCKING=[]，未授權執行。詳見 `.agents/decisions/20261111_ROI固定倍率context_k2k4實驗設計.md` 文末「設計變更」節，附件補入 r4／r5。

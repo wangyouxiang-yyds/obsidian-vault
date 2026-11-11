@@ -92,6 +92,8 @@ status: running | completed | failed | abandoned   # 用英文，不寫「完成
 - **新增論文（ingest）**：讀論文並與使用者討論重點 → `wiki/papers/` 建頁 → 更新相關 concepts → index 一行 → log 一筆
 - **記錄實驗**：依 §3.3 → index 一行 → log 一筆
 - **回答問題**：先讀 index.md 找頁 → 讀相關頁面合成答案 → 有保存價值才存到 `outputs/`
+- **內容維護不是只更新目錄**：每段研究工作先判斷是否要同步 `wiki/datasets/`（新景、標記、來源與物理欄）、`wiki/models/`（已實試的架構與限制）、`wiki/pipeline/`（可重用的處理路由）、`wiki/environment/`（環境或遠端故障）、`wiki/experiments/`（實驗結果）。階段收束或制度快照放 `outputs/`；原始檔仍留原資料位置／`raw/`。沒有新證據時不為了湊齊資料夾而寫頁。
+- **驗收**：新結果或資料變更應能從 `index.md` 找到相應內容頁；內容頁須列來源、版本／日期、評估口徑及未核實處，`log.md` 只記本次寫入指標。主代理要核對這些頁是否存在、鏈結是否可用，不能把 `handoff.md` 或 `log.md` 當作唯一保存位置。
 - 不確定的技術細節先問使用者，不要猜。重大決策與 Codex 協商（`.agents/consensus.md`），工作段落結束更新 `.agents/handoff.md`。
 
 ---

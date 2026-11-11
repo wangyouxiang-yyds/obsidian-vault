@@ -8,6 +8,8 @@ project: OIL_PROJECT_MutiBand_GT_expand
 
 # GT_expand Pipeline — GT-centric Patch 策略說明
 
+> 本頁記錄 GT-centric 256 窗的實作與歷史結果；目前新研究基線是 P44 自然比例 ROI 3840，兩種口徑及新資料路由見 [新資料處理路由](20261111_新資料處理路由_GT-centric與ROI.md)。本頁的 2026-07「現行」數量與路線標示均按當時版本理解。
+
 > 本頁說明 `OIL_PROJECT_MutiBand_GT_expand` 的完整 pipeline 設計，並與論文主線 [[OIL_PROJECT_MutiBand_0422_VRT_training]] 的 sliding-window 策略作對比。
 
 ---

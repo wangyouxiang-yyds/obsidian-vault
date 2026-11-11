@@ -7,6 +7,8 @@ related: [OIL_PROJECT_VRT_0422.md, annotation_workflow.md]
 
 # 新增 Sen2Like 資料流程
 
+> 本頁保留早期 Sen2Like 入庫腳本步驟；新景要進 GT-centric 或 ROI 3840、如何處理來源與 test-only，先讀 [新資料處理路由](20261111_新資料處理路由_GT-centric與ROI.md)。頁內歷史路徑／數量需依目前 manifest 與腳本核對後才執行。
+
 > 每次有新場景進來時，依序執行以下步驟。Step 1/2 有防呆（自動跳過已處理），可對整個目錄重跑。Step 3 每次都必須重跑。
 
 ---

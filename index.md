@@ -157,11 +157,13 @@
 
 ## 資料集
 
+- [20261111_資料集現況與物理標記清冊](wiki/datasets/20261111_資料集現況與物理標記清冊.md) — 457 景入口、標記來源、逐景風海流與對位限制。
 - [dataset_split_strategy](wiki/datasets/dataset_split_strategy.md) — 資料範圍、處理及評估使用方式。
 - [ms6_sen2like](wiki/datasets/ms6_sen2like.md) — 資料範圍、處理及評估使用方式。
 
 ## Pipeline 與處理流程
 
+- [20261111_新資料處理路由_GT-centric與ROI](wiki/pipeline/20261111_新資料處理路由_GT-centric與ROI.md) — Sen2Like 入庫後的標記稽核、GT-centric 與 ROI 3840 路由。
 - [GT_expand_pipeline](wiki/pipeline/GT_expand_pipeline.md) — 處理流程、輸入輸出與操作說明。
 - [GT_expand_workflow_onboarding](wiki/pipeline/GT_expand_workflow_onboarding.md) — 處理流程、輸入輸出與操作說明。
 - [OIL_PROJECT_MutiBand_0422_VRT_training](wiki/pipeline/OIL_PROJECT_MutiBand_0422_VRT_training.md) — 處理流程、輸入輸出與操作說明。
@@ -191,6 +193,13 @@
 
 ## 模型
 
+- [20261111_模型路線總覽](wiki/models/20261111_模型路線總覽.md) — 歷史模型與現行 Prithvi ROI baseline 的導覽。
+- [20261111_無監督候選模型_iForest與DeepRX](wiki/models/20261111_無監督候選模型_iForest與DeepRX.md) — 早期 iForest 與 DeepRX 候選提示結果。
+- [20261111_光學EUDA與IntraDA嘗試](wiki/models/20261111_光學EUDA與IntraDA嘗試.md) — 對抗對齊與自訓練原型的已知失效。
+- [20261111_Prithvi_DeepLabV3主線](wiki/models/20261111_Prithvi_DeepLabV3主線.md) — GT-centric 與 ROI 階段共同的六波段模型家族。
+- [20261111_DADS-SAM與SAM_decoder嘗試](wiki/models/20261111_DADS-SAM與SAM_decoder嘗試.md) — 六波段 DADS-SAM 與 Prithvi＋SAM hybrid 實驗紀錄。
+- [20261111_LFMDA模型路線](wiki/models/20261111_LFMDA模型路線.md) — source-only、PCD、SAM/LRH 與 ROI 搬移結果。
+- [20261111_替代模型SpectralGPT與UperNet](wiki/models/20261111_替代模型SpectralGPT與UperNet.md) — ROI 替代 encoder／head 的結果與限制。
 - [DeepLabV3+](wiki/models/DeepLabV3+.md) — 模型架構與本案接入說明。
 - [OSDMamba](wiki/models/OSDMamba.md) — 模型架構與本案接入說明。
 
@@ -217,12 +226,15 @@
 
 ## 環境
 
+- [20261111_Docker升級與Codex遠端故障紀錄](wiki/environment/20261111_Docker升級與Codex遠端故障紀錄.md) — 容器升級與 Codex Desktop 遠端排查。
 - [Claude_MCP_Docker_Fix](wiki/environment/Claude_MCP_Docker_Fix.md) — 環境設定與問題修復紀錄。
-- [Docker_環境設定](wiki/environment/Docker_環境設定.md) — 環境設定與問題修復紀錄。
+- [Docker_環境設定](wiki/environment/Docker_環境設定.md) — 主線 Dockerfile、Codex 持久化與遠端掛載。
 - [Gemini_MCP_Docker_Fix](wiki/environment/Gemini_MCP_Docker_Fix.md) — 環境設定與問題修復紀錄。
 
 ## 分析輸出
 
+- [20261111_AI協作Harness現況快照](outputs/20261111_AI協作Harness現況快照.md) — Claude／Codex 雙入口與現行容器狀態架構快照。
+- [20261111_GT-centric階段結果快照](outputs/20261111_GT-centric階段結果快照.md) — 轉向 ROI 前的代表性結果與不可比口徑。
 - [20260711_AI協作Harness現況快照](outputs/20260711_AI協作Harness現況快照.md) — 分析與背景資料。
 
 ## 協作導覽

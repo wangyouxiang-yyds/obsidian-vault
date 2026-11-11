@@ -6,6 +6,8 @@ related: [DeepLabV3+.md, ../papers/OSDMamba_摘要.md, ../pipeline/project_overv
 
 # OSDMamba（工程紀錄）
 
+> 本頁保留早期 OSDMamba／11 波段路線的工程紀錄，並非現行 ROI 3840 模型。現行模型導覽見 [模型路線總覽](20261111_模型路線總覽.md)。
+
 ## 一句話定義
 
 基於 Mamba SSM 的語義分割模型（SwinUMambaD），透過 SS2D 選擇性掃描擴大感受野，搭配非對稱解碼器處理油汙類別不平衡問題。

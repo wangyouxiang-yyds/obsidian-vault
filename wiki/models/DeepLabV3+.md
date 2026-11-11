@@ -6,6 +6,8 @@ related: [OSDMamba.md, ../pipeline/project_overview.md]
 
 # DeepLabV3+（工程紀錄）
 
+> 本頁是早期 ResNet50／八波段路線的歷史工程設定，不是目前 Prithvi 六波段＋DeepLabV3 的 P44 ROI baseline。現行模型入口見 [模型路線總覽](20261111_模型路線總覽.md)。
+
 ## 一句話定義
 
 以 ResNet50 為骨幹的語義分割模型，作為本專案油汙偵測的 Baseline，輸入層改為 8 通道以支援 MS6 Sen2Like 多光譜影像。

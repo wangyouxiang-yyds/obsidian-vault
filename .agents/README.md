@@ -21,5 +21,6 @@
 
 - 設計卡凍結前寫九步驟 1–6，結果 7–9 寫實驗頁；不要事後改寫凍結判準。
 - 新增內容頁時更新 `../index.md` 一行摘要，操作紀錄只追加到 `../log.md`。
+- 回寫時檢查任務是否需要 `../outputs/` 快照或 `../wiki/` 下的 dataset、environment、model、pipeline、experiment 內容頁；不能只在 index/log/handoff 留下摘要。
 - Claude Code 與 Codex 均經各自的 vault-manager 寫入；例外路由須在 log 說明。
 - 不以舊的 handoff 或 index 摘要推斷 process 現況；需對照最新狀態與實際紀錄。
