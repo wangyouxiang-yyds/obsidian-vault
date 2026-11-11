@@ -793,3 +793,7 @@
 
 ## [2026-11-11] harness | 導覽句改指現行知識頁
 - 7 頁（models: DeepLabV3+／OSDMamba／Prithvi_DeepLabV3；pipeline: project_overview／add_new_data／GT_expand_workflow_onboarding；datasets: ms6_sen2like）指向 `outputs/20261111_*` 快照的導覽連結改指現行知識頁。
+
+## [2026-11-11] harness | handoff 精簡封存（WP6）
+- `.agents/handoff.md` 只留 2026-10-28 起的 STATUS 行；10-27 以前與 09 月各 P 小節原文搬至 `.agents/handoff_archive_20261111.md`（行多重集合比對無遺失）。
+- Harness continuity、共識紀錄兩節未動。
