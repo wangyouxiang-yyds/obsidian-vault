@@ -1,0 +1,178 @@
+三項使用者裁決都可落地。主要需要修正的是 C2 的 greedy split：它可能在存在合法 10/10/10 解時，因早期選錯混合-bin group而誤判無解。應改用 deterministic exact subset search。其餘重點是把 selection operator與 diagnostic operator分開凍結。
+
+## C1：單 seed pilot
+
+同意只跑：
+
+- K1-S42
+- K2-S42
+- K4-S42
+
+共3 runs。split RNG固定為20261111，訓練 RNG為42；三組維持相同 sampler順序及 local augmentation stream，context使用獨立 RNG stream。
+
+每個倍率相對 K1獨立分類。collapse優先於其他規則：
+
+1. 若 K1 collapse，K2及K4比較均為「不可判定（K1 collapse）」。
+2. 若某 Kk collapse，該倍率為「不可判定（treatment collapse）」。
+3. 其餘才套用：
+
+   - 值得補 seed：  
+     `Δmacro-3 ≥ +0.05`且`Δ recall_>20px ≥ +0.10`
+   - pilot負向：  
+     `Δmacro-3 ≤ −0.05`
+   - 其餘：不可判定。
+
+不使用「支持／否定」字樣；「值得補 seed」也不是追加訓練授權。
+
+兩個指標的 operator需分開凍結：
+
+- `Δmacro-3`：各 run由 stride256、無 TTA的 macro-3選出 best checkpoint，使用該 checkpoint的 best selection metric計算。
+- `Δ recall_>20px`：best checkpoint另以 stride128＋orig/hflip/vflip重跑同一 VAL，再依 `val_fn_prereq`方法計算。
+
+這是預先定義的雙條件，不得在看到結果後改用 TTA macro-3。若 macro-3明顯改善但未達 interior recall門檻，記為「不可判定—非預期效益訊號」，而非忽略該現象。
+
+Collapse以 best checkpoint的標準 stride256、無 TTA VAL結果判定：
+
+- pooled VAL recall `≤0.01`；或
+- pooled VAL pred/GT `≤0.01`。
+
+Derangement及 identity-substitution adoption對所有非 collapse K2/K4執行，但純描述，不參與上述三分類。若 collapse則可保留數值，但標為不可解釋。
+
+## C2：GoM-only split
+
+### Exact group-constrained抽樣
+
+不建議 greedy「加入或跳過」。改用 deterministic dynamic programming：
+
+1. 先按 `duplicate_group_id`聚合，每組得到向量  
+   `(n_small,n_medium,n_large)`。
+2. group ID先穩定排序，再用 seed `20261111`打亂。
+3. DP state限定於 `(0…10,0…10,0…10)`，逐組執行取／不取。
+4. state迭代順序固定為 lexicographic；同一 state只保留首次抵達的 predecessor。
+5. 取出唯一由此規則決定的 `(10,10,10)`路徑。
+6. 若目標 state不可達，fail-closed；不得換 seed、拆 group或接受9/11。
+7. 所有未入 VAL的 group均進 TRAIN。
+
+這只有1331個 count states，能保證「無解」是真無解，而非 greedy順序失敗。它不是在所有合法 split中均勻抽樣，但符合固定 seed、不人工挑景的要求。
+
+凍結前驗證：
+
+- VAL恰30景，三 bin各10景。
+- TRAIN約165景，三 bin各55景。
+- duplicate group無跨側。
+- scene ID、VRT及mask無重複。
+- 輸出 train/VAL manifest、group counts、bin counts及檔案 hash。
+
+P44 `split_leak_pairs`不重新作排除規則，因使用者已裁決以 v1 `duplicate_group_id`為不可拆單位、其他空間鄰近只揭露；但應另外報告實際凍結 split中：
+
+- 12個舊 drop_leak scenes分到哪一側。
+- 舊 `split_leak_pairs`有多少對跨側。
+- 1,832個 bbox-overlap pairs中實際跨 TRAIN/VAL的數量，而非只報全池總數。
+
+結論文字限定為「已見 GoM地點附近的新場景」。
+
+### ROI補建
+
+12景使用完全相同的 `p44_roi.scene_rois`規則補建，不改最大元件、3840 ROI、first-fit或stride。ROI manifest須在訓練前凍結並驗證每景至少一個 ROI及有效 window。
+
+## C3：macro-3
+
+每個 bin先在該 bin的10景內累加混淆矩陣：
+
+\[
+IoU_b=\frac{TP_b}{TP_b+FP_b+FN_b}
+\]
+
+再計算：
+
+\[
+Macro3=\frac{IoU_{small}+IoU_{medium}+IoU_{large}}{3}
+\]
+
+- 每 VE以 stride256、無 TTA的 macro-3選 best checkpoint。
+- exact tie選較早 VE；不做 moving average或平滑。
+- patience仍為8。
+- 每 bin有 GT，因此沒有預測時 IoU定義為0，不是 undefined。
+- 並列報告 overall pooled IoU，以及各 bin的 IoU、P、R、pred/GT。
+
+### 小 bin保護
+
+不加 GT pixel下限，也不改 macro權重；否則會反向取消使用者讓三個尺度等權的決定。
+
+但必須揭露：
+
+- 每 bin的 GT oil pixels。
+- 每 bin最大單景佔該 bin GT oil pixels的比例。
+- 每 bin各景的 IoU分布或至少 median及range。
+- overall及各 bin predicted oil pixels。
+
+這能辨識「small bin結果由極少像素或單景主導」，但不影響 checkpoint selection。
+
+## Q1：targeted定位
+
+可接受，但文字應改成：
+
+> historically targeted：舊全球 VAL、兩個非 collapse全球模型均通過 prereq；新 GoM-only VAL尚未於開跑前確認。
+
+K1完成後，以 stride128＋TTA在新 VAL做相同拆解，純描述並標記：
+
+- phenotype replicated；
+- phenotype not replicated；或
+- dominated by one scene/component。
+
+不得因此改門檻、重選 split或重跑。若未重現，K2/K4仍按 pilot規則評估，但不能聲稱是在修復新 K1已確認的 dense-interior failure。
+
+## Q2：是否保護 small bin
+
+不加 selection門檻，同意只揭露；但除 GT pixels外，增加「最大單景像素占比」是必要的，因舊 gate已顯示 pooled結果可被單景支配。
+
+## Q3：訓練 schedule
+
+全部維持：
+
+- batch 16
+- 4000 steps/VE
+- max 40 VE
+- patience 8
+- optimizer、LR、Cosine、clip及自然比例取樣不變。
+
+VE本來就是 step-based，因此資料景數減少不要求縮短 VE。需在卡片揭露新 TRAIN的 scene、ROI、window、油窗、油像素及每4000 steps相對資料集的預期重複率。
+
+## Q4：v5其餘內容
+
+沿用：
+
+- GeoAgent aggregation及shared ASPP batch32 forward。
+- shared aux classifier、soft occupancy及總 aux weight 0.4。
+- Context讀取、area N/D、RRC `Δ/k`。
+- K1 input/feature/alignment/aux identity。
+- Soft Tversky相容性 gate。
+- I/O、memory、geometry及200-step exposure gates。
+- 推論只用 aggregation輸出。
+- 臺灣只在 VAL結果與pilot分類凍結後讀，僅報大林2／其他22。
+
+連帶調整：
+
+- 255揭露統計須在新 GoM TRAIN/VAL manifest上重算。
+- Derangement donor至少必須跨 `duplicate_group_id`，並沿用 coverage-decile規則。
+- 舊 P44 global legacy差值不再是有意義的 sanity比較，因資料池、split與主指標都已改變；移除 `|K1−P44|>0.05`標記規則。
+- 不再存在 Stage A/B、4/5勝數、median、五-seed支持或 futility規則。
+
+## v6相對 v5的差異
+
+- 15-run兩階段設計改成 S42三組、共3 runs的 pilot。
+- 結論改為「值得補 seed／pilot負向／不可判定」，永不稱支持或否定。
+- 資料改為195景 GoM-only，30景 group-constrained分層 VAL。
+- Split演算法改為 seeded deterministic exact DP，避免 greedy假性無解。
+- 主指標與 checkpoint selection改為三尺度 pooled IoU的 macro-3。
+- 舊 targeted gate保留為歷史動機；新 K1只補描述性 phenotype檢查。
+- 訓練步數及其餘模型／augmentation／launch gates不變。
+- Legacy global P44 sanity差值移除；空間鄰近、raw255及單景像素支配改為揭露項目。
+
+---VERDICT---
+STANCE: REVISE
+BLOCKING: [1. 以seeded deterministic exact DP取代greedy group split並凍結manifest，2. 明定pilot的macro-3 Δ使用stride256無TTA selection metric、>20px recall Δ使用stride128＋TTA diagnostic operator]
+RESTATE: 使用者最強的決定是先用三個同seed、同split的runs做低成本pilot，並以macro-3避免GoM大型油區完全支配選模；我方最重要的修正是確保group split真能精確達到10/10/10，而不會因greedy順序錯誤誤報無解。
+CONFIDENCE: HIGH
+---END---
+EXIT 0

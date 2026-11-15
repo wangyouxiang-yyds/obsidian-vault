@@ -1,0 +1,83 @@
+整體架構、split、macro-3、pilot判讀與主要訓練流程忠實於 v6；A、B、C三項變更原則上都可接受。不過目前仍不宜凍結：發現的 VRT視窗依賴性，使「三組 local輸入完全相同」必須成為明示 gate；另外目前 G3、梯度連線及 cache凍結證據尚未完整實作。
+
+## BLOCKING
+
+1. **新增跨 K 的 local-input parity gate**
+
+   目前 G2只驗證 K1內部 `xl==xc`，沒有驗證同一 window、同一 stream position下，K1/K2/K4的 local branch是否一致。這是 paired pilot成立的核心條件。
+
+   必須加入：
+
+   - TRAIN cache路徑：同一批 window與 `pos`，K1/K2/K4的 normalized `xl`逐位元相同，local mask完全相同。
+   - augmentation後仍須相同，包括 RRC、flip、rot90、noise及 brightness/contrast。
+   - 明確 assert `base.band_indices == C.MODEL_SLOTS == [1,2,3,5,6,7]`；否則槽0/4歸零可能誤傷實際使用 band。
+   - 因已證實 VRT的 B08會隨讀取 window改值，另須在 VAL實際 ROI-expanded讀取路徑上，比較 K1/K2/K4中央 local區的六個使用 band。六 band必須逐位元一致；不能只證明 B08未使用。
+
+   若使用 band也有 window-origin差異，必須 fail-closed回報，不能直接凍結。
+
+2. **Cache必須成為可驗證、不可靜默 fallback的凍結輸入**
+
+   A在科學上可接受，但目前 `verify_cache()`只讀一個可陳舊的 `equivalence.json["passed"]`，沒有證明它仍對應目前 cache、lists及程式碼。
+
+   凍結前需：
+
+   - `build_cache.py`產生 cache manifest，至少包含 lists/build manifest SHA、建置程式 SHA、來源 scene/path、bbox及每個 cache檔案 SHA。
+   - config或 FROZEN manifest釘住 cache-manifest SHA；正式訓練啟動時驗證。
+   - 靜態驗證全部153,853個 TRAIN windows的 K4 clipped footprint均在 cache bbox內；正式訓練不得靜默 fallback至 VRT。
+   - G6至少涵蓋每個 TRAIN scene一個正式 local/K2/K4 window、各 sensor及邊界案例。現行按 window均勻抽300個可能漏掉少窗 scene。
+   - G6的 `k4_windows_inside_cache`目前只檢查 x軸，需同時檢查 y軸。
+
+3. **補齊已預註冊的 loss與梯度 gates**
+
+   現行 G3只有一個 float64、混合 hard target fixture，不足以代表已同意的相容性 gate。必須在 FP32加入：
+
+   - oil-positive hard target；
+   - all-background target；
+   - mixed-ignore target；
+   - all-ignore target；
+   - multi-sample batch aggregation。
+
+   各 fixture的 loss差須 `≤1e-6`；非零梯度 fixture相對差 `≤1e-5`；零／近零 reference gradient以 max absolute difference `≤1e-8`判定。
+
+   另須在固定含油 batch做 isolated backward：
+
+   - `∂L_main/∂C_aligned` finite且 RMS `>1e-12`；
+   - aggregation context-half gradient finite且 RMS `>1e-12`；
+   - `∂L_aux_ctx/∂f_c` finite且 RMS `>1e-12`；
+   - local aux路徑亦須連通。
+
+   71/71 exposure只證明 aggregation context-half收到總訓練梯度，不能取代 context aux連線測試。
+
+4. **D1抽樣需回到已凍結方案**
+
+   現行 `d1_raw255()`使用300個等距 window；v5/v6沿用的凍結方案是各 split以 seed `20261111`無放回抽 `min(4096,N)`個 window，並讓 local/K2/K4共用相同中心。
+
+   請改回4096 seeded樣本後重算 D1。它不影響模型，但目前結果不能宣稱完全依凍結卡產生。
+
+5. **修正後重新跑完整 preflight並綁定凍結物**
+
+   修改上述程式後，現有 G1–G6及12.7 GiB／1.33×結果即不再是凍結版本的證據。必須重新跑完整 preflight與 smoke，且確認：
+
+   - G5所用 worker數等於正式 config的16。
+   - `CUBLAS_WORKSPACE_CONFIG`在 import torch前設定；目前 `preflight_ctx.py`是在 import後才 `setdefault`。
+   - `FROZEN.sha256`涵蓋卡片、全部程式、configs、list manifest、preflight JSON及 cache manifest。
+   - launch驗證的 preflight code SHA與目前程式一致。
+
+## NON-BLOCKING
+
+- **A：接受。** 同解析度、無重採樣、原始 uint16值的分塊 ZSTD cache不違反「不得建立不同解析度快取」。它是儲存配置最佳化，不是資料尺度變更；但須完成上述 provenance、coverage及等價性 gates。
+- **B：接受。** 槽0/4若確定不在 encoder的 `band_indices`內，歸零不改變模型函數。建議卡片把它描述為「移除未使用槽的讀取」，不要暗示 B08歸零修正了使用 band的 VRT一致性；使用六 band仍須另驗。
+- **C：接受。** k≤4、uint16下 uint32累加不會 overflow；整數 N/D只做一次除法且 G1誤差遠低於門檻，比逐步 float32平均更穩定。K1 identity亦正確。
+- 自寫同步 augmentation可接受；K1同碼控制及 per-position RNG維持 paired local stream。`aug_params`的10次失敗後不設 RRC，在方形輸入且 ratio範圍包含1時等價於標準 central/full-image fallback，不構成 blocker。建議把「P44 PARITY」改成「同分布、非 bitwise parity」。
+- DP split實作符合 v6：snapshot式lexicographic state迭代、首次 predecessor、不可達即失敗，沒有 greedy假性無解。
+- macro-3、best tie取早、collapse優先、兩種評估 operator與 phenotype判讀均忠實。
+- `launch.sh`目前會對 collapse treatment照跑 counterfactual，且用 `||`繼續；這不影響 pilot分類，但應改成跳過 collapse，或在結果中明標「uninterpretable」。屬描述性流程，不阻擋訓練。
+- `counterfactual`失敗目前只寫 launch log。建議最後產生 completion manifest，明列哪些描述性產物缺失，避免整體 `EXIT=0`被誤讀成全部分析完成。
+- 目前沒有 launch授權；本審查不授權、也未啟動任何訓練。
+
+---VERDICT---
+STANCE: REVISE
+BLOCKING: [1. 新增TRAIN及VAL實際讀取路徑的K1/K2/K4 local-input parity與band-index assertion，2. 將cache manifest／完整coverage／逐scene等價性納入凍結並禁止正式TRAIN fallback，3. 補齊FP32 hard-target fixtures及main/context-aux isolated gradient gates，4. D1改回seed 20261111的4096-window共同樣本，5. 修改後重跑全部preflight/smoke並由FROZEN.sha256綁定程式、config、lists、cache與結果]
+RESTATE: 同解析度無損cache、未使用槽歸零及整數area N/D都可接受，因K1同碼對照能控制共同實作變更；但在已發現VRT讀值依賴window的前提下，必須先直接證明三組真正看到完全相同的local輸入，否則倍率效果無法歸因於patch外context。
+CONFIDENCE: HIGH
+---END---

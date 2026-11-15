@@ -1,0 +1,91 @@
+接受這項修正。要求資料區分「已確認背景」與「未標註」會引入 P44從未具備的新標註本體，反而破壞與基線的一致性。raw 255比例偏高是重要的競爭解釋，但不是技術上未執行 treatment，沒有足夠依據設定 fail-closed比例門檻。
+
+## Label語義凍結
+
+必須明確區分兩種數值相同、語義不同的255：
+
+1. 原始 mask的255先經既有 `pixel_mapping` 映射為背景。
+2. 只有影像無效，或 context downsample後 `area(image_valid)<0.5`，才產生 loss ignore。
+
+Context target流程固定為：
+
+\[
+y=\operatorname{pixel\_mapping}(raw\_mask)
+\]
+
+\[
+w=\operatorname{area}(image\_valid)
+\]
+
+\[
+q=\frac{\operatorname{area}(1[y=oil]\cdot image\_valid)}
+        {w}
+\]
+
+- `w≥0.5`：使用 soft target `q∈[0,1]`。
+- `w<0.5`：設置獨立的 loss-ignore mask。
+- 不得把生成後的 soft target或 ignore sentinel再次送進 `pixel_mapping`。
+- K1時 `q`退化成現行 local hard oil indicator，ignore mask也須相同。
+
+因此「共用同一函式」應理解為共用相同的 raw-mask mapping及 image-validity核心；context只在其後增加 valid-weighted area reduction。
+
+## 255揭露統計
+
+接受提議的描述性 gate，並建議把抽樣方式一併凍結：
+
+- TRAIN、VAL各從凍結 window index以 seed `20261111`無放回抽取 `min(4096,N)` 個中心。
+- 同一批中心同時計算 local、K2、K4，避免抽樣差異。
+- 統計 augmentation及downsample前、位於 image-valid source pixels中的 `raw_mask==255`比例。
+- 分別報告 `p_local`、`p_K2`、`p_K4`、絕對差及倍率  
+  `p_Kk / max(p_local,10^-6)`。
+- 倍率 `>2`時，按提案標註「context aux受未定義255區影響較大」，但不停跑、不調權重、不移除 context aux。
+
+不另設255比例的 fail-closed門檻。若 context可用監督實際不足，既有 gate已會捕捉：
+
+- context aux target全 ignore；
+- context aux loss無有限值；
+- `∂L_aux_ctx/∂f_c`沒有有效梯度；
+- 前200 steps的 exposure條件失敗。
+
+高比例 raw 255但仍按既有規則映射為背景，屬資料假設與結果解釋限制，不是 non-executed。
+
+## Soft Tversky相容性 gate
+
+接受新增 gate。Soft版本只能把現行 hard oil indicator一般化為 `q∈[0,1]`；α、β、smooth、batch aggregation、ignore處理及 reduction順序均不得改變。
+
+以 FP32固定 fixtures驗證：
+
+- 含油 hard target。
+- 全背景 hard target。
+- 混合 image-invalid／ignore target。
+- 多樣本 batch aggregation。
+
+門檻：
+
+- loss absolute difference `≤1e-6`。
+- 非零梯度 fixture的 gradient relative difference `≤1e-5`。
+- 若 reference gradient為零或近零，改用 max absolute gradient difference `≤1e-8`，避免相對誤差無定義。
+- K1 local/context oil-indicator差 `≤1e-6`，ignore mask必須逐像素完全一致。
+
+任一未通過即不得 launch，也不得透過改 smooth或放寬容差處理。
+
+## v5最終差異
+
+相對 v4：
+
+- 移除「必須區分已確認背景與未標註」的 annotation provenance gate。
+- Context與local統一沿用既有 `pixel_mapping`：raw 255仍為背景。
+- 明定只有 image-invalid或downsample有效覆蓋 `<0.5`才是 loss ignore。
+- 加入固定抽樣的 TRAIN／VAL raw-255 footprint揭露；context/local倍率大於2只作已知限制。
+- 加入 soft Tversky對現行 hard Tversky的 loss及gradient相容性 gate。
+- Context aux擴張監督footprint仍列為競爭解釋；本實驗結論限於「GeoAgent-style aggregation＋auxiliary-training package」，而非純像素資訊的無條件因果效果。
+
+其餘 v4內容全部維持，包括 shared ASPP batch-32 forward、soft occupancy、aux總權重0.4、K1 identity、identity-substitution adoption、derangement、Stage A/B及所有既有 launch gates。
+
+---VERDICT---
+STANCE: ACCEPT
+BLOCKING: []
+RESTATE: 既然P44本來就把raw 255視為背景，GeoAgent context aux沿用相同語義才是公平比較；以一致性測試與定量揭露管理255風險，比臨時要求資料提供不存在的標註區分更可執行，也不會偷換基線假設。
+CONFIDENCE: HIGH
+---END---
+EXIT 0

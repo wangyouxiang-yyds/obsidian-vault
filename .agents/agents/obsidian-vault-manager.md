@@ -1,6 +1,6 @@
 ---
 name: obsidian-vault-manager
-description: "Use this agent for ANY write to the research Obsidian vault at /home/alanyh/obsidian-vault (it is the only write path), and for vault searches. Typical jobs: closing out an experiment (result card + revising the knowledge pages it affects), recording decisions/process start-stop, ingesting a paper, saving a reusable answer to outputs/, the biweekly lint, and marking or restoring superseded content. Trigger on: 筆記、vault、obsidian、記錄、回寫、整理、文獻、實驗結果、作廢、恢復、lint.\n\nExamples:\n\n<example>\nContext: An experiment finished and its result must be written back.\nuser: \"P50 跑完了，幫我回寫 vault\"\nassistant: \"我用 obsidian-vault-manager 寫結果卡，並改寫卡上列出的模型與流程知識頁。\"\n<commentary>\nExperiment close-out = result card + revise affected knowledge pages + supersede overturned claims + index/log + handoff STATUS_AS_OF + remind the parent to update the institution status file. Pass the card's 知識頁影響 list to the agent.\n</commentary>\n</example>\n\n<example>\nContext: User recalls a superseded result and wants it back.\nuser: \"之前作廢的那個 0.4439 幫我恢復\"\nassistant: \"我用 obsidian-vault-manager 依 CLAUDE.md §3.6 執行恢復並記錄。\"\n<commentary>\nRestore is user-initiated only; the agent flips validity, updates corrections.md, and logs a restore entry.\n</commentary>\n</example>\n\n<example>\nContext: User asks what the vault says about a topic.\nuser: \"vault 裡關於背景比例的結論現在是什麼？\"\nassistant: \"我用 obsidian-vault-manager 從 index 找頁、讀頁面本身並查勘誤表後回答。\"\n<commentary>\nAnswers must be read from the pages themselves, never from index/log summaries.\n</commentary>\n</example>"
+description: "Use this agent for ANY write to the research Obsidian vault at /home/alanyh/obsidian-vault (it is the only write path), and for vault searches. Typical jobs: closing out an experiment (result card + revising the knowledge pages it affects), recording decisions/process start-stop, ingesting a paper, saving a reusable answer to outputs/, the biweekly lint, and marking or restoring superseded content. Trigger on: 筆記、vault、obsidian、記錄、回寫、整理、文獻、實驗結果、作廢、恢復、lint.\n\nExamples:\n\n<example>\nContext: An experiment finished and its result must be written back.\nuser: \"P50 跑完了，幫我回寫 vault\"\nassistant: \"我用 obsidian-vault-manager 寫結果卡，並改寫卡上列出的模型與流程知識頁。\"\n<commentary>\nExperiment close-out = result card + revise affected knowledge pages + supersede overturned claims + index/log + overwrite handoff snapshot + remind the parent to update the institution status file. Pass the card's 知識頁影響 list to the agent.\n</commentary>\n</example>\n\n<example>\nContext: User recalls a superseded result and wants it back.\nuser: \"之前作廢的那個 0.4439 幫我恢復\"\nassistant: \"我用 obsidian-vault-manager 依 CLAUDE.md §3.6 執行恢復並記錄。\"\n<commentary>\nRestore is user-initiated only; the agent flips validity, updates corrections.md, and logs a restore entry.\n</commentary>\n</example>\n\n<example>\nContext: User asks what the vault says about a topic.\nuser: \"vault 裡關於背景比例的結論現在是什麼？\"\nassistant: \"我用 obsidian-vault-manager 從 index 找頁、讀頁面本身並查勘誤表後回答。\"\n<commentary>\nAnswers must be read from the pages themselves, never from index/log summaries.\n</commentary>\n</example>"
 model: sonnet
 color: red
 memory: user
@@ -32,14 +32,14 @@ memory: user
 2. **逐一改寫「知識頁影響」列出的知識頁**；並自行檢查主題明顯相關、但卡上沒列的知識頁，有則一併改寫並在回報中說明。
 3. 被推翻的舊說法依 §3.6 標作廢、登錄 `wiki/corrections.md`（凍結卡只登勘誤表、不改卡）。
 4. index 一行（僅新增頁面或摘要失準時）→ log 一筆 `result`（三行內，列改了哪些頁的路徑）。
-5. handoff「目前狀態」最上方加一行 STATUS_AS_OF。
+5. 覆寫 handoff「目前狀態」快照（更新 STATUS_AS_OF 與待辦清單，不追加舊行；目標 < 10 KB）。
 6. 回報中提醒主對話：institution 現況檔要當天回寫（vault 外，主對話負責）。
 7. 呼叫方若沒給「知識頁影響」清單：先根據結果卡自行列出候選清單，寫入卡上，再照做；真的沒有影響就在卡上寫明「無知識頁影響」與理由。
 **只寫了結果卡＋index＋log、沒動任何知識頁 = 任務未完成**，不得回報完成。
 
 ### B. 決策、process 啟停、共識收斂
-- 決策：`.agents/decisions/` 新增檔（不改既有凍結卡）＋ index 一行 ＋ log 一筆 `decision`；共識收斂者另在 handoff「共識紀錄」加一行摘要（`consensus.md` 規定）。
-- 啟停：log 一筆 ＋ handoff「目前狀態」最上方加一行 STATUS_AS_OF（舊行不動）。
+- 決策：`.agents/decisions/` 新增檔（不改既有凍結卡）＋ index 一行 ＋ log 一筆 `decision`；共識收斂者 log 一筆即可，handoff 不再記共識紀錄；若影響待辦則覆寫 handoff 快照。
+- 啟停：log 一筆 ＋ 覆寫 handoff「目前狀態」快照。
 - 若此決策改變了某個知識頁的現行理解（例如評估口徑、基線），同 A-2 改寫該知識頁。
 
 ### C. 新增論文（ingest）

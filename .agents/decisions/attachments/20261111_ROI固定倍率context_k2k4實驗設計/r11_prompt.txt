@@ -1,0 +1,420 @@
+【第 11 回合】主持方 Claude。R10 三項：
+1. eval_ctx.py 的 `complete` 子命令與 counterfactual 的 interpretable/collapse 欄位**早已存在**（R8 後、正式 preflight 前加入；你只看到 R8 版本）。證據：`grep` → 第 231 行 `interpretable=not coll, collapse=coll,`、第 244 行 `def cmd_complete(_):`、第 354 行 choices 含 "complete"；以 smoke 工作目錄實跑 `eval_ctx.py complete` 輸出 13 項 present 清單並寫 completion.json；smoke counterfactual_K4.json 含 interpretable=true。正式 preflight 的 code_sha256 對應的就是這版 eval_ctx.py（freeze.py check 逐檔通過）。
+2. clean-tree 改為 `[ -n "$(git status --porcelain -- analysis/ctx_k2k4_20261111)" ] → exit 2`。在 scratch repo 測：clean pass、unstaged REJECT、staged REJECT、committed pass、untracked REJECT。
+3. 只有 launch.sh 改動（不在 preflight code_sha256 內），已重寫 FROZEN.sha256（32 項）、sha256sum -c 通過、freeze.py check 通過、bash -n 通過。eval_ctx.py 未改，故不需重跑 preflight。
+附 launch.sh 與 eval_ctx.py 全文。若接受即 commit 凍結。
+===== launch.sh =====
+#!/bin/bash
+# ctx k2k4 v6 pilot: K1 -> K2 -> K4 (S42) training, then VAL TTA breakdowns, counterfactuals (K2/K4),
+# frozen pilot classification, image-only Taiwan predictions, and last the Taiwan scoring (Dalin 2 / other 22).
+# Holds the shared GPU lock for the whole sequence. Needs a clean tree and FROZEN.sha256 match.
+set -euo pipefail
+here=$(cd "$(dirname "$0")" && pwd)
+repo=$(cd "$here/../.." && pwd)
+W=/home/alanyh/oil_dataset/new/_ctx_k2k4_20261111
+lock=/home/alanyh/oil_dataset/new/.gpu_main_runner.lock
+log=$W/launch.log
+git_=(git -c safe.directory="$repo" -C "$repo")
+cd "$here"
+if [ -n "$("${git_[@]}" status --porcelain -- analysis/ctx_k2k4_20261111)" ]; then
+    echo 'ctx_k2k4 worktree/index is not clean (unstaged, staged or untracked); commit before launch' >&2; exit 2
+fi
+sha256sum -c --quiet FROZEN.sha256 || { echo 'files differ from FROZEN.sha256' >&2; exit 2; }
+python freeze.py check || { echo 'freeze integrity check failed' >&2; exit 2; }   # before GPU lock / training
+
+export PYTHONDONTWRITEBYTECODE=1 CUBLAS_WORKSPACE_CONFIG=:4096:8 WANDB_TAGS=CTX_K2K4_v6
+exec 9>"$lock" || { echo "cannot open GPU lock $lock" >&2; exit 3; }
+printf '[CTX] waiting for GPU lock at %s\n' "$(date -Is)" >> "$log"
+flock 9 || { echo 'flock failed' >&2; exit 3; }
+printf '[CTX] start=%s commit=%s pid=%s\n' "$(date -Is)" "$("${git_[@]}" rev-parse HEAD)" "$$" >> "$log"
+
+step() { printf '[CTX] %s begin %s\n' "$1" "$(date -Is)" >> "$log"; shift; "$@"; printf '[CTX] done %s\n' "$(date -Is)" >> "$log"; }
+for k in 1 2 4; do
+    step "train K$k" python train_ctx.py train --allow-train --config "$W/configs/ctx_K${k}_S42.yaml" \
+        --out "$W/train_K${k}_S42" > "$W/train_K${k}.log" 2>&1
+done
+for k in 1 2 4; do step "val_tta K$k" python eval_ctx.py val_tta --k $k >> "$W/eval.log" 2>&1; done
+step "pilot" python eval_ctx.py pilot >> "$W/eval.log" 2>&1
+for k in 2 4; do step "counterfactual K$k" python eval_ctx.py counterfactual --k $k >> "$W/eval.log" 2>&1 || printf "[CTX] counterfactual K%s FAILED (descriptive; continuing)\n" "$k" >> "$log"; done
+for k in 1 2 4; do step "taiwan K$k" python eval_ctx.py taiwan --k $k >> "$W/eval.log" 2>&1; done
+step "taiwan_eval" python eval_ctx.py taiwan_eval --allow-target-gt >> "$W/eval.log" 2>&1
+python eval_ctx.py complete >> "$W/eval.log" 2>&1
+printf '[CTX] EXIT=0 %s (see completion.json)\n' "$(date -Is)" >> "$log"
+===== eval_ctx.py =====
+"""ctx k2k4 v6 post-training: VAL TTA breakdown, counterfactuals, pilot classification, Taiwan.
+
+  python eval_ctx.py val_tta --k K          best.pt, VAL stride128+TTA mosaic -> FN breakdown (bins of gate 1)
+  python eval_ctx.py counterfactual --k K   K2/K4: derangement + local-substitution adoption (main VAL operator)
+  python eval_ctx.py pilot                  frozen pilot classification (decision v6) -> pilot_result.json
+  python eval_ctx.py taiwan --k K           image-only Taiwan-24 predictions (test operator)
+  python eval_ctx.py taiwan_eval --allow-target-gt   Dalin 2 / other 22 per run, Kk - K1 (after pilot exists)
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import shutil
+import sys
+from pathlib import Path
+
+os.environ.setdefault("GDAL_CACHEMAX", "128")   # before any GDAL use (see ctx_common)
+
+import numpy as np
+import pandas as pd
+import torch
+from scipy import ndimage as ndi
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import ctx_common as X  # noqa: E402
+from ctx_common import C  # noqa: E402
+import train_ctx as T  # noqa: E402
+
+W = Path("/home/alanyh/oil_dataset/new/_ctx_k2k4_20261111")
+L = W / "lists"
+SEED = 42
+PERM_SEED = 20261111
+REGISTRY = C.REPO / "analysis/taiwan24_external_test_20261101/taiwan24_registry.json"
+DALIN = "大林"
+SMOKE_VAL = SMOKE_TW = 0
+
+
+def val_rois():
+    r = pd.read_csv(L / "rois_val.csv")
+    if SMOKE_VAL:
+        sp = split_df()
+        r = r[r.scene.isin(sp[sp.split == "val"].groupby("size_bin").head(SMOKE_VAL).index)]
+    return r
+DEP = [0, 2.5, 5.5, 10.5, 20.5, 1e9]; DEP_L = ["1-2px", "3-5", "6-10", "11-20", ">20"]
+FRAC = [0, .05, .2, .5, .8, 1.01]; FRAC_L = ["<5%", "5-20%", "20-50%", "50-80%", ">=80%"]
+
+
+def rj(p):
+    return json.loads(Path(p).read_text())
+
+
+def run_dir(k):
+    return W / f"train_K{k}_S{SEED}"
+
+
+def load(k):
+    cfg = C.load_config(W / "configs" / f"ctx_K{k}_S{SEED}.yaml")
+    d = run_dir(k)
+    t = rj(d / "train_complete.json")
+    official = W == Path("/home/alanyh/oil_dataset/new/_ctx_k2k4_20261111")
+    if not t["ok"] or t["k"] != k or (t["mode"] != "train" and official):
+        raise SystemExit(f"{d}: not a completed train run of K{k}")
+    model, device = X.build(cfg, k, SEED, d / "best.pt", t["best_sha256"])
+    return cfg, model, device, t
+
+
+def split_df():
+    return pd.read_csv(L / "split_scenes.csv").set_index("scene_id")
+
+
+def out_once(p: Path):
+    if p.exists():
+        raise SystemExit(f"{p} exists; refuse to overwrite")
+    p.parent.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+# ----------------------------------------------------------------------------------------------- VAL TTA
+def breakdown(preds, split, fb):
+    rows, conf = [], []
+    for scene, z in preds:
+        gt = C.gt_crop(fb / split.loc[scene, "mask_path"], z["origin"], z["pred"].shape)
+        c = C.confusion(z["pred"], gt, z["valid"], z["union"]); c.update(scene=scene, size_bin=split.loc[scene, "size_bin"])
+        conf.append(c)
+        m = z["valid"] & z["union"]
+        g = (gt == 0) & m
+        if not g.any():
+            continue
+        p = (z["pred"] == X.OIL) & m
+        lab, _ = ndi.label(g, structure=np.ones((3, 3)))
+        idx = np.nonzero(g)
+        rows.append(pd.DataFrame(dict(scene=scene, tp=p[idx], comp=[f"{scene}#{v}" for v in lab[idx]],
+                                      frac=ndi.uniform_filter(g.astype(np.float32), 256, mode="constant")[idx],
+                                      depth=ndi.distance_transform_edt(g)[idx])))
+    d = pd.concat(rows)
+    d["dep_b"] = pd.cut(d.depth, DEP, labels=DEP_L, right=False)
+    d["frac_b"] = pd.cut(d.frac, FRAC, labels=FRAC_L, right=False)
+    tot = int((~d.tp).sum())
+    tab = lambda col: d.groupby(col, observed=False).agg(gt_px=("tp", "size"), recall=("tp", "mean"),  # noqa: E731
+                                                         fn=("tp", lambda s: int((~s).sum()))).assign(
+        fn_share=lambda t: t.fn / max(tot, 1)).reset_index().astype({col: str}).to_dict("records")
+    deep = d[d.depth > 20.5]
+    mid = d[(d.depth > 5.5) & (d.depth <= 20.5)]
+    top = deep.comp.value_counts()
+    return dict(metrics=X.macro3(conf), recall_gt20px=float(deep.tp.mean()), gt_px_gt20px=len(deep),
+                fn_share_gt20px=float((~deep.tp).sum() / max(tot, 1)), recall_6_20px=float(mid.tp.mean()),
+                recall_ge80=float(d[d.frac >= .8].tp.mean()) if (d.frac >= .8).any() else None,
+                top_component_share_gt20px=float(top.iloc[0] / len(deep)) if len(deep) else None,
+                top_component_gt20px=top.index[0] if len(deep) else None,
+                depth=tab("dep_b"), density=tab("frac_b"), per_scene=conf)
+
+
+def cmd_val_tta(a):
+    k = a.k
+    target = out_once(W / "eval" / f"val_tta_K{k}.json")
+    cfg, model, device, t = load(k)
+    split, fb, tc = split_df(), Path(cfg["paths"]["full_band"]), cfg["test"]
+    rois = val_rois()
+    pdir = W / "eval" / f"val_tta_K{k}"
+    pdir.mkdir(parents=True, exist_ok=True)
+    preds = []
+    for i, (scene, g) in enumerate(rois.groupby("scene", sort=True)):
+        r = X.predict_scene(model, device, fb / split.loc[scene, "vrt_home"], None, g.to_dict("records"), cfg,
+                            tc["stride"], tc["tta"], tc["amp"], tc["batch"])
+        z = dict(origin=tuple(int(v) for v in r["origin"]), pred=r["pred"], valid=r["valid"], union=r["union"])
+        np.savez_compressed(pdir / f"{i:02d}.npz", scene=scene, **z)
+        preds.append((scene, z))
+        print(f"[val_tta K{k}] {i + 1}/{rois.scene.nunique()} {scene}", flush=True)
+    res = dict(k=k, checkpoint_sha256=t["best_sha256"], operator=tc, **breakdown(preds, split, fb))
+    target.write_text(json.dumps(res, indent=1, ensure_ascii=False, default=float))
+    print(json.dumps({kk: res[kk] for kk in ("recall_gt20px", "recall_6_20px", "fn_share_gt20px")}, indent=1))
+
+
+# ----------------------------------------------------------------------------------------------- counterfactuals
+def window_coverage(split, cfg, k, scenes):
+    """Per VAL window (main operator, stride 256): mean context coverage D (data only)."""
+    w = pd.read_csv(L / "windows_val.tsv", sep="\t")
+    w = w[w.scene.isin(scenes)].reset_index(drop=True)
+    ds = T.CtxDataset([f"{s}_patch_x{x}_y{y}" for s, x, y in zip(w.scene, w.x, w.y)], split, cfg, k, SEED)
+    cov = [ds.sample(i, 0, augment=False)[5] for i in range(len(ds))]
+    w["coverage"] = cov
+    w["group"] = split.loc[w.scene, "duplicate_group_id"].values
+    return w, ds
+
+
+def derange(w):
+    """Coverage deciles (rank, ties by order); within bins donors from another duplicate group; infeasible bins
+    (largest group > half) merged with the adjacent bin offering more other-group candidates (tie: lower index;
+    edge bins merge inward), scanning low -> high, repeated until feasible."""
+    rng = np.random.default_rng(PERM_SEED)
+    w = w.copy()
+    w["bin"] = (w.coverage.rank(method="first") - 1).mul(10).floordiv(len(w)).astype(int)
+    bins = [list(w.index[w.bin == b]) for b in range(10)]
+
+    def feasible(ix):
+        return w.loc[ix, "group"].value_counts().iloc[0] * 2 <= len(ix)
+
+    while True:
+        bad = [i for i, b in enumerate(bins) if not feasible(b)]
+        if not bad:
+            break
+        i = bad[0]
+        if len(bins) == 1:
+            raise SystemExit("derangement infeasible even with all windows in one bin")
+        cand = [j for j in (i - 1, i + 1) if 0 <= j < len(bins)]
+        own = set(w.loc[bins[i], "group"])
+        score = {j: int((~w.loc[bins[j], "group"].isin(own)).sum()) for j in cand}
+        j = max(cand, key=lambda c: (score[c], -c))
+        lo, hi = min(i, j), max(i, j)
+        bins = bins[:lo] + [bins[lo] + bins[hi]] + bins[hi + 1:]
+    mapping = {}
+    for b in bins:
+        sub = w.loc[b]
+        order = sub.sample(frac=1, random_state=rng.integers(2**31)).sort_values("group", kind="stable").index.tolist()
+        n, shift = len(order), int(sub.group.value_counts().iloc[0])
+        for a_, d_ in zip(order, order[shift:] + order[:shift]):
+            if w.loc[a_, "group"] == w.loc[d_, "group"]:
+                raise RuntimeError("same-group donor")
+            mapping[a_] = d_
+    return mapping, len(bins)
+
+
+def score_rows(model, device, cfg, split, rois, perm_for=None, substitute=False, keep_margin=False):
+    fb, vc = Path(cfg["paths"]["full_band"]), cfg["val"]
+    rows, margins = [], {}
+    for scene, g in rois.groupby("scene", sort=True):
+        perm = perm_for(scene) if perm_for else None
+        r = X.predict_scene(model, device, fb / split.loc[scene, "vrt_home"], None, g.to_dict("records"), cfg,
+                            vc["stride"], vc["tta"], vc["amp"], vc["batch"], perm=perm, substitute_local=substitute)
+        gt = C.gt_crop(fb / split.loc[scene, "mask_path"], r["origin"], r["pred"].shape)
+        c = C.confusion(r["pred"], gt, r["valid"], r["union"]); c.update(scene=scene, size_bin=split.loc[scene, "size_bin"])
+        rows.append(c)
+        if keep_margin:
+            m = r["valid"] & r["union"]
+            margins[scene] = (r["margin"][m], (gt == 0)[m])
+    return X.macro3(rows), margins
+
+
+def cmd_counterfactual(a):
+    k = a.k
+    if k == 1:
+        raise SystemExit("counterfactuals are defined for K2/K4")
+    target = out_once(W / "eval" / f"counterfactual_K{k}.json")
+    cfg, model, device, t = load(k)
+    split = split_df()
+    rois = val_rois()
+    w, ds = window_coverage(split, cfg, k, set(rois.scene))
+    mapping, nbins = derange(w)
+    (W / "eval" / f"derangement_K{k}.json").write_text(json.dumps(
+        [[*w.loc[a_, ["scene", "x", "y"]].tolist(), *w.loc[d_, ["scene", "x", "y"]].tolist()] for a_, d_ in mapping.items()],
+        default=int))
+    key = {(r.scene, r.x, r.y): i for i, r in w.iterrows()}
+
+    def perm_for(scene):
+        out = {}
+        for i in w.index[w.scene == scene]:
+            d = mapping[i]
+            out[(int(w.loc[i, "x"]), int(w.loc[i, "y"]))] = ds.sample(d, 0, augment=False)[1]
+        return out
+
+    full, mf = score_rows(model, device, cfg, split, rois, keep_margin=True)
+    der, _ = score_rows(model, device, cfg, split, rois, perm_for=perm_for)
+    sub, ms = score_rows(model, device, cfg, split, rois, substitute=True, keep_margin=True)
+    dm = np.concatenate([np.abs(mf[s][0] - ms[s][0]) for s in mf])
+    oil = np.concatenate([mf[s][1] for s in mf])
+    A = 0.5 * (float(dm[oil].mean()) + float(dm[~oil].mean()))
+    coll = collapsed(rj(run_dir(k) / "val_best.json"))
+    res = dict(k=k, checkpoint_sha256=t["best_sha256"], derangement_bins=nbins, n_windows=len(mapping),
+               interpretable=not coll, collapse=coll,
+               full=full, deranged=der, substituted=sub,
+               derangement_drop_macro3=full["macro3"] - der["macro3"], A_identity=A, adopted=A >= 0.01,
+               note="descriptive only (decision v6)", n_key=len(key))
+    target.write_text(json.dumps(res, indent=1, default=float))
+    print(json.dumps({kk: res[kk] for kk in ("derangement_drop_macro3", "A_identity", "adopted")}, indent=1))
+
+
+# ----------------------------------------------------------------------------------------------- pilot
+def collapsed(v):
+    return v["all"]["recall"] <= 0.01 or v["all"]["pred_to_gt"] <= 0.01
+
+
+def cmd_complete(_):
+    """Completion manifest: which outputs exist (so EXIT=0 is not misread as 'all analyses present')."""
+    want = [f"train_K{k}_S{SEED}/train_complete.json" for k in (1, 2, 4)] + \
+           [f"eval/val_tta_K{k}.json" for k in (1, 2, 4)] + ["pilot_result.json"] + \
+           [f"eval/counterfactual_K{k}.json" for k in (2, 4)] + \
+           [f"predictions/CTX_K{k}/manifest.json" for k in (1, 2, 4)] + ["eval/taiwan_eval.json"]
+    rep = {w_: (W / w_).exists() for w_ in want}
+    (W / "completion.json").write_text(json.dumps(dict(present=rep, all_present=all(rep.values())), indent=1))
+    print(json.dumps(rep, indent=1))
+
+
+def cmd_pilot(_):
+    target = out_once(W / "pilot_result.json")
+    runs = {}
+    for k in (1, 2, 4):
+        t = rj(run_dir(k) / "train_complete.json")
+        v = rj(run_dir(k) / "val_best.json")
+        tta = rj(W / "eval" / f"val_tta_K{k}.json")
+        if tta["checkpoint_sha256"] != t["best_sha256"]:
+            raise SystemExit(f"K{k}: val_tta is not of best.pt")
+        runs[k] = dict(macro3=t["best_val_macro3"], best_ve=t["best_virtual_epoch"], collapse=collapsed(v),
+                       val_best=v, recall_gt20px_tta=tta["recall_gt20px"], tta_metrics=tta["metrics"],
+                       recall_6_20px_tta=tta["recall_6_20px"], fn_share_gt20px_tta=tta["fn_share_gt20px"],
+                       top_component_share_gt20px=tta["top_component_share_gt20px"])
+    r1 = runs[1]
+    ph = r1["fn_share_gt20px_tta"] >= 0.30 and r1["recall_gt20px_tta"] <= r1["recall_6_20px_tta"] - 0.15
+    phenotype = ("dominated by one scene/component" if (r1["top_component_share_gt20px"] or 0) > 0.5
+                 else "phenotype replicated" if ph else "phenotype not replicated")
+    cls = {}
+    for k in (2, 4):
+        rk = runs[k]
+        d_m, d_r = rk["macro3"] - r1["macro3"], rk["recall_gt20px_tta"] - r1["recall_gt20px_tta"]
+        if r1["collapse"]:
+            c = "不可判定（K1 collapse）"
+        elif rk["collapse"]:
+            c = "不可判定（treatment collapse）"
+        elif d_m >= 0.05 and d_r >= 0.10:
+            c = "值得補 seed"
+        elif d_m <= -0.05:
+            c = "pilot 負向"
+        elif d_m >= 0.05:
+            c = "不可判定—非預期效益訊號"
+        else:
+            c = "不可判定"
+        cls[f"K{k}"] = dict(delta_macro3=d_m, delta_recall_gt20px=d_r, classification=c)
+    res = dict(decision="v6", runs=runs, k1_phenotype=phenotype, classification=cls)
+    target.write_text(json.dumps(res, indent=1, ensure_ascii=False, default=float))
+    print(json.dumps(dict(k1_phenotype=phenotype, classification=cls), indent=1, ensure_ascii=False))
+
+
+# ----------------------------------------------------------------------------------------------- Taiwan
+def cmd_taiwan(a):
+    k = a.k
+    final = W / "predictions" / f"CTX_K{k}"
+    if final.exists():
+        raise SystemExit(f"{final} exists")
+    tmp = W / "predictions" / f".CTX_K{k}.tmp"
+    shutil.rmtree(tmp, ignore_errors=True)
+    tmp.mkdir(parents=True)
+    cfg, model, device, t = load(k)
+    tc = cfg["test"]
+    rois = pd.read_csv(L / "rois_taiwan.csv")
+    if SMOKE_TW:
+        rois = rois[rois.scene.isin(sorted(rois.scene.unique())[:SMOKE_TW])]
+    files = {}
+    for i, scene in enumerate(sorted(rois.scene.unique())):
+        g = rois[rois.scene == scene]
+        r = X.predict_scene(model, device, g.vrt.iloc[0], None, g.to_dict("records"), cfg,
+                            tc["stride"], tc["tta"], tc["amp"], tc["batch"])
+        f = tmp / f"{i:02d}.npz"
+        np.savez_compressed(f, scene=scene, origin=np.asarray(r["origin"]), pred=r["pred"], prob_oil=r["prob_oil"],
+                            valid=r["valid"], union=r["union"])
+        files[f.name] = dict(scene=scene, sha256=C.sha256(f))
+        print(f"[taiwan K{k}] {i + 1}/{rois.scene.nunique()} {scene}", flush=True)
+    (tmp / "manifest.json").write_text(json.dumps(dict(k=k, checkpoint_sha256=t["best_sha256"], operator=tc,
+                                                       files=files), indent=1, ensure_ascii=False))
+    os.replace(tmp, final)
+
+
+def cmd_taiwan_eval(a):
+    if not a.allow_target_gt:
+        raise SystemExit("needs --allow-target-gt")
+    if not (W / "pilot_result.json").exists():
+        raise SystemExit("Taiwan is read only after the VAL pilot classification is frozen")
+    target = out_once(W / "eval" / "taiwan_eval.json")
+    reg = {s["scene_id"]: s for s in rj(REGISTRY)["all_scenes"]}
+    res = {}
+    for k in (1, 2, 4):
+        d = W / "predictions" / f"CTX_K{k}"
+        man = rj(d / "manifest.json")
+        rows = []
+        for fname, info in man["files"].items():
+            if C.sha256(d / fname) != info["sha256"]:
+                raise SystemExit(f"{d}/{fname} changed")
+            z = np.load(d / fname)
+            scene = str(z["scene"])
+            gt = C.gt_crop(reg[scene]["mask"], tuple(int(v) for v in z["origin"]), z["pred"].shape)
+            c = C.confusion(z["pred"], gt, z["valid"], z["union"]); c["subset"] = "dalin" if DALIN in scene else "other"
+            rows.append(c)
+        if sum(r["subset"] == "dalin" for r in rows) != 2 or len(rows) != 24:
+            raise SystemExit("subsets are not 2 + 22")
+        res[f"K{k}"] = {s: C.pooled([r for r in rows if r["subset"] == s]) for s in ("dalin", "other")}
+    res["delta"] = {f"K{k}": {s: res[f"K{k}"][s]["iou"] - res["K1"][s]["iou"] for s in ("dalin", "other")} for k in (2, 4)}
+    res["note"] = "descriptive only; single seed; never used for selection (decision v6)"
+    target.write_text(json.dumps(res, indent=1, default=float))
+    print(json.dumps(res["delta"], indent=1))
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("cmd", choices=("val_tta", "counterfactual", "pilot", "taiwan", "taiwan_eval", "complete"))
+    ap.add_argument("--k", type=int, choices=(1, 2, 4))
+    ap.add_argument("--allow-target-gt", action="store_true")
+    ap.add_argument("--smoke-work", default=None, help="smoke only: alternative work dir with train_K*_S42 runs")
+    ap.add_argument("--smoke-val-scenes", type=int, default=0, help="smoke only: first N VAL scenes per bin")
+    ap.add_argument("--smoke-taiwan-scenes", type=int, default=0)
+    a = ap.parse_args()
+    global W, SMOKE_VAL, SMOKE_TW
+    if a.smoke_work:
+        W = Path(a.smoke_work)
+        SMOKE_VAL, SMOKE_TW = a.smoke_val_scenes, a.smoke_taiwan_scenes
+        if a.allow_target_gt:
+            raise SystemExit("smoke may not read Taiwan GT")
+    if a.cmd in ("val_tta", "counterfactual", "taiwan") and a.k is None:
+        raise SystemExit("--k required")
+    dict(val_tta=cmd_val_tta, counterfactual=cmd_counterfactual, pilot=cmd_pilot, taiwan=cmd_taiwan,
+         taiwan_eval=cmd_taiwan_eval, complete=cmd_complete)[a.cmd](a)
+
+
+if __name__ == "__main__":
+    main()
+---VERDICT---
+STANCE / BLOCKING / RESTATE / CONFIDENCE
+---END---

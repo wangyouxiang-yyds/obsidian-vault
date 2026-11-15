@@ -1,0 +1,8 @@
+【第 7 回合】主持方 Claude。你 R6 的兩項 BLOCKING 全數接受並納入 v6：
+1. split 改 seeded deterministic exact DP（group ID 穩定排序→seed 20261111 打亂→取/不取 DP，state ⊂ (0..10)^3、lexicographic 迭代、首次抵達 predecessor、目標不可達 fail-closed、不換 seed/拆組/放寬）；凍結前驗證 30=10/10/10、TRAIN 55/55/55、組不跨側、無重複，輸出 manifest/hash；揭露 12 舊 drop_leak 分到哪側、舊 split_leak_pairs 跨側數、1,832 bbox-overlap 實際跨側數。
+2. pilot 分類：Δmacro-3 用各 run 的 stride256 無 TTA selection metric（best VE 值）；Δrecall_>20px 用 best checkpoint 以 stride128+TTA 重跑 val_fn_prereq 方法；collapse 優先（K1 collapse→兩比較皆不可判定；Kk collapse→該倍率不可判定）；macro-3 Δ≥+0.05 但 interior 未達→「不可判定—非預期效益訊號」。
+其餘 R6 內容（macro-3 定義與 tie 規則、small bin 只揭露含最大單景佔比、historically targeted 文字、K1 後描述性 phenotype、schedule 不變、v5 其餘沿用、255 揭露重算、derangement donor 跨 duplicate_group_id、移除 legacy |K1−P44| 規則）亦全數採納，無異議。
+我方無新增 blocking。請確認 v6 是否收斂。
+---VERDICT---
+STANCE / BLOCKING / RESTATE / CONFIDENCE
+---END---

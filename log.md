@@ -790,6 +790,7 @@
 ## [2026-11-11] harness | WP3 收尾
 - 6 頁舊實驗卡 status 正規化為 `abandoned`；12 頁已作廢日期快照由 `wiki/` 搬至 `outputs/`（路徑型連結、index、`wiki/corrections.md` 已同步）。
 - 刪除 3 個 .bak（`.agents/consensus.md.bak-20260718`、`.agents/handoff.md.bak-20260718`、`.agents/handoff.md.bak-20260825`，內容在 git 歷史）。
+2026-11-11 18:44｜P51 完成（GoM-only 資料制度三 seed）。09:54→18:44，S42／S43／S44 全部 EXIT=0。預先登記判讀：大林、其他 22 張皆 no_decisive_difference。大林：P51 0.228±0.069 vs baseline（P44 S42／P48 S43,S44）0.258±0.222，Δ −0.031（se 0.134），P51 漏判為主（pred/gt 0.49）；其他 22：0.209±0.052 vs 0.212±0.107，Δ −0.003（se 0.069）。敏感度（非判讀）：排除 baseline S44 塌縮後 baseline 大林 0.384／其他 0.274，皆高於 P51。結論：GoM-only 沒比全球好；P51 seed 間較穩；GoM S44 best ve1 但未塌縮。產物 /home/alanyh/oil_dataset/new/_p51_gom_only_roi_20261111/eval_result.json；institution commit e07e9a1。
 
 ## [2026-11-11] harness | 導覽句改指現行知識頁
 - 7 頁（models: DeepLabV3+／OSDMamba／Prithvi_DeepLabV3；pipeline: project_overview／add_new_data／GT_expand_workflow_onboarding；datasets: ms6_sen2like）指向 `outputs/20261111_*` 快照的導覽連結改指現行知識頁。
@@ -797,3 +798,84 @@
 ## [2026-11-11] harness | handoff 精簡封存（WP6）
 - `.agents/handoff.md` 只留 2026-10-28 起的 STATUS 行；10-27 以前與 09 月各 P 小節原文搬至 `.agents/handoff_archive_20261111.md`（行多重集合比對無遺失）。
 - Harness continuity、共識紀錄兩節未動。
+
+## [2026-11-11] decision | context k2k4 前置 gate 1 結果
+- `.agents/decisions/20261111_ROI固定倍率context_k2k4實驗設計.md` 末節追加 gate 1 結果（兩 seed 皆過 → targeted；揭露 VAL 單景集中度）；`.agents/handoff.md` 加 STATUS_AS_OF。
+
+## [2026-11-11] decision | context k2k4 設計變更 v6
+- `.agents/decisions/20261111_ROI固定倍率context_k2k4實驗設計.md` 追加 v6 節（GoM-only 分層 VAL、macro-3、單 seed 3 runs；Codex R7 ACCEPT）並複製 r6／r7 附件；`.agents/handoff.md` 加 STATUS_AS_OF。
+
+## [2026-11-11] decision | P52 卡凍結 v3
+- P52 設計卡凍結 v3（2026-11-11，commit 774d57f；**未 launch**）：P51 GoM-only 流程只換 ctx k2k4 v6 共用切分（GoM 195 景、VAL 30＝大中小各 10、TRAIN 165）＋macro-3 選模（train_p52.py 包凍結 train_p44），三 seed 42/43/44。判讀主要 vs 自然比例 baseline、次要 vs P51；臺灣只報大林／其他 22。Codex R1 REVISE 4 項→R2 ACCEPT／BLOCKING=[]。卡 GT_expand `analysis/p52_gom_stratval_20261111/P52_CARD.md`；institution 已回寫。launch：`bash analysis/p52_gom_stratval_20261111/launch.sh`，排在 k2k4 K1/K2/K4 之後（鎖內 ctx_gate 驗證 K1/K2/K4 完成；k2k4 重建共用切分則拒跑）。 已追加 `.agents/handoff.md` STATUS_AS_OF 與 `index.md` 一行；凍結卡鏡像未建。
+
+## [2026-11-11] decision | context k2k4 v6 實作與凍結
+- `.agents/decisions/20261111_ROI固定倍率context_k2k4實驗設計.md` 追加「v6 實作與凍結」節（preflight G1–G8 全過；Codex R8→R11 ACCEPT；卡 FROZEN 8e5be4d）並複製 r8–r11 附件；`.agents/handoff.md` 加 STATUS_AS_OF；launch 未授權。
+
+## [2026-11-11] experiment | ctx k2k4 v6 launch、P52 排隊
+- 使用者授權第 3 項；ctx launcher pid 2091147 持 GPU 鎖（23:43 起，K1→K2→K4 S42），P52 launcher pid 2091437 排隊於後；cache_train／cache_rebuild_check 經同意刪除；已加 `.agents/handoff.md` STATUS_AS_OF，決策卡末追加一行。
+
+## [2026-11-12] decision | GoM 三折 CV 選模規則定案
+- 新增 `.agents/decisions/20261112_GoM大小平衡三折CV與選模規則.md`；更新 `wiki/datasets/來源分折與封存測試.md`、`index.md` 與 `.agents/handoff.md`。
+
+## [2026-11-12] decision | 光學油污 Stage 1 自動 ROI 方法方向協商
+- 新增 `.agents/decisions/20261112_光學油污Stage1自動ROI方法方向.md`；更新 `index.md` 與 `.agents/handoff.md`。
+
+## [2026-11-12] result | ctx k2k4 v6 pilot 結案（不可判定）
+- 新增 `wiki/experiments/20261112_ctx_k2k4_v6_pilot_不可判定_結果.md`；改寫 `wiki/concepts/尺度自適應_Global-Local分割.md`、`wiki/concepts/研究問題與未解事項.md`；更新 `index.md`、`.agents/handoff.md`。
+
+## [2026-11-12] decision | ctx k2k4 補 seed 卡（DRAFT r3）
+- 新增 `.agents/decisions/20261112_ctx_k2k4_補seed卡.md`；於 `wiki/experiments/20261112_ctx_k2k4_v6_pilot_不可判定_結果.md` 加下一張卡註記；更新 `index.md`、`.agents/handoff.md`。
+
+## [2026-11-12] experiment | ctx k2k4 補 seed 卡 FROZEN，launcher 排隊（22:05）
+- 卡 FROZEN（freeze 1a90850／FREEZE_RECORD bbebe4a），使用者授權排在 P52 之後；launcher pid 2322067 等 GPU 鎖。追加 `.agents/decisions/20261112_ctx_k2k4_補seed卡.md`；更新 `.agents/handoff.md`。
+
+## [2026-11-13] result | P52 完成
+- 新增 `wiki/experiments/20261113_P52_GoM_stratval_macro3_結果.md`；改寫 `wiki/concepts/研究問題與未解事項.md`；更新 `index.md`、`.agents/handoff.md`。
+
+## [2026-11-13] decision | P53 卡凍結 v2
+- P53 自然比例全球 baseline 重跑（P44 流程）卡凍結 v2（GT_expand `analysis/p53_global_stratval_20261113/P53_CARD.md`，commit f5b321b；Codex R1 REVISE→R2 ACCEPT）；未 launch，無結果卡。更新 `index.md`、`.agents/handoff.md`。
+
+## [2026-11-13] ingest | Cai et al. 光學油污 SinGAN＋YOLOv8 框偵測
+- 新增 `wiki/papers/Cai2024_SinGAN_YOLOv8_油污框偵測.md`；更新 `wiki/concepts/研究問題與未解事項.md`、`index.md`。
+
+## [2026-11-13] decision | Codex 協商呼叫式改為 danger-full-access
+- `-s read-only` 在容器內不可用（0.167.2），改 `-s danger-full-access`＋prompt 寫明唯讀；揭露約 10-01 起 read-only 審查未逐案稽核內嵌檔案。更新 `.agents/consensus.md`、`.agents/handoff.md`。
+
+## [2026-11-13] harness | Claude → Codex 共識模型改為 GPT-6 Sol
+- 使用者指定；更新 `.agents/consensus.md`、`.agents/handoff.md`。正式呼叫式見 institution `10_model_dispatch.md` §2。
+
+## [2026-11-13] decision | Stage 1 自動找框 pilot 方法與觀察方向協商
+- 新增 `.agents/decisions/20261113_Stage1自動找框pilot方向共識.md`；更新 `index.md` 與 `.agents/handoff.md` 共識紀錄。
+
+## [2026-11-13] ingest | Fuller et al. CROMA（NeurIPS 2023）
+- 新增 `wiki/papers/Fuller2023_CROMA.md`；更新 `wiki/concepts/self_supervised_pretraining_遙測.md`、`index.md`、`.agents/handoff.md`（P54 卡 DRAFT r2 狀態行）。
+
+## [2026-11-14] harness | consensus.md 呼叫式副本改指標
+- `.agents/consensus.md` 第 51–52 行：Claude↔Codex 呼叫式、模型、fallback 鏈改指向 institution `10_model_dispatch.md`（單一正本，`30_maintenance.md` §3）；保留一行 CLAUDE_UNAVAILABLE／接手規則。
+
+## [2026-11-14] decision | 狀態檔拆分為現況快照與封存歷史（共識，未執行）
+- 新增 `.agents/decisions/20261114_狀態檔拆分_現況快照與封存.md`；更新 `index.md`、`.agents/handoff.md` 共識紀錄。遷移待使用者暫停其他寫入 session。
+
+## [2026-11-14] result | ctx k2k4 補 seed（S43／S44）：探索性 fresh-seed 佐證
+- 新增 `wiki/experiments/20261114_ctx_k2k4_補seed_探索性佐證_結果.md`；追加 `.agents/decisions/20261112_ctx_k2k4_補seed卡.md`「2026-11-14 結果」節。
+- 追加更新 `wiki/concepts/尺度自適應_Global-Local分割.md`、`wiki/concepts/研究問題與未解事項.md`、`index.md`、`.agents/handoff.md`。
+
+## [2026-11-14] decision | 狀態檔拆分 C4 規則同步（vault 部分）
+- handoff 改為可覆寫快照；改過：CLAUDE.md（§頭、§3.0、§3.3、§4 第5步、lint 項）、.agents/consensus.md（第9步、共識紀錄節）、.agents/agents/obsidian-vault-manager.md、.codex/agents/obsidian-vault-manager.toml
+- 已部署 runtime（/root/.claude/agents、/root/.codex/agents）；決策卡 20261114_狀態檔拆分_現況快照與封存.md、.agents/handoff.md 未動
+
+## [2026-11-14] decision | 狀態檔拆分遷移執行（vault 部分）
+- handoff.md 覆寫為快照（約 3.6 KB），全文封存於 .agents/handoff_history_20261114.md（原文 SHA 79e0c4f6…dcb8 驗證相符）。
+- institution 現況檔已改主題快照，封存於 research/oil_spill_project_status_archive_20261114.md；決策卡 20261114_狀態檔拆分_現況快照與封存.md 執行狀態改為已執行。
+
+## [2026-11-14] experiment | P53 自然比例 baseline＋大中小分層 VAL＋macro-3 launch（process 啟動）
+- 20:33 經使用者明確授權啟動（launch.sh PID 2987917）；卡 FROZEN v2（GT_expand commit f5b321b，`analysis/p53_global_stratval_20261113/P53_CARD.md`）；S42→S43→S44 依序，GPU 由 P53 佔用，P54 仍 DRAFT 未排入。
+- 已覆寫 .agents/handoff.md 目前狀態；尚無結果，不寫結果卡。
+
+## [2026-11-15] result | P53 自然比例全球 baseline＋分層 VAL＋macro-3：不可判定，3 seed 中 2 塌縮
+- 新增 `wiki/experiments/20261115_P53_global_stratval_結果.md`；結案 06:06，GPU 閒置。
+- 改寫 `wiki/pipeline/P44_ROI滑窗基線.md`、`wiki/concepts/研究問題與未解事項.md`；更新 `index.md`、`.agents/handoff.md`。
+
+## [2026-11-15] experiment | P54 CROMA optical-large＋DLV3 launch（process 啟動）
+- 10:36 啟動（launch.sh 持共用 GPU 鎖，launcher pid 3211287）；卡 FROZEN r3（GT_expand commit 0318a65，`analysis/p54_croma_global_20261113/P54_CARD.md`，Codex R1 REVISE→R2 ACCEPT）；seed 42，預估 ≤16 h；使用者說「GPU回來了 可以幫我進行實驗了」。
+- ⚠ 現況檔「P54 須等 P53 塌縮處理」備註 launch 前未執行（比較對象 P53 S42 未塌縮），已回報使用者；已覆寫 .agents/handoff.md 目前狀態；尚無結果，不寫結果卡。

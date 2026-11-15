@@ -5,10 +5,14 @@
 ## 研究問題與資料有效性
 
 - [研究問題與未解事項](wiki/concepts/研究問題與未解事項.md) — 研究問題、已有證據與尚待驗事項的導覽。
-- [來源分折與封存測試](wiki/datasets/來源分折與封存測試.md) — GoM 場景名單、全球來源草案與封存測試邊界。
+- [來源分折與封存測試](wiki/datasets/來源分折與封存測試.md) — GoM 三折分案及選模口徑、全球來源草案與封存測試邊界。
 
 ## 實驗紀錄
 
+- [20261113_P52_GoM_stratval_macro3_結果](wiki/experiments/20261113_P52_GoM_stratval_macro3_結果.md) — P52 GoM-only 分層 VAL＋macro-3 三 seed 的結果與判定邊界。
+- [20261115_P53_global_stratval_結果](wiki/experiments/20261115_P53_global_stratval_結果.md) — P53 自然比例全球 baseline＋分層 VAL＋macro-3 三 seed 結果（2/3 塌縮，不可判定）。
+- [20261114_ctx_k2k4_補seed_探索性佐證_結果](wiki/experiments/20261114_ctx_k2k4_補seed_探索性佐證_結果.md) — context k2/k4 補 S43／S44 的結果：探索性 fresh-seed 佐證，15RVM 以外未獲支持。
+- [20261112_ctx_k2k4_v6_pilot_不可判定_結果](wiki/experiments/20261112_ctx_k2k4_v6_pilot_不可判定_結果.md) — 固定倍率 context 單 seed pilot 的結果與判定邊界。
 - [三策略比較實驗計畫](wiki/experiments/三策略比較實驗計畫.md) — 實驗方法、結果與解讀限制。
 - [20261110_P50_H1prime_UperNet_三seed_執行紀錄](wiki/experiments/20261110_P50_H1prime_UperNet_三seed_執行紀錄.md) — 實驗方法、結果與解讀限制。
 - [20261110_P49_LFMDA搬到ROI_三seed_執行紀錄](wiki/experiments/20261110_P49_LFMDA搬到ROI_三seed_執行紀錄.md) — 實驗方法、結果與解讀限制。
@@ -75,11 +79,19 @@
 
 ## 實驗設計與逐案決策
 
+- [狀態檔拆分：現況快照與封存](.agents/decisions/20261114_狀態檔拆分_現況快照與封存.md) — handoff／現況檔改可覆寫主題快照、歷史封存；C1–C6 與遷移驗證；未執行。
+- [Stage 1 自動找框 pilot 方向共識](.agents/decisions/20261113_Stage1自動找框pilot方向共識.md) — 雙尺度找框、ROI 串接與觀察指標的 Codex×Claude 方法規畫。
+- [光學油污 Stage 1 自動 ROI 方法方向](.agents/decisions/20261112_光學油污Stage1自動ROI方法方向.md) — 自動候選框與現有分割器串接的方向性方法協商。
+- [GoM 大小平衡三折 CV 與選模規則](.agents/decisions/20261112_GoM大小平衡三折CV與選模規則.md) — 普通三折的資料角色、單一模型選擇與臺灣評估口徑。
+- [ctx k2/k4 補 seed 卡決策](.agents/decisions/20261112_ctx_k2k4_補seed卡.md) — K1/K2/K4 × S43、S44 補 seed 的範圍、判讀規則與 Codex 審查；DRAFT 未 launch。
 - [vault 知識庫修復 WP1 規則落地（共識）](.agents/decisions/20261111_vault知識庫修復_WP1規則落地_共識.md) — Claude×Codex 4 回合收斂；CLAUDE.md／AGENTS.md／vault-manager 兩份正本／實驗卡範本落地 D0–D5
 - [vault 知識庫修復 WP0 目標設計](.agents/decisions/20261111_vault知識庫修復_WP0目標設計.md) — D0 index/log 只指路；D1 常青知識頁；D2 作廢可復原；D3 status 值域；D4 ingest 改寫知識頁；D5 半月 lint
 - [handoff 封存檔 20261111](.agents/handoff_archive_20261111.md) — 2026-10-27 以前 STATUS 行與 09 月各 P 實驗小節、執行中程序、未償債務（WP6，原文搬移）。
+- [handoff 歷史封存 20261114](.agents/handoff_history_20261114.md) — 2026-11-14 狀態檔拆分前 handoff.md 全文原樣（54 條 STATUS_AS_OF、Harness continuity、共識紀錄）。
 - [20261111_ROI固定倍率context_k2k4實驗設計](.agents/decisions/20261111_ROI固定倍率context_k2k4實驗設計.md) — 固定倍率 context 實驗的對照、判準與前置驗收。
 - [20261111_P51_GoM_only_ROI資料制度_設計](.agents/decisions/20261111_P51_GoM_only_ROI資料制度_設計.md) — P51 凍結設計卡的 vault 鏡像與原件指標。
+- P51 完成（2026-11-11 18:44，見上一條設計卡）— 三 seed EXIT=0；大林 0.228±0.069 vs 0.258±0.222（Δ −0.031）、其他 22 張 0.209±0.052 vs 0.212±0.107（Δ −0.003），皆 no_decisive_difference；GoM-only 沒比全球好。細節見 `log.md` 與 `.agents/handoff.md`；結果卡待建。
+- P52 設計卡凍結 v3（2026-11-11，commit 774d57f；**未 launch**）：P51 GoM-only 流程只換 ctx k2k4 v6 共用切分（GoM 195 景、VAL 30＝大中小各 10、TRAIN 165）＋macro-3 選模（train_p52.py 包凍結 train_p44），三 seed 42/43/44。判讀主要 vs 自然比例 baseline、次要 vs P51；臺灣只報大林／其他 22。Codex R1 REVISE 4 項→R2 ACCEPT／BLOCKING=[]。卡 GT_expand `analysis/p52_gom_stratval_20261111/P52_CARD.md`；institution 已回寫。launch：`bash analysis/p52_gom_stratval_20261111/launch.sh`，排在 k2k4 K1/K2/K4 之後（鎖內 ctx_gate 驗證 K1/K2/K4 完成；k2k4 重建共用切分則拒跑）。
 - [20261108_P48補seed_H1與P44](.agents/decisions/20261108_P48補seed_H1與P44.md) — 事前設計、協商或研究裁決。
 - [20261108_P47_SpectralGPT_ROI3840](.agents/decisions/20261108_P47_SpectralGPT_ROI3840.md) — 事前設計、協商或研究裁決。
 - [20261107_P46大圖版配比與OOF探勘](.agents/decisions/20261107_P46大圖版配比與OOF探勘.md) — 事前設計、協商或研究裁決。
@@ -213,11 +225,13 @@
 
 ## 文獻
 
+- [Cai2024_SinGAN_YOLOv8_油污框偵測](wiki/papers/Cai2024_SinGAN_YOLOv8_油污框偵測.md) — Landsat-8 小圖人工框、SinGAN 擴增與 YOLOv8 光學油污定位。
 - [Chang2024_MorphologicalAttention_UNet_SAR](wiki/papers/Chang2024_MorphologicalAttention_UNet_SAR.md) — 論文方法、結果與本案關聯。
 - [Chou2021_U-Net光學海上油污](wiki/papers/Chou2021_U-Net光學海上油污.md) — 論文方法、結果與本案關聯。
 - [Du2022_CBF-CNN_HY1C](wiki/papers/Du2022_CBF-CNN_HY1C.md) — 論文方法、結果與本案關聯。
 - [Du2025_MS3OSD](wiki/papers/Du2025_MS3OSD.md) — 論文方法、結果與本案關聯。
 - [Duan2022_HOSD_IsolationForest](wiki/papers/Duan2022_HOSD_IsolationForest.md) — 論文方法、結果與本案關聯。
+- [Fuller2023_CROMA](wiki/papers/Fuller2023_CROMA.md) — 雷達-光學對比＋MAE 預訓練的光學 encoder；P54 所用 encoder 的來源與基準數字。
 - [IsolationForest_Liu2008](wiki/papers/IsolationForest_Liu2008.md) — 論文方法、結果與本案關聯。
 - [Kang2024_PlanetScope_CNN_Transformer](wiki/papers/Kang2024_PlanetScope_CNN_Transformer.md) — 論文方法、結果與本案關聯。
 - [Lee2025_NFINDR_SAM_小型油污](wiki/papers/Lee2025_NFINDR_SAM_小型油污.md) — 論文方法、結果與本案關聯。

@@ -1,0 +1,28 @@
+【第 4 回合｜設計變更重開】主持方 Claude。v3 收斂後，使用者看完融合方式的來源（γ gated add 是 08-31 我們自己的改法，不是論文）裁決：「先試試論文的吧」＝融合改回 GeoAgent 原文的 branch aggregation。我也要坦承：R1 背景內嵌了 08-31 的 γ 公式，你的「獨立提案」可能受其錨定。另外，v3 有 K1 同碼對照後，「concat 多 1,890 萬參數造成容量混淆」的理由已被 K1 抵消（K1 也有同一融合層）。其餘 v3 內容（K1/K2/K4、讀取、RRC Δ/k、batch16、Stage A/B 與 futility、主終點門檻、derangement、臺灣規則、VAL 前置、I/O/記憶體 gates）預設不變，除非因此變更必須改。
+
+# 論文原文 §3.3（逐字）
+"the π(Y|X) network employs a two-branch structure sharing a common segmentation network ... During the segmentation process, all layers in either branch share the same weights. The high-level feature maps fl and fc are then combined to generate the final segmentation mask using a branch aggregation layer. During the feature fusion phase, the range corresponding to the local image is cropped from the context patch feature map based on its geographic coordinates. The two scales of feature maps are concatenated and fused by a convolutional layer of size 3 × 3. Finally, the segmentation probability is computed using a 1 × 1 convolution and a softmax layer. To facilitate training for both branches, auxiliary headers are added to output segmentation results for local patches and context patches based on either fl or fg at a single scale."
+§3.4："In addition to the loss values computed from the final outputs, additional segmentation head outputs in the global and local branches are also used to compute the auxiliary losses." 原文用 CE；未給 aux 權重、fl/fc 的確切層、conv 後是否 BN/ReLU、輸出通道數。
+
+# 我方提議的對應（候選稿 v4 草案，請批）
+- 「共用的分割網路」＝Prithvi encoder（第 23 層）＋DeepLabV3 head 至最終 1×1 classifier 之前（ASPP→256ch→3×3 conv→BN→ReLU 的輸出，16×16×256）。f_l、f_c 取此處。理由：原文「all layers share」且 fl/fc 是送進 aggregation 前的 high-level feature；ASPP 也共用。
+- 對齊：f_c 用 v3 同一 grid-sample（g_j=((2j+1)/16−1)/k，bilinear，align_corners=False）取出對應 local 的 16×16。K1 為 identity。
+- Aggregation：concat(512) → 3×3 conv(512→256) → BN → ReLU → 1×1 conv(256→2) → 上採樣到 256 → softmax/Tversky。（BN/ReLU 是否加：原文沒寫；我傾向比照 DeepLabV3 head 慣例加，請表態。）新增約 1.18M＋512 參數，K1/K2/K4 同。
+- 主 loss：Tversky（α.3/β.7，batch 加總）於 aggregation 輸出、local GT。不改成 CE（P44 基線是 Tversky，換 loss 會混入另一變因）。
+- Aux heads：
+  (a) local aux：沿用 P44 原 classifier（1×1 conv 256→2）作用於 f_l，Tversky 於 local GT。
+  (b) context aux：原 classifier（共用或另一個？）作用於 f_c（整個 16×16，不裁），標籤＝context 範圍（512 或 1024）的 GT 降採樣到 256。問題：需讀 context 範圍 mask；area 降採樣後是分數，需規則（nearest？多數決？>50%？soft？）；ROI 外 mask 存在（整景標註），但標註品質在 ROI 外未經檢查；無效像素→255。K1 的 context aux 等於 local aux 重複。
+  我的傾向：(a) 必加；(b) 照原文加，標籤用 area 降採樣後 ≥0.5 為油、valid<0.5 為 255；aux 權重各 0.4（PSPNet/DeepLab aux 慣例），總 loss＝L_main＋0.4·L_aux_local＋0.4·L_aux_ctx。請批評，或提出更忠於原文且可凍結的做法。
+- 初始化：aggregation 層隨機（kaiming，seeded）；P44 head 本來就從隨機初始化，所以「起點等於 P44」不再成立也不需要。v3 的 γ=0 parity gate 移除。
+
+# 需要你重定的連帶項
+1. 取代 γ 相關的 non-executed 判準（梯度 exposure 改看什麼參數？）與 adoption 定義（原為 full vs γ=0；改為 full vs「C_aligned 換成 K1 式 identity（即 f_c:=f_l）」？或 context 置零？哪個是合法反事實？）。
+2. K1 parity 測試要改成什麼（K1 input identity 仍保留）。
+3. 記憶體：f_c 需經 ASPP 第二次 + context aux 的上採樣與 loss，peak 估計是否仍可能 ≤30.5 GiB；gate 不變。
+4. 推論 TTA：最終輸出用 aggregation 輸出，aux 輸出不參與，對嗎？
+5. 是否還需要保留一組 γ 版作對照？（使用者說「先試試論文的」，我傾向不加，維持 9＋6 runs）
+
+請給候選稿 v4 差異清單，結尾：
+---VERDICT---
+STANCE / BLOCKING / RESTATE（複述使用者與我方最強論點）/ CONFIDENCE
+---END---

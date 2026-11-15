@@ -8,7 +8,7 @@ Codex 經 `AGENTS.md` 也讀本檔；規則與 harness 無關，雙方都照做�
 > - 「規則」各節（目錄、記錄格式、Git、啟動）只在制度改變時修改；
 >   「§6 目前研究基線快照」每 14 天依近期結論更新，舊內容不在本檔保留（歷史在 wiki 頁面與 log.md）。
 > - 實驗結論變動很快，不以本檔為準：最新研究數字以 `/home/alanyh/.agents/institution/research/oil_spill_project_status.md`、
->   來源檔與相關頁面為準；目前操作／process 狀態看 `.agents/handoff.md` 的 STATUS_AS_OF；回答時仍須讀正式頁面並查勘誤表（§3.0、§3.6）。
+>   來源檔與相關頁面為準；目前操作／process 狀態看 `.agents/handoff.md` 的「目前狀態」快照；回答時仍須讀正式頁面並查勘誤表（§3.0、§3.6）。
 
 ---
 
@@ -51,7 +51,7 @@ obsidian-vault/
 
 ### 3.0 總原則：index 與 log 只指路，內容在頁面
 - `index.md` 是地圖、`log.md` 是時間線；**數字、結論、裁決內容一律寫在頁面**，不寫進 index／log。
-- `.agents/handoff.md` 只放交接用的操作狀態（STATUS_AS_OF）與共識紀錄一行摘要（`consensus.md` 規定）；它不是研究證據或永久知識來源。
+- `.agents/handoff.md` 是可覆寫的操作狀態快照（一個 STATUS_AS_OF＋進行中／待授權工作；每次交接覆寫，不追加；共識詳情在 `.agents/decisions/`，2026-11-14 起不再逐案記共識紀錄）；它不是研究證據或永久知識來源。
 - 回答問題、引用數字時，**必須讀到頁面本身**才可引用；不可只憑 index 摘要、log 條目或 handoff 作答。
 - 檔案分三類：
   - **事件頁**（`wiki/experiments/`、`wiki/papers/`、`.agents/decisions/`）：記一次發生的事，寫完後只做最小修改；`.agents/decisions/` 凍結卡**一律不改**（作廢方式見 §3.6）。
@@ -76,7 +76,7 @@ obsidian-vault/
 - 7–9（結果，結果出來才填）→ `wiki/experiments/YYYYMMDD_主題.md`，並連回 decisions 檔
 - 欄位與判準：`/home/alanyh/.agents/institution/templates/experiment_card.md`、`20_judgment_rubrics.md` R6
 - 7–9 的「知識頁影響」欄列出此結果要改寫的知識頁與要作廢的舊說法；結案時照 §4「收進實驗結果」一併處理。
-- 實驗結案、共識收斂、process 啟停、資料清理：**當天**回寫 log.md＋handoff.md（＋ institution 現況檔）
+- 實驗結案、共識收斂、process 啟停、資料清理：**當天**回寫 log.md、覆寫 handoff.md 快照（＋ institution 現況檔就地更新主題條目）
 
 ### 3.4 頁面 frontmatter
 ```yaml
@@ -129,11 +129,11 @@ superseded_by: "[[取代它的頁面]]"   # validity 為 superseded 時必填
   2. **改寫「知識頁影響」列出的每一頁**（§3.5，頁尾記變更紀錄並連回結果卡）；沒有列出、但主題明顯相關的知識頁也要檢查；
   3. 被推翻的舊說法依 §3.6 標作廢並登錄勘誤表；
   4. index 一行（只在新增頁面或摘要失準時）→ log 一筆 `result`（§3.2 三行內，列改了哪些頁的路徑）；
-  5. handoff「目前狀態」最上方加一行 STATUS_AS_OF；
+  5. 覆寫 handoff「目前狀態」快照（更新 STATUS_AS_OF 與待辦清單，不追加、不保留舊行）；
   6. institution `research/oil_spill_project_status.md` 當天回寫（不論結論是支持、否定或不可判定）。此檔不在 vault，由主對話寫入；vault-manager 在回報中提醒。
   只寫結果卡＋index＋log、沒有動到任何知識頁＝未完成（除非卡上寫明「無知識頁影響」及理由）。
 - **回答問題（D0）**：index 找頁 → 讀頁面本身 → 查勘誤表 → 附出處回答；問「最近發生什麼」才看 log 尾端，再循指標讀頁。有保存價值的回答整理成 `outputs/` 新頁（並依 §3.1 加 index 一行）。
-- **健檢 lint（D5）**：自 2026-11-25 起**每 14 天**一次（11-25、12-09、12-23…），與本檔 §6 更新同次執行；「下次檢查」日期見檔頭。檢查：頁面間矛盾、被新結果推翻但未標作廢的說法、孤兒頁（index 沒列、沒人連）、反覆出現卻沒有自己頁面的概念、斷鏈、index／log 是否又塞了內容、handoff 是否塞入超出 STATUS_AS_OF／共識一行摘要的研究細節、知識頁是否落後於最近的結果卡。報告存 `outputs/lint_YYYYMMDD.md`（附勘誤表狀態為「作廢中」的**列數**，並加 index 一行），修正後 log 記 `lint` 一筆。lint 由「最近兩週沒有主寫 vault 的一方」執行為佳；無法判定或只有一個 harness 可用時由可用的一方執行，不因此延後。
+- **健檢 lint（D5）**：自 2026-11-25 起**每 14 天**一次（11-25、12-09、12-23…），與本檔 §6 更新同次執行；「下次檢查」日期見檔頭。檢查：頁面間矛盾、被新結果推翻但未標作廢的說法、孤兒頁（index 沒列、沒人連）、反覆出現卻沒有自己頁面的概念、斷鏈、index／log 是否又塞了內容、handoff 是否塞入超出操作狀態快照的研究細節、是否又變回追加式、知識頁是否落後於最近的結果卡。報告存 `outputs/lint_YYYYMMDD.md`（附勘誤表狀態為「作廢中」的**列數**，並加 index 一行），修正後 log 記 `lint` 一筆。lint 由「最近兩週沒有主寫 vault 的一方」執行為佳；無法判定或只有一個 harness 可用時由可用的一方執行，不因此延後。
 - **內容維護不是只更新目錄**：datasets（新景、標記、來源）、models（試過的架構與限制）、pipeline（可重用流程）、environment（環境或故障）都依 §3.5 維護。沒有新證據時不為了湊齊資料夾而寫頁。
 - **驗收**：新結果應能從 index 找到相應頁；內容頁依 §3.5 標來源與日期（量化結果與效能比較另標資料範圍、版本與評估口徑），未核實處明寫；主代理核對頁面存在、鏈結可用。
 - 不確定的技術細節先問使用者，不要猜。重大決策與 Codex 協商（`.agents/consensus.md`），工作段落結束更新 `.agents/handoff.md`。

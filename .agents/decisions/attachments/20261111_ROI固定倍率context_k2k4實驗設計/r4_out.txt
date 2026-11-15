@@ -1,0 +1,190 @@
+方向接受；γ 版不應留在本輪。不過 v4 草案的 context aux 標籤與權重需要修改，否則 K4 很可能因 `≥0.5` 多數決把稀疏油污消成背景，測到的是 scale-dependent label erosion，而不是 context 效果。
+
+也同意主持方對錨定的說明：v1選 γ residual確實可能受到內嵌 P11方案影響。使用者既已指定先測論文融合，本輪應改成「GeoAgent-style aggregation under P44 protocol」，而不是把 γ 當共同候選。
+
+## 1. Branch aggregation
+
+我同意 fusion tap放在 DeepLabV3最終 classifier之前：
+
+- Prithvi第23層輸出分別通過同一組 ASPP及 `256ch 3×3→BN→ReLU` trunk。
+- 得到 `f_l,f_c ∈ R^(16×16×256)`。
+- `f_c`沿用 v3地理 grid-sample對齊；K1為 identity。
+- 聚合層固定為：
+
+```text
+concat[f_l, C_aligned]  # 512ch
+→ Conv3×3(512→256, padding=1, bias=False)
+→ BatchNorm
+→ ReLU
+→ Conv1×1(256→2, bias=True)
+```
+
+原文未明說 BN/ReLU，因此這不是逐字重現，而是採用現行 DeepLab block慣例的凍結 operationalization。因三組完全相同，並有 K1控制，這個未明細選擇不會混入倍率比較。
+
+初始化：
+
+- 3×3 conv：seeded Kaiming。
+- BN：weight=1、bias=0。
+- aggregation classifier：沿用 P44 classifier初始化規則。
+- 不做 zero-init，也不保留 γ=0 parity。
+
+### 共用 ASPP 的 BN
+
+encoder可分兩次 forward，但 local/context encoder features應沿 batch axis concat成 batch 32，一次通過共用 ASPP trunk，再 split成 `f_l/f_c`。這避免同一 BN被依分支順序更新兩次，造成 local-first/context-first偏差。
+
+若 batch-32 ASPP使記憶體 gate失敗，不得改成順序式雙 BN更新、凍結 BN或分支獨立 BN；應 fail-closed回報。
+
+## 2. Auxiliary heads
+
+### Head是否共用
+
+使用同一個 P44 `Conv1×1(256→2)` aux classifier，分別作用於 `f_l`與完整未裁切的 `f_c`。
+
+理由是：
+
+- 符合「兩分支所有層共用權重」。
+- 避免增加 branch-specific capacity。
+- K1下 local/context aux logits應完全相同，可形成強力實作測試。
+
+aggregation classifier則是另一個、專屬主輸出的1×1 classifier。
+
+### Context target
+
+我不同意把 area occupancy `≥0.5`硬化成油。油像素本來就稀少，K4每個輸出像素涵蓋16個原像素；多數決會系統性抹去窄帶與小油塊，並令 context Tversky退化成大量全背景 batch。
+
+建議保留 soft occupancy：
+
+\[
+q=\frac{\operatorname{area}(1[y=oil]\cdot valid)}
+        {\operatorname{area}(valid)}
+\]
+
+- `q∈[0,1]`直接作為 soft Tversky target，不再以0.5硬化。
+- `area(valid)<0.5`時該輸出像素設為 ignore 255。
+- area downsample後的 `q`與 validity map，在 paired RRC中使用和 label相同的 nearest幾何轉換；這可保留 soft fraction，也使 K1退化成與 local label相同的 hard target。
+- context target使用和 context image完全相同的 footprint、`Δ/k`中心及 flip/rot90。
+
+主 loss仍是現行 P44 Tversky，不改 CE。
+
+### Auxiliary權重
+
+不建議 local、context各0.4。那會讓 aux總權重達0.8，而且 K1會把同一 auxiliary objective重複加兩次。
+
+凍結為：
+
+\[
+L=L_{\mathrm{main}}+
+0.4\frac{L_{\mathrm{aux,local}}+L_{\mathrm{aux,context}}}{2}
+\]
+
+即各0.2。K1因兩個 aux loss相同，總 aux恰為 `0.4·L_aux`；K2/K4則在相同總權重下各分配一半。
+
+### 新增 annotation launch gate
+
+context aux使用了 local ROI外的標註，這是 v3沒有的額外監督來源。開跑前必須證明：
+
+- labeled background能和 unlabeled／未檢查區域區分。
+- annotation footprint外一律標為 ignore，不能因 mask中沒有油便當作背景。
+- context target不跨 train/VAL VRT或事件 split。
+- K1的 context target與 local target在相同 augmentation後一致至 `≤1e-6`。
+
+若現有 mask無法區分「已確認背景」與「沒有標註」，context aux便沒有可定義的可靠 GT；不得自行移除 context aux繼續跑，須回報使用者決定是否改成 local-aux-only版本。
+
+這也表示本實驗檢驗的是「GeoAgent aggregation＋其 auxiliary-training package」，不是純粹增加推論像素。derangement仍負責證明最終模型在推論時確實依賴 sample-specific context。
+
+## 3. Non-executed與 adoption
+
+### 梯度 exposure
+
+移除所有 γ相關條件，改為兩層檢查。
+
+開跑前以固定含油 batch，分別對三個 loss component做 isolated backward：
+
+- `L_main`對 aggregation 3×3的 local-channel half及 context-channel half，gradient RMS皆須 finite且 `>1e-12`。
+- `∂L_main/∂C_aligned` RMS須 `>1e-12`。
+- `∂L_aux_local/∂f_l`及 `∂L_aux_context/∂f_c`皆須 finite且 `>1e-12`。
+- 三個 loss都必須有非 ignore target。
+
+前200 steps的 probationary gate則在至少20個 local-oil-positive batches中，要求至少18批：
+
+- aggregation context-half gradient finite且 RMS `>1e-12`。
+- `∂L_main/∂C_aligned` finite且 RMS `>1e-12`。
+- main及兩個 aux loss皆 finite。
+
+連線失敗、context aux全 ignore或 context half完全無梯度屬 non-executed。模型正常學習但最後不依賴 context，仍是 scientific null。
+
+### Adoption反事實
+
+最合法的 no-external-context反事實是：
+
+\[
+C_{\mathrm{aligned}}\leftarrow f_l
+\]
+
+即在同一已訓練 checkpoint中，把 aggregation第二半替換成 K1式 local feature。這保留 feature尺度與張量分布，優於置零；置零是 aggregation從未訓練過的 OOD輸入，不用作門檻。
+
+定義：
+
+\[
+A_{\mathrm{identity}}
+=\frac12\left[
+\operatorname{mean}_{oil}|\Delta m|+
+\operatorname{mean}_{background}|\Delta m|
+\right],
+\quad m=z_{oil}-z_{background}
+\]
+
+其中 `Δm=m_full−m_identity`，採 VAL stride256、無 TTA、ROI拼接後的有效像素。adoption門檻維持 `≥0.01`。
+
+這個反事實仍會受到 aggregation權重專化影響，所以真正支持 sample-specific patch外資訊的必要證據仍是既定的跨事件、coverage-matched derangement IoU下降。Context置零只可作補充敏感度，不進判定。
+
+## 4. K1測試
+
+保留 K1 encoder input identity `≤1e-6`，並新增：
+
+- eval模式下 `f_c`與`f_l`最大絕對差 `≤1e-6`。
+- K1 grid-sample後 `C_aligned`與`f_l`最大絕對差 `≤1e-6`。
+- shared aux classifier產生的 local/context logits最大絕對差 `≤1e-6`。
+- local/context aux targets及 loss差 `≤1e-6`。
+- aggregation實作相對固定 reference calculation的 logits差 `≤1e-5`。
+
+移除 γ=0對 P44 logits parity。Legacy K1與P44差異超過0.05的描述性規則仍保留。
+
+## 5. 記憶體與推論
+
+新方案比 v3多出第二次 ASPP trunk activation、aggregation BN及兩個 aux logits/loss graph；但相對300M encoder，額外成本應較小，仍可能符合30.5 GiB，不能在設計階段保證。
+
+- ASPP以 batch32合併 forward。
+- aux loss可以依序計算以避免同時保留兩份上採樣 logits，但不得改變數學結果。
+- 原 peak-memory gate維持。
+- 若失敗，不得減 batch、取消 context aux、改 BN或只刪 K4。
+
+推論、VAL選模及 TTA都只使用 aggregation主輸出。Aux heads不投票、不平均，也不參與 checkpoint metric。TTA仍同步作用於 local/context，inverse flip後平均 aggregation logits。
+
+## 6. 是否保留 γ 對照
+
+不保留。
+
+使用者裁決是先測論文 branch aggregation；加入 γ 會把 Stage A從9 runs增至12 runs、Stage B從6增至8 runs，並把議題改成融合方式比較。K1已控制 aggregation新增容量。若 GeoAgent-style方案否定或不可判定，再另立實驗比較 γ，不應在本輪混入。
+
+## 候選稿 v4 相對 v3的差異
+
+- 移除 `F_l+γ⊙C`，改成 pre-classifier 256ch feature concat及 `3×3 Conv-BN-ReLU→1×1` aggregation。
+- Prithvi與ASPP trunk皆跨分支共用；ASPP以 batch32聯合 forward處理 BN。
+- 新增共用 P44 auxiliary classifier、local aux及 full-context aux。
+- 總 auxiliary權重固定0.4，平均分給兩分支，而非各0.4。
+- Context GT採 valid-weighted soft occupancy，不以0.5硬化。
+- 新增 ROI外 annotation provenance launch gate。
+- γ gradient／γ=0 adoption改為 aggregation context-half gradient及 K1-identity substitution。
+- K1 parity改為 input、feature、alignment、aux target/logit/loss identity。
+- γ=0 P44 parity刪除；legacy sanity規則保留。
+- 推論與選模只使用 aggregation輸出，aux只在訓練存在。
+- Stage A/B、futility、主終點、derangement、臺灣規則及其餘幾何／I/O gates不變。
+
+---VERDICT---
+STANCE: REVISE
+BLOCKING: [1. Context aux不得使用≥0.5硬標籤，應凍結為valid-weighted soft occupancy，2. Aux總權重應為0.4並在local/context間平均，而非各0.4，3. 必須加入ROI外標註來源可驗證的fail-closed launch gate，4. 共用ASPP的BN執行方式與新的gradient/adoption反事實須按上述定義凍結]
+RESTATE: 使用者要先測論文方法，而K1已能控制concat aggregation的新增容量，因此本輪應忠實測GeoAgent式共享雙分支融合與auxiliary training，不再混入由既有P11方案錨定的γ版本。
+CONFIDENCE: HIGH
+---END---
+EXIT 0

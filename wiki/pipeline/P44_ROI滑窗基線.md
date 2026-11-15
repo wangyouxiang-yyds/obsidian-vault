@@ -1,5 +1,5 @@
 ---
-date: 2026-11-11
+date: 2026-11-15
 type: pipeline
 tags: [p44, roi, sliding-window, baseline]
 validity: current
@@ -20,8 +20,11 @@ validity: current
 
 ## 已知限制
 
-P44 S42/S43/S44 的臺灣 24 張 ROI pooled OilIoU 為 0.300／0.351／0.045；S44 塌縮，三 seed 平均 0.232±0.164。這是 P44/P48 版本、GT 錨定 ROI、run 內像素加總後跨 seed 平均；使用作對照時須列全部 seed。不同資料制度（如 P51 GoM-only）會同時改 TRAIN、VAL、曝光量和正負比例，不能把差異單獨歸因來源海域。來源：[P48](../experiments/20261109_P48_H1prime與P44補seed_結果.md)、[P51 設計](../../.agents/decisions/20261111_P51_GoM_only_ROI資料制度_設計.md)。P51 結果截至本頁寫入未核實。
+P44 S42/S43/S44 的臺灣 24 張 ROI pooled OilIoU 為 0.300／0.351／0.045；S44 塌縮，三 seed 平均 0.232±0.164。這是 P44/P48 版本、GT 錨定 ROI、run 內像素加總後跨 seed 平均；使用作對照時須列全部 seed。不同資料制度（如 P51 GoM-only）會同時改 TRAIN、VAL、曝光量和正負比例，不能把差異單獨歸因來源海域。來源：[P48](../experiments/20261109_P48_H1prime與P44補seed_結果.md)、[P51 設計](../../.agents/decisions/20261111_P51_GoM_only_ROI資料制度_設計.md)。
+
+**塌縮頻率**：自然比例全球流程 3 seed 中，P44/P48 塌縮 1 次（S44）；P53（同流程，VAL 換為 54 景分層＋macro-3 選模）塌縮 2 次（S43、S44 皆 VE2 起 VAL oil IoU＝0、VE9 早停、best＝VE1），P53 的臺灣 24 張 oil IoU .246／.046／.213（.169±.108）。P53 對 P52 與舊 baseline 皆 no_decisive_difference，未取代本基線；P52 GoM-only 0/3 塌縮。塌縮原因與是否受分層 VAL／macro-3 影響未核實，處理方式待使用者決定。來源：[[20261115_P53_global_stratval_結果]]；P52 見 [[20261113_P52_GoM_stratval_macro3_結果]]。
 
 ## 變更紀錄
 
 - 2026-11-11｜建立自然比例 ROI 流程及與 GT-centric 不可比的邊界｜依據 [[20261106_P44_ROI自然比例基線_結果]]、[[20261109_P48_H1prime與P44補seed_結果]]
+- 2026-11-15｜已知限制補入自然比例流程塌縮頻率（P44/P48 1/3、P53 2/3、P52 GoM-only 0/3），移除過時「P51 結果未核實」句｜依據 [[20261115_P53_global_stratval_結果]]

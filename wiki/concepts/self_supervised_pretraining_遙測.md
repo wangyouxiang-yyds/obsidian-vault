@@ -56,3 +56,8 @@ MAE/data2vec 之所以無法套用在 CNN，是因為卷積運算需要連續、
 - [[DeepLabV3+.md]] — 本專案分割模型工程紀錄
 - [[deeplabv3plus_358clean_overfitting_改善方向.md]] — pretrained backbone 導入的具體實作方向（A1）
 - [[unsupervised_oil_detection.md]] — 既有 unsupervised 油汙偵測方法總覽
+- [[Fuller2023_CROMA]] — 雷達-光學對比＋MAE 預訓練；其光學 encoder 為 P54 所用。
+
+## 變更紀錄
+
+- 2026-11-13：相關頁面新增 CROMA；正文無新證據（尚無 CROMA 在本專案的結果），未改寫。依據 [[Fuller2023_CROMA]]。

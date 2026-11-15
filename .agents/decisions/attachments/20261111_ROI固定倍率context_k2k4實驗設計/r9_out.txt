@@ -1,0 +1,61 @@
+科學設計與數值實作已符合 v6；R8五項技術 blocker實質上都已解決，A／B／C也可正式接受。現在只剩凍結鏈的完整性問題，不涉及模型或實驗設計。
+
+## BLOCKING
+
+1. **完成尚未落地的 launch完整性檢查**
+
+   你寫的是 launch將加入 code SHA核對，表示目前仍未完成。凍結前必須實際加入並測試：
+
+   - `preflight.json.code_sha256`逐檔等於現行程式。
+   - 三個 config內的 `cache_manifest_sha256`等於實際 manifest。
+   - `preflight.all_gates_passed == true`。
+   - `bash -n launch.sh`通過。
+   - 驗證發生於取得 GPU lock及啟動 Python訓練之前。
+
+2. **FROZEN必須涵蓋實際會被讀取的所有 list artifacts**
+
+   目前只列 `lists/build_manifest.json`及`disclosure.json`仍有完整性缺口：若 `train_windows.txt`、`split_scenes.csv`或 ROI檔被改動，而 manifest本身沒改，FROZEN仍會通過。
+
+   二選一即可：
+
+   - 把 `build_manifest.json["sha256"]`列出的所有 list檔案直接加入 `FROZEN.sha256`；或
+   - launch時逐一依 build manifest驗證其 member SHA。
+
+   第一種較簡單，不需要修改訓練碼。
+
+3. **修正 cache manifest的實際產製 provenance**
+
+   現有 bytes來自「舊 npy版 builder讀 VRT，再轉 ZSTD」，因此 manifest不能只把現行 `build_cache.py` SHA寫成唯一建置來源。凍結前須做到以下之一：
+
+   - 記錄實際 npy builder SHA、轉換程式 SHA／命令及來源 npy hashes；或
+   - 用目前將凍結的 `build_cache.py`直接由 VRT重建 ZSTD cache，再重跑 G6。
+
+   不要求因格式轉換本身重做實驗設計；但 manifest必須如實描述產物血緣。330個最終檔案 SHA及 G6仍然有效且必要。
+
+4. **卡片狀態文字更新**
+
+   §9仍寫「G1–G6全過」及「凍結前會重跑」，與實際狀態不符。凍結版應改為：
+
+   - G1–G8全過。
+   - 列出正式 preflight SHA及目前數值。
+   - D1為 disclosure而非 pass/fail gate。
+   - 完成上述完整性檢查後，狀態由 DRAFT改為 FROZEN，附 commit及 `FROZEN.sha256` SHA。
+
+若只修改 launch、FROZEN及卡片，不需重跑 GPU數值 gates；若改動 cache manifest/config pin，至少須重跑 G6的 manifest/pin驗證並生成最終 preflight JSON。任何模型、資料轉換或 loss程式碼再變，則須重跑完整 G1–G8。
+
+## 已確認無問題
+
+- G7直接處理了 VRT window-origin風險；TRAIN增強後 local parity與 VAL三種讀取起點均為0 mismatch，足以維持 paired attribution。
+- G3五組 FP32 fixtures及 G8四條隔離梯度路徑完整符合預註冊條件。
+- Cache為同解析度、無損、strict no-fallback；165景、825次比對及全153,853窗 coverage驗證足夠。
+- D1已回到 seed 20261111、4096共同中心。
+- 12.68 GiB記憶體與1.33× I/O餘量通過門檻。
+- 此確認不構成 launch授權；仍只能凍結卡片與產物。
+
+---VERDICT---
+STANCE: REVISE
+BLOCKING: [1. 實際完成並測試launch的preflight/code/config完整性檢查，2. FROZEN納入全部list member或逐檔驗build-manifest SHA，3. cache_manifest如實記錄npy→ZSTD的實際產製血緣或由凍結版builder重建，4. 將卡片G1–G8結果與狀態更新成最終FROZEN版本]
+RESTATE: 模型、資料座標、loss、梯度與三組local parity現已通過完整技術驗證；剩餘工作只是確保真正啟動時讀到的程式、lists與cache，正是這次通過G1–G8並被凍結的那一套 bytes。
+CONFIDENCE: HIGH
+---END---
+EXIT 0

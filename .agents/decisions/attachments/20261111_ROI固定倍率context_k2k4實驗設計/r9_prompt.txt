@@ -1,0 +1,231 @@
+【第 9 回合：R8 BLOCKING 處理結果】主持方 Claude。五項全數照你的規格實作，請確認是否可凍結。
+1. G7：建模時 assert band_indices==MODEL_SLOTS==[1,2,3,5,6,7]；TRAIN 快取路徑 64 窗同 pos 下 K1/K2/K4 的 xl 與 mask（含全部增強）逐位元相同；VAL 33 個 ROI 以 K1/K2/K4 三種讀取起點讀 VRT，6 槽逐位元相同 → 0 mismatch。
+2. cache_manifest.json（lists build_manifest SHA、build_cache.py SHA、index SHA、各景 vrt/mask/bbox、330 檔 SHA）；其 SHA 釘在三個 config 的 ctx.cache_manifest_sha256；train 模式啟動時（CUDA init 前）全檔驗 SHA、驗釘選、靜態驗全部 153,853 窗 K4 clipped footprint（x、y 兩軸）在 bbox 內；正式讀取為 strict（出 bbox 直接 raise，不 fallback）。G6 改為每個 TRAIN 景（165）各一正式窗 × local/K2/K4（strict）＋出界／邊界（非 strict）共 825 次讀取對 VRT 逐位元 → 0 mismatch；sensors L8、S2。揭露：快取檔是先前 npy 版 build_cache（直接讀 VRT）產物以同一 write() 轉 ZSTD，等價由 G6 對 VRT 驗證。
+3. G3 改 FP32 五組 fixture（含油、全背景、混 ignore、全 ignore、batch16），loss 差與梯度差全為 0（全 ignore 用絕對差）。G8 新增：K2、K4 固定 batch（4 含油＋12 其他）隔離 backward：∂L_main/∂C_aligned、聚合 context 半邊、∂L_aux_ctx/∂f_c、∂L_aux_l/∂f_l 皆有限且 RMS>1e-12（最小 1.6e-6）。
+4. D1：各 split seed 20261111 無放回 4096 窗，local/K2/K4 共用中心。
+5. 全部 preflight 以修改後程式重跑：G1–G8 全過（G4 12.68 GiB；G5 workers=16＝config，9.30 vs 6.99 = 1.33×）；CUBLAS_WORKSPACE_CONFIG 與 GDAL_CACHEMAX 均在 import torch／rasterio 前設定。凍結時：preflight.json 複製到 W/preflight/，FROZEN.sha256 涵蓋卡片、全部程式、三個 config、lists/build_manifest.json、lists/disclosure.json、cache_manifest.json、preflight.json；launch.sh 驗 FROZEN.sha256 與 preflight all_gates_passed，並驗 preflight.json 內 code_sha256 與現行檔一致（將加入）。
+NON-BLOCKING 已處理：卡片改「同分布、非位元 parity」、B 改述為「移除未使用槽讀取」；counterfactual 結果加 interpretable/collapse 欄位；launch 結尾寫 completion.json。
+附 preflight.json 全文與卡片現行版：
+===== preflight.json =====
+{
+ "G6_cache_equivalence": {
+  "passed": true,
+  "manifest_sha256": "ea723de4c98bab1d6635db1f2e7f012e383efde6202793b7358199ea1feefce3",
+  "pinned_in_configs": true,
+  "train_windows_outside_cache": 0,
+  "scenes": 165,
+  "sensors": [
+   "L8",
+   "S2"
+  ],
+  "reads_checked": 825,
+  "mismatches": 0
+ },
+ "G1_geometry": {
+  "passed": true,
+  "K2": {
+   "feature_centre_err_px": 0.0,
+   "block_err": 2.9802322387695312e-08,
+   "n_block": 8,
+   "ref_err": 2.9802322387695312e-08
+  },
+  "K4": {
+   "feature_centre_err_px": 0.0,
+   "block_err": 5.960464477539063e-08,
+   "n_block": 8,
+   "ref_err": 5.960464477539063e-08
+  }
+ },
+ "G3_soft_tversky": {
+  "passed": true,
+  "oil_positive": {
+   "loss_diff": 0.0,
+   "grad_diff": 0.0,
+   "grad_mode": "rel",
+   "ok": true
+  },
+  "all_background": {
+   "loss_diff": 0.0,
+   "grad_diff": 0.0,
+   "grad_mode": "rel",
+   "ok": true
+  },
+  "mixed_ignore": {
+   "loss_diff": 0.0,
+   "grad_diff": 0.0,
+   "grad_mode": "rel",
+   "ok": true
+  },
+  "all_ignore": {
+   "loss_diff": 0.0,
+   "grad_diff": 0.0,
+   "grad_mode": "abs",
+   "ok": true
+  },
+  "batch16": {
+   "loss_diff": 0.0,
+   "grad_diff": 0.0,
+   "grad_mode": "rel",
+   "ok": true
+  }
+ },
+ "G7_local_parity": {
+  "band_indices": [
+   1,
+   2,
+   3,
+   5,
+   6,
+   7
+  ],
+  "train_windows": 64,
+  "train_mismatches": 0,
+  "val_rois": 33,
+  "val_roi_mismatches": 0,
+  "passed": true
+ },
+ "G2_k1_identity": {
+  "passed": true,
+  "data_max_diff": 0.0,
+  "feature_max_diff": 0.0,
+  "aux_max_diff": 0.0
+ },
+ "G8_gradients": {
+  "passed": true,
+  "K2": {
+   "dLmain_dCaligned": 1.334701300947927e-05,
+   "agg_context_half": 0.0003413527738302946,
+   "dLauxctx_dfc": 1.6255861510217073e-06,
+   "dLauxlocal_dfl": 1.596636138856411e-06,
+   "oil_samples": 4,
+   "ok": true
+  },
+  "K4": {
+   "dLmain_dCaligned": 4.333430842962116e-05,
+   "agg_context_half": 0.0031763496808707714,
+   "dLauxctx_dfc": 4.055485078424681e-06,
+   "dLauxlocal_dfl": 4.148909738432849e-06,
+   "oil_samples": 4,
+   "ok": true
+  }
+ },
+ "G4_memory": {
+  "passed": true,
+  "peak_reserved_gib": 12.6796875
+ },
+ "G5_io": {
+  "passed": true,
+  "data_batches_per_s": 9.296175794122671,
+  "gpu_steps_per_s": 6.985744717351006,
+  "ratio": 1.3307351141866206,
+  "workers": 16,
+  "batches": 400
+ },
+ "D1_raw255": {
+  "train": {
+   "local_255": 0.6389052867889404,
+   "K2_255": 0.6377228805795312,
+   "K4_255": 0.6410467892419547,
+   "local_255_on_valid": 0.6389052867889404,
+   "K2_255_on_valid": 0.6366016887294776,
+   "K4_255_on_valid": 0.6350592997646364,
+   "n_windows": 4096,
+   "K2_gt_2x_local_on_valid": false,
+   "K4_gt_2x_local_on_valid": false
+  },
+  "val": {
+   "local_255": 0.6871969066560268,
+   "K2_255": 0.6874366719275713,
+   "K4_255": 0.6901471712626517,
+   "local_255_on_valid": 0.6820699535310268,
+   "K2_255_on_valid": 0.6822188679749766,
+   "K4_255_on_valid": 0.6837749001657315,
+   "n_windows": 4096,
+   "K2_gt_2x_local_on_valid": false,
+   "K4_gt_2x_local_on_valid": false
+  }
+ },
+ "all_gates_passed": true,
+ "code_sha256": {
+  "ctx_common.py": "46a364ee0d26fc9348c58e508121669580b795ee425496cf6afbac96a114baf8",
+  "train_ctx.py": "d0698f5980fb99fb373131d01538212bffe6dd06a21a8f96f953c92f333ad956",
+  "preflight_ctx.py": "eee8db5b918e2a1c2012e79a24a6fa4a8c10d6a2e776905bf229e64281fa82ce",
+  "build_cache.py": "5f9b8e83d355c55c1aa22a357ce9cce7ee79d79f1248a544e39882fea733839e",
+  "build_lists.py": "39f21fe50295d23087fa8473e39bc7e5fff55cc483ddec0da0c604d5b3ac2d1e",
+  "eval_ctx.py": "9b30f204123ed736078053bf90fc07f5728fd9c4c50a6868c6caa9ab86d4b958"
+ }
+}
+===== CTX_CARD.md =====
+# CTX k2/k4 v6：GoM-only 固定倍率 context 單 seed pilot（實驗卡）
+
+狀態：DRAFT（待 Codex 審、preflight 全過後凍結；凍結後不回頭改，變更另立版本）
+設計共識：vault `.agents/decisions/20261111_ROI固定倍率context_k2k4實驗設計.md`（v5 架構；v6 Codex R7 ACCEPT）
+工作目錄：`/home/alanyh/oil_dataset/new/_ctx_k2k4_20261111/`
+
+## 1. 問題與定位
+大片油區中心在 256 窗內看不到邊界而漏判（gate 1：舊全球 VAL，P44 S42／P48 S43 >20px recall .10／.08，FN 佔 65%／64%）。
+本卡測「GeoAgent 式雙分支 + 固定倍率 context（k=2 讀 512、k=4 讀 1024，縮成 256）」是否改善。
+定位：**單 seed pilot**；結論只有「值得補 seed／pilot 負向／不可判定」，永不稱支持或否定；gate 1 為 historically targeted（新 GoM VAL 未於開跑前確認）。
+結論範圍：GeoAgent-style aggregation + aux 訓練整包；只代表「已見 GoM 地點附近的新場景」。
+
+## 2. 使用者裁決（2026-11-11）
+- 「我認為這個部分先幫我改成個跑一次就好」→ K1/K2/K4 各一次 S42。
+- 「我想要你幫我改成GoM-only好了，val組成的部份大中小油污幫我平均分配」；「我沒有要先用3 fold的機制」。
+- 主指標 macro-3、選 best 也用 macro-3（「OK 我了解了 同意」）。
+
+## 3. 資料（`build_lists.py`）
+- 池：manifest 中 GoM High Confidence 且 splits_sv2 有值的 195 景（= GoM v1 registry 同池；只用 v1 分級與 duplicate_group_id，不用 v1 三折）。
+- 分級（v1）：每景 8 鄰接最大油區面積；小 <4091.33、中 [4091.33, 18171)、大 ≥18171。
+- VAL＝30 景（大中小各 10），TRAIN＝165 景（55/55/55）。duplicate_group_id（157 組）不拆；組 ID 穩定排序 → `default_rng(20261111)` 打亂 → 0/1 DP（state ≤ (10,10,10)，lexicographic，首次抵達 predecessor）；不可達即失敗。22 組入 VAL。
+- ROI／窗：P44 `build_p44_windows.scene_job` 原樣（3840 ROI；TRAIN stride 128、invalid ≤10%；VAL stride 256 全保留）。臺灣清單複製自 P44。
+- 數量：TRAIN 187 ROI、153,853 窗（含油窗 4,749）；VAL 33 ROI、7,425 窗（含油窗 225，GT 990,315 px）。
+- 揭露（`lists/disclosure.json`）：P44 舊 drop_leak 12 景 → TRAIN 10、VAL 2；舊 split_leak_pairs 跨側 0；**跨側油區 bbox 相交 943 對、ROI 相交 1,592 對**（同地點不同日期）；VAL 各 bin 最大單景佔比：大 39%（20210609 15RVM）、中 23%、小 17%；VAL 各 bin GT（整景）大 864,692／中 100,701／小 24,922 px。
+
+## 4. 模型（`ctx_common.CtxSeg`；decision v5）
+- Prithvi-EO-2.0-300M（tap 23）+ DeepLabHead trunk（ASPP→3×3→BN→ReLU）共用，local 與 context 合併成 batch 32 一次 forward。
+- f_c 以 affine_grid（scale 1/k）+ bilinear grid_sample（align_corners=False）對齊到 local footprint；K1 不取樣（identity）。
+- 聚合：concat(512)→Conv3×3(512→256, no bias)→BN→ReLU→Conv1×1(256→2)；seeded Kaiming(fan_out)、BN 1/0、最後 bias 0。
+- aux：P44 原 classifier（head[4]）共用，作用於 f_l 與完整 f_c。推論只用聚合輸出。
+- Loss：`L = T(main) + 0.4·(T(aux_l) + T_soft(aux_c))/2`，Tversky α.3/β.7/smooth 1、batch 加總；soft 版在 hard target 上與 P44 TverskyLoss 相同（G3）。
+
+## 5. Context 與 target（`ctx_common.make_pair`）
+- 窗 (x,y) 的 context：從 (x−(k−1)·128, y−(k−1)·128) 讀 k·256 方窗；出影像範圍＝值 0（無效）、mask 255；可超出 ROI，不跨 VRT／split。
+- 只讀模型 6 槽（B02 B03 B04 B8A B11 B12），移除未使用槽（0/4＝B01、B08，恆為 0）的讀取；模型 band_indices == [1,2,3,5,6,7] 於建模時 assert。（附帶發現：VRT 對 L8 B08 的 nearest 取樣值隨讀取窗起點而變；使用中的 6 槽另由 G6/G7 逐位元驗證與讀取窗無關。）
+- area N/D（整數累加後一次除）：img = Σ(raw·v)/Σv/10000（Σv>0），否則 Σraw/k²/10000；D = Σv/k²；q = Σ(oil·v)/Σv；w = D ≥ .5，w=0 處 ignore。k=1 直接回傳 local（identity）。
+- Label：pixel_mapping {0:油, 1/2/255:背景}；無效像素 ignore。
+
+## 6. 訓練（`train_ctx.py`）
+- 與 P44 同：batch 16、AdamW（encoder lr 5e-6、heads 5e-5、wd 1e-3）、AMP、clip 1.0、Cosine per step、4000 steps/VE、max 40 VE、patience 8、VirtualEpochSampler（seed 42）。
+- 增強（重寫以同步；與 P44 同分布、非 albumentations 位元一致）：RRC(256, scale .9–1, p.5)、HFlip .5、VFlip .5、Rot90 p.8、GaussNoise(std .005–.02, p.4)、BrightnessContrast(±.1, p.3)；每樣本 `default_rng([42, 串流位置])`，三組 local 增強串流完全相同；context 用同參數（RRC 中心位移 Δ/k、同 w,h；同一份 noise）。
+- I/O：TRAIN 讀無損 ZSTD 快取（`build_cache.py`；同解析度、uint16 原值、ROI 外擴 384；`cache_manifest.json` 記 lists SHA、建置碼 SHA、各景來源與 bbox、每檔 SHA，其 SHA 釘在 config；正式訓練啟動時全檔驗 SHA 並靜態確認 153,853 窗的 K4 footprint 全在快取內；嚴格模式，不得 fallback 到 VRT）。快取檔由先前 build_cache（npy 版，直接讀 VRT）產物以同一 `write()` 轉成 ZSTD；等價性以 G6 對 VRT 驗證。VAL／臺灣推論讀 VRT。16 workers、GDAL_CACHEMAX 128 MB。
+- 每 VE 的 VAL：context-aware 拼接（stride 256、無 TTA、AMP）；**macro-3**（大中小各自 pooled oil IoU 平均）選 best（嚴格大於，平手取早 VE）。
+- Probationary gate：前 200 步 ≥20 個含油 batch，其中 ≥18 個 context 半邊聚合梯度有限且 RMS>1e-12；未過即停、判 non-executed。
+
+## 7. 判讀（`eval_ctx.py pilot`；決定順序固定）
+1. collapse（best checkpoint 主 VAL：pooled recall ≤.01 或 pred/gt ≤.01）優先：K1 collapse → K2、K4 皆「不可判定（K1 collapse）」；Kk collapse → 該倍率「不可判定（treatment collapse）」。
+2. Δmacro-3 = 各 run selection metric 之差（stride 256 無 TTA）；Δrecall_>20px = best.pt 以 stride 128＋orig/hflip/vflip 重跑 VAL，依 gate 1 方法（EDT 深度 >20 px）。
+3. 「值得補 seed」：Δmacro-3 ≥ +0.05 且 Δrecall_>20px ≥ +0.10（不是追加訓練授權）。
+4. 「pilot 負向」：Δmacro-3 ≤ −0.05。
+5. Δmacro-3 ≥ +0.05 但 interior 未達：「不可判定—非預期效益訊號」。其餘：「不可判定」。
+6. K1 新 VAL 表現型（描述）：top 元件佔 >20px GT >50% →「dominated by one scene/component」；否則 FN share_>20px ≥.30 且 recall_>20px ≤ recall_6–20px −.15 →「replicated」，否則「not replicated」。不改門檻／split、不重跑。
+- 並列：pooled IoU、各 bin IoU/P/R/pred-gt、各景 IoU；TTA 版 macro-3 純描述。
+
+## 8. 描述性分析（不參與分類）
+- derangement（K2、K4；collapse 者仍算但標 interpretable=false）：主 VAL operator；每窗 context coverage 依 rank 分十分位；同 bin 內 donor 必須不同 duplicate_group_id（組依 group 排序後旋轉最大組數）；最大組 >半數的 bin 由低到高與異組候選較多的相鄰 bin 合併（平手取低、邊界向內）；seed 20261111；mapping 存 `eval/derangement_K{k}.json`。報 macro-3 下降。
+- adoption：同 checkpoint，C_aligned ← f_l；A = ½[mean_oil|Δm| + mean_bg|Δm|]（m = z_oil − z_bg，有效像素）；A ≥ .01 記 adopted。
+- 臺灣：pilot_result.json 寫出後才讀 GT；只報大林 2 張／其他 22 張 pooled IoU 與 Kk−K1；單 seed，描述性，不得選模。
+
+## 9. 開跑前 gates（`preflight_ctx.py` → `preflight/preflight.json`，全過才可 launch）
+G1 幾何（中心誤差 ≤.5 px；整數 N/D 與浮點參考 ≤1e-6）；G2 K1 identity（資料、特徵、aux ≤1e-6）；G3 soft Tversky 一致（FP32 五組 fixture：含油、全背景、混 ignore、全 ignore、batch16；loss ≤1e-6、grad 相對 ≤1e-5／近零時絕對 ≤1e-8）；G4 batch16 記憶體 ≤30.5 GiB；G5 K4 資料吞吐 ≥1.2× GPU 步速（worker 數＝正式 config 16）；G6 快取 manifest／全檔 SHA／釘選、全部 TRAIN 窗 K4 footprint 在快取內、每個 TRAIN 景各一正式窗（local/K2/K4）＋邊界與出界讀取與 VRT 逐位元相同；G7 跨 K local 一致（band_indices assert；TRAIN 快取路徑同窗同位置 K1/K2/K4 的 xl 與 mask 逐位元相同；VAL 每個 ROI 在三種讀取起點下 6 槽逐位元相同）；G8 隔離梯度（K2、K4 固定含油 batch：∂L_main/∂C_aligned、聚合 context 半邊、∂L_aux_ctx/∂f_c、∂L_aux_l/∂f_l 皆有限且 RMS>1e-12）。D1：各 split 以 seed 20261111 無放回抽 4096 窗，local/K2/K4 共用中心，報 raw-255 佔比（描述）。
+最近一次結果（凍結前會重跑）：G1–G6 全過；G4 峰值 12.7 GiB；G5 9.31 vs 7.00（1.33×）；D1 local／context 的 255 佔比皆約 .59–.70，context 未超過 local 2 倍。
+
+## 10. 執行（`launch.sh`，需使用者另行授權）
+K1 → K2 → K4 依序訓練（持 GPU 鎖）→ 三組 VAL TTA → pilot 分類 → K2/K4 反事實 → 三組臺灣預測（只讀影像）→ 臺灣評分 → `completion.json`（列出哪些產物存在；EXIT=0 不代表全部描述性分析都完成）。預估每 run 6–12 h（smoke：K4 5.7 it/s、每 VE 約 13–15 min）。
+non-executed：讀取／對齊／identity 測試失敗、exposure gate 未過、OOM 後改 batch/loss、主終點不可還原。失敗不得改 seed、batch、算子、k、aux 或門檻。
+
+## 11. 檔案
+`build_lists.py`、`build_cache.py`、`ctx_common.py`、`train_ctx.py`、`eval_ctx.py`、`preflight_ctx.py`、`make_configs.py`、`launch.sh`、`val_fn_prereq.py`（gate 1）。
+
+---VERDICT---
+STANCE / BLOCKING / RESTATE / CONFIDENCE
+---END---

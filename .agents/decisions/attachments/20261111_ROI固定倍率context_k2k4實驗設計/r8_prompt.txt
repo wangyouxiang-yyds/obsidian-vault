@@ -1,0 +1,1775 @@
+【第 8 回合：v6 實作與實驗卡審查】主持方 Claude。使用者已授權第 2 項（寫程式、preflight、凍結卡），未授權 launch。
+請審：(1) 實作是否忠實於 v6（你 R7 ACCEPT 的內容）；(2) 正確性 bug；(3) 實作過程中我做的三個變更是否可接受：
+ A. I/O gate 初測失敗（2.3 vs 6.5 batch/s，原因：源 TIF 為 LZW 且 2 列 strip，任何窗都要解整列）。補救：TRAIN 區域（ROI 外擴 384）建「同解析度、無損」ZSTD 分塊快取（uint16 原值），G6 驗證與 VRT 逐位元相同；VAL/臺灣推論仍讀 VRT。我判斷這不違反「不得建立不同解析度快取」。
+ B. 只讀模型 6 槽；槽 0/4（B01、B08）恆為 0。理由：模型 index_select 不用；且發現 VRT 對 L8 B08 的 nearest 取樣值隨讀取窗起點不同（快取 vs 小窗讀 57k px 不同），統一歸零使所有讀取路徑一致。
+ C. area N/D 改以整數累加後一次除（Σraw·v/Σv/10000），與浮點參考差 ≤6e-8（G1 ref_err）；k=1 直接 identity。
+ 另：增強改為自寫（albumentations 無法同步 local/context），每樣本 default_rng([seed, 串流位置])，三組 local 增強串流相同；不再與 P44 albumentations 位元一致（K1 是同碼對照，不與 legacy 比）。
+目前 preflight：G1–G6 全過（G4 12.7 GiB；G5 9.31 vs 7.00 = 1.33×）；smoke 訓練 K1/K4 與評估全流程跑通；exposure gate 71/71。
+請列 BLOCKING（必須改才可凍結）與 NON-BLOCKING，並給 VERDICT 區塊。檔案全文如下。
+
+===== FILE: CTX_CARD.md =====
+# CTX k2/k4 v6：GoM-only 固定倍率 context 單 seed pilot（實驗卡）
+
+狀態：DRAFT（待 Codex 審、preflight 全過後凍結；凍結後不回頭改，變更另立版本）
+設計共識：vault `.agents/decisions/20261111_ROI固定倍率context_k2k4實驗設計.md`（v5 架構；v6 Codex R7 ACCEPT）
+工作目錄：`/home/alanyh/oil_dataset/new/_ctx_k2k4_20261111/`
+
+## 1. 問題與定位
+大片油區中心在 256 窗內看不到邊界而漏判（gate 1：舊全球 VAL，P44 S42／P48 S43 >20px recall .10／.08，FN 佔 65%／64%）。
+本卡測「GeoAgent 式雙分支 + 固定倍率 context（k=2 讀 512、k=4 讀 1024，縮成 256）」是否改善。
+定位：**單 seed pilot**；結論只有「值得補 seed／pilot 負向／不可判定」，永不稱支持或否定；gate 1 為 historically targeted（新 GoM VAL 未於開跑前確認）。
+結論範圍：GeoAgent-style aggregation + aux 訓練整包；只代表「已見 GoM 地點附近的新場景」。
+
+## 2. 使用者裁決（2026-11-11）
+- 「我認為這個部分先幫我改成個跑一次就好」→ K1/K2/K4 各一次 S42。
+- 「我想要你幫我改成GoM-only好了，val組成的部份大中小油污幫我平均分配」；「我沒有要先用3 fold的機制」。
+- 主指標 macro-3、選 best 也用 macro-3（「OK 我了解了 同意」）。
+
+## 3. 資料（`build_lists.py`）
+- 池：manifest 中 GoM High Confidence 且 splits_sv2 有值的 195 景（= GoM v1 registry 同池；只用 v1 分級與 duplicate_group_id，不用 v1 三折）。
+- 分級（v1）：每景 8 鄰接最大油區面積；小 <4091.33、中 [4091.33, 18171)、大 ≥18171。
+- VAL＝30 景（大中小各 10），TRAIN＝165 景（55/55/55）。duplicate_group_id（157 組）不拆；組 ID 穩定排序 → `default_rng(20261111)` 打亂 → 0/1 DP（state ≤ (10,10,10)，lexicographic，首次抵達 predecessor）；不可達即失敗。22 組入 VAL。
+- ROI／窗：P44 `build_p44_windows.scene_job` 原樣（3840 ROI；TRAIN stride 128、invalid ≤10%；VAL stride 256 全保留）。臺灣清單複製自 P44。
+- 數量：TRAIN 187 ROI、153,853 窗（含油窗 4,749）；VAL 33 ROI、7,425 窗（含油窗 225，GT 990,315 px）。
+- 揭露（`lists/disclosure.json`）：P44 舊 drop_leak 12 景 → TRAIN 10、VAL 2；舊 split_leak_pairs 跨側 0；**跨側油區 bbox 相交 943 對、ROI 相交 1,592 對**（同地點不同日期）；VAL 各 bin 最大單景佔比：大 39%（20210609 15RVM）、中 23%、小 17%；VAL 各 bin GT（整景）大 864,692／中 100,701／小 24,922 px。
+
+## 4. 模型（`ctx_common.CtxSeg`；decision v5）
+- Prithvi-EO-2.0-300M（tap 23）+ DeepLabHead trunk（ASPP→3×3→BN→ReLU）共用，local 與 context 合併成 batch 32 一次 forward。
+- f_c 以 affine_grid（scale 1/k）+ bilinear grid_sample（align_corners=False）對齊到 local footprint；K1 不取樣（identity）。
+- 聚合：concat(512)→Conv3×3(512→256, no bias)→BN→ReLU→Conv1×1(256→2)；seeded Kaiming(fan_out)、BN 1/0、最後 bias 0。
+- aux：P44 原 classifier（head[4]）共用，作用於 f_l 與完整 f_c。推論只用聚合輸出。
+- Loss：`L = T(main) + 0.4·(T(aux_l) + T_soft(aux_c))/2`，Tversky α.3/β.7/smooth 1、batch 加總；soft 版在 hard target 上與 P44 TverskyLoss 相同（G3）。
+
+## 5. Context 與 target（`ctx_common.make_pair`）
+- 窗 (x,y) 的 context：從 (x−(k−1)·128, y−(k−1)·128) 讀 k·256 方窗；出影像範圍＝值 0（無效）、mask 255；可超出 ROI，不跨 VRT／split。
+- 只讀模型 6 槽（B02 B03 B04 B8A B11 B12）；槽 0/4（B01、B08）恆為 0（模型 index_select 不用；VRT 對 L8 B08 的 nearest 取樣隨讀取窗起點而變，故統一歸零）。
+- area N/D（整數累加後一次除）：img = Σ(raw·v)/Σv/10000（Σv>0），否則 Σraw/k²/10000；D = Σv/k²；q = Σ(oil·v)/Σv；w = D ≥ .5，w=0 處 ignore。k=1 直接回傳 local（identity）。
+- Label：pixel_mapping {0:油, 1/2/255:背景}；無效像素 ignore。
+
+## 6. 訓練（`train_ctx.py`）
+- 與 P44 同：batch 16、AdamW（encoder lr 5e-6、heads 5e-5、wd 1e-3）、AMP、clip 1.0、Cosine per step、4000 steps/VE、max 40 VE、patience 8、VirtualEpochSampler（seed 42）。
+- 增強（重寫以同步）：RRC(256, scale .9–1, p.5)、HFlip .5、VFlip .5、Rot90 p.8、GaussNoise(std .005–.02, p.4)、BrightnessContrast(±.1, p.3)；每樣本 `default_rng([42, 串流位置])`，三組 local 增強串流完全相同；context 用同參數（RRC 中心位移 Δ/k、同 w,h；同一份 noise）。
+- I/O：TRAIN 讀無損 ZSTD 快取（`build_cache.py`；同解析度、uint16 原值；G6 逐位元等價）；VAL／臺灣推論讀 VRT。16 workers、GDAL_CACHEMAX 128 MB。
+- 每 VE 的 VAL：context-aware 拼接（stride 256、無 TTA、AMP）；**macro-3**（大中小各自 pooled oil IoU 平均）選 best（嚴格大於，平手取早 VE）。
+- Probationary gate：前 200 步 ≥20 個含油 batch，其中 ≥18 個 context 半邊聚合梯度有限且 RMS>1e-12；未過即停、判 non-executed。
+
+## 7. 判讀（`eval_ctx.py pilot`；決定順序固定）
+1. collapse（best checkpoint 主 VAL：pooled recall ≤.01 或 pred/gt ≤.01）優先：K1 collapse → K2、K4 皆「不可判定（K1 collapse）」；Kk collapse → 該倍率「不可判定（treatment collapse）」。
+2. Δmacro-3 = 各 run selection metric 之差（stride 256 無 TTA）；Δrecall_>20px = best.pt 以 stride 128＋orig/hflip/vflip 重跑 VAL，依 gate 1 方法（EDT 深度 >20 px）。
+3. 「值得補 seed」：Δmacro-3 ≥ +0.05 且 Δrecall_>20px ≥ +0.10（不是追加訓練授權）。
+4. 「pilot 負向」：Δmacro-3 ≤ −0.05。
+5. Δmacro-3 ≥ +0.05 但 interior 未達：「不可判定—非預期效益訊號」。其餘：「不可判定」。
+6. K1 新 VAL 表現型（描述）：top 元件佔 >20px GT >50% →「dominated by one scene/component」；否則 FN share_>20px ≥.30 且 recall_>20px ≤ recall_6–20px −.15 →「replicated」，否則「not replicated」。不改門檻／split、不重跑。
+- 並列：pooled IoU、各 bin IoU/P/R/pred-gt、各景 IoU；TTA 版 macro-3 純描述。
+
+## 8. 描述性分析（不參與分類）
+- derangement（K2、K4 非 collapse）：主 VAL operator；每窗 context coverage 依 rank 分十分位；同 bin 內 donor 必須不同 duplicate_group_id（組依 group 排序後旋轉最大組數）；最大組 >半數的 bin 由低到高與異組候選較多的相鄰 bin 合併（平手取低、邊界向內）；seed 20261111；mapping 存 `eval/derangement_K{k}.json`。報 macro-3 下降。
+- adoption：同 checkpoint，C_aligned ← f_l；A = ½[mean_oil|Δm| + mean_bg|Δm|]（m = z_oil − z_bg，有效像素）；A ≥ .01 記 adopted。
+- 臺灣：pilot_result.json 寫出後才讀 GT；只報大林 2 張／其他 22 張 pooled IoU 與 Kk−K1；單 seed，描述性，不得選模。
+
+## 9. 開跑前 gates（`preflight_ctx.py` → `preflight/preflight.json`，全過才可 launch）
+G1 幾何（中心誤差 ≤.5 px；整數 N/D 與浮點參考 ≤1e-6）；G2 K1 identity（資料、特徵、aux ≤1e-6）；G3 soft Tversky 一致（loss ≤1e-6、grad ≤1e-5）；G4 batch16 記憶體 ≤30.5 GiB；G5 K4 資料吞吐 ≥1.2× GPU 步速；G6 快取逐位元等價。D1：raw-255 佔比揭露。
+最近一次結果（凍結前會重跑）：G1–G6 全過；G4 峰值 12.7 GiB；G5 9.31 vs 7.00（1.33×）；D1 local／context 的 255 佔比皆約 .59–.70，context 未超過 local 2 倍。
+
+## 10. 執行（`launch.sh`，需使用者另行授權）
+K1 → K2 → K4 依序訓練（持 GPU 鎖）→ 三組 VAL TTA → pilot 分類 → K2/K4 反事實 → 三組臺灣預測（只讀影像）→ 臺灣評分。預估每 run 6–12 h（smoke：K4 5.7 it/s、每 VE 約 13–15 min）。
+non-executed：讀取／對齊／identity 測試失敗、exposure gate 未過、OOM 後改 batch/loss、主終點不可還原。失敗不得改 seed、batch、算子、k、aux 或門檻。
+
+## 11. 檔案
+`build_lists.py`、`build_cache.py`、`ctx_common.py`、`train_ctx.py`、`eval_ctx.py`、`preflight_ctx.py`、`make_configs.py`、`launch.sh`、`val_fn_prereq.py`（gate 1）。
+
+===== FILE: ctx_common.py =====
+"""ctx k2k4 v6 shared pieces: dual-branch model, context read (area N/D), synchronized augmentation,
+soft Tversky, macro-3 scoring, context-aware ROI mosaic inference.
+
+Model (decision v5): shared Prithvi encoder + DeepLabHead trunk (ASPP -> 3x3 conv -> BN -> ReLU = head[:4]) run once
+on cat([local, context]) (batch 2B); f_l, f_c (B,256,16,16). f_c aligned to the local footprint with
+affine_grid(scale 1/k) + bilinear grid_sample (align_corners=False): g_j = ((2j+1)/16 - 1)/k; K1 skips the sample
+(identity). Aggregation: concat(512) -> Conv3x3(512->256, no bias) -> BN -> ReLU -> Conv1x1(256->2).
+Aux: shared P44 classifier head[4] on f_l and on the full f_c. Inference uses aggregation output only.
+Context of window (x, y): side k*256 starting at (x-(k-1)*128, y-(k-1)*128), boundless (outside image -> invalid),
+reduced k x k by area: N = mean(img*valid), D = mean(valid), img = N/D where D > 0 else mean(img) (k=1 -> identity).
+Context target: y = pixel_mapping(raw) (255 -> bg); w = area(valid); q = area(oil*valid)/w; w < .5 -> ignore.
+"""
+from __future__ import annotations
+
+import os
+import sys
+from pathlib import Path
+
+os.environ.setdefault("GDAL_CACHEMAX", "128")   # MB per process; default 5% RAM x 17 loader processes -> OOM
+
+import cv2  # noqa: E402
+import numpy as np  # noqa: E402
+import rasterio  # noqa: E402
+import torch  # noqa: E402
+import torch.nn.functional as F  # noqa: E402
+from rasterio.windows import Window  # noqa: E402
+from torch import nn  # noqa: E402
+
+HERE = Path(__file__).resolve().parent
+P44 = HERE.parent / "p44_roi_sliding_global_20261106"
+sys.path.insert(0, str(P44))
+import p44_common as C  # noqa: E402
+import p44_roi as R  # noqa: E402
+
+P = 256
+OIL, BG, IGN = 0, 1, 255
+AUX_W = 0.4
+BINS = ("small", "medium", "large")
+
+
+# ----------------------------------------------------------------------------------------------- model
+class CtxSeg(nn.Module):
+    def __init__(self, base, k: int, init_seed: int):
+        super().__init__()
+        self.k = int(k)
+        self.encoder = base.encoder
+        self.register_buffer("band_indices", base.band_indices.clone(), persistent=False)
+        self.feature_index = base.feature_index
+        self.trunk = nn.Sequential(*list(base.head.children())[:4])
+        self.aux = list(base.head.children())[4]
+        cpu = torch.Generator().manual_seed(int(init_seed))
+        conv3 = nn.Conv2d(512, 256, 3, padding=1, bias=False)
+        conv1 = nn.Conv2d(256, 2, 1)
+        with torch.no_grad():
+            for m in (conv3, conv1):
+                w = torch.empty_like(m.weight)
+                nn.init.kaiming_normal_(w, mode="fan_out", nonlinearity="relu", generator=cpu)
+                m.weight.copy_(w)
+            conv1.bias.zero_()
+        bn = nn.BatchNorm2d(256)
+        nn.init.ones_(bn.weight)
+        nn.init.zeros_(bn.bias)
+        self.agg = nn.Sequential(conv3, bn, nn.ReLU(inplace=True), conv1)
+
+    def features(self, x):
+        x = x.index_select(1, self.band_indices).unsqueeze(2)
+        f = self.encoder.forward_features(x)[self.feature_index]
+        return self.encoder.prepare_features_for_image_model([f])[0]
+
+    def align(self, fc):
+        if self.k == 1:
+            return fc
+        B = fc.shape[0]
+        theta = torch.zeros(B, 2, 3, device=fc.device, dtype=fc.dtype)
+        theta[:, 0, 0] = theta[:, 1, 1] = 1.0 / self.k
+        grid = F.affine_grid(theta, list(fc.shape), align_corners=False)
+        return F.grid_sample(fc, grid, mode="bilinear", padding_mode="zeros", align_corners=False)
+
+    def forward(self, xl, xc, substitute_local=False):
+        B, hw = xl.shape[0], xl.shape[-2:]
+        f = self.trunk(self.features(torch.cat([xl, xc], 0)))
+        fl, fc = f[:B], f[B:]
+        ca = fl if substitute_local else self.align(fc)
+        up = lambda t: F.interpolate(t, size=hw, mode="bilinear", align_corners=False)  # noqa: E731
+        return dict(out=up(self.agg(torch.cat([fl, ca], 1))), aux_l=up(self.aux(fl)), aux_c=up(self.aux(fc)),
+                    fl=fl, ca=ca)
+
+    def head_parameters(self):
+        return list(self.trunk.parameters()) + list(self.aux.parameters()) + list(self.agg.parameters())
+
+
+def build(cfg, k, init_seed, checkpoint=None, expected_sha=None):
+    base, device = C.build_model(cfg)
+    m = CtxSeg(base, k, init_seed).to(device)
+    if checkpoint is not None:
+        if expected_sha is not None and C.sha256(checkpoint) != expected_sha:
+            raise RuntimeError(f"checkpoint SHA mismatch: {checkpoint}")
+        st = torch.load(checkpoint, map_location="cpu", weights_only=False)
+        m.load_state_dict(st["model_state"] if "model_state" in st else st, strict=True)
+    return m, device
+
+
+# ----------------------------------------------------------------------------------------------- loss
+class SoftTversky(nn.Module):
+    """P44 TverskyLoss (alpha .3, beta .7, smooth 1, batch-summed) with a soft target q in [0,1] and weight vm."""
+
+    def __init__(self, alpha=0.3, beta=0.7, smooth=1.0):
+        super().__init__()
+        self.alpha, self.beta, self.smooth = alpha, beta, smooth
+
+    def forward(self, logits, q, vm):
+        p = torch.softmax(logits, dim=1)[:, OIL]
+        TP = (p * q * vm).sum()
+        FP = (p * (1 - q) * vm).sum()
+        FN = ((1 - p) * q * vm).sum()
+        return 1 - (TP + self.smooth) / (TP + self.alpha * FP + self.beta * FN + self.smooth)
+
+
+def hard_to_soft(mask):
+    """int mask {0 oil, 1 bg, 255 ignore} -> (q, vm) float."""
+    return (mask == OIL).float(), (mask != IGN).float()
+
+
+def total_loss(o, mask, cq, cvm, tv=SoftTversky()):
+    q, vm = hard_to_soft(mask)
+    main = tv(o["out"].float(), q, vm)
+    al = tv(o["aux_l"].float(), q, vm)
+    ac = tv(o["aux_c"].float(), cq, cvm)
+    return main + AUX_W * (al + ac) / 2, dict(main=main, aux_l=al, aux_c=ac)
+
+
+# ----------------------------------------------------------------------------------------------- reading
+SLOTS = C.MODEL_SLOTS                 # B02 B03 B04 B8A B11 B12 in the 8-slot input
+BANDS_1BASED = [i + 1 for i in SLOTS]
+
+
+def area(a, k):
+    """(..., k*n, k*n) -> (..., n, n) block mean (float32). Reference operator (preflight G1)."""
+    a = a.astype(np.float32, copy=False)
+    if k == 1:
+        return a
+    *lead, H, W = a.shape
+    return a.reshape(*lead, H // k, k, W // k, k).mean(axis=(-3, -1), dtype=np.float32)
+
+
+def _lut(pixel_mapping):
+    lut = np.full(256, IGN, np.int64)
+    for kk, v in pixel_mapping.items():
+        lut[int(kk)] = int(v)
+    return lut
+
+
+def make_pair(raw6, rm, k, pixel_mapping):
+    """raw6 (6, kP, kP) uint16 VRT values of the model slots, rm (kP, kP) uint8 raw mask (context window, local at
+    its centre) -> local clean (8,P,P), local label {0,1,255}, context clean (8,P,P), coverage D, soft target q, w.
+
+    Identical to the clean() / invalid_from_raw() / area N-D definitions: VRT values are uint16 integers, so
+    clean = x/10000 and invalid = any model slot == 0. Context (k > 1) is computed in integers then divided once:
+    img = sum(raw*v)/sum(v)/10000 (D > 0) else sum(raw)/k^2/10000; D = sum(v)/k^2; q = sum(oil*v)/sum(v);
+    w = D >= .5. k = 1 returns the local tensors themselves (identity). Unused slots 0/4 stay 0."""
+    o = (k - 1) * P // 2
+    valid = (raw6 > 0).all(axis=0)
+    lab = _lut(pixel_mapping)[rm]
+    if (lab == IGN).any():
+        raise RuntimeError("unmapped raw label")
+    li = np.zeros((8, P, P), np.float32)
+    li[SLOTS] = raw6[:, o:o + P, o:o + P].astype(np.float32) / 10000.0
+    lv = valid[o:o + P, o:o + P]
+    ll = lab[o:o + P, o:o + P].copy()
+    if k == 1:
+        q = ((ll == OIL) & lv).astype(np.float32)
+        w = lv.astype(np.float32)
+        ll[~lv] = IGN
+        return li, ll, li.copy(), w.copy(), q, w
+    ll[~lv] = IGN
+    blk = lambda a, ax: a.reshape(*a.shape[:-2], P, k, P, k).sum(axis=ax, dtype=np.uint32)  # noqa: E731
+    Dn = blk(valid, (1, 3)).astype(np.float64)
+    N = blk(raw6 * valid, (2, 4)).astype(np.float64)
+    img6 = N / np.maximum(Dn, 1)
+    if (Dn == 0).any():   # fully invalid cells: plain block mean (only computed when needed)
+        img6 = np.where(Dn > 0, img6, blk(raw6, (2, 4)).astype(np.float64) / (k * k))
+    img6 = img6 / 10000.0
+    ci = np.zeros((8, P, P), np.float32)
+    ci[SLOTS] = img6
+    oil = blk((lab == OIL) & valid, (1, 3)).astype(np.float64)
+    w = (2 * Dn >= k * k)
+    q = np.where(Dn > 0, oil / np.maximum(Dn, 1), 0.0) * w
+    return li, ll, ci, (Dn / (k * k)).astype(np.float32), q.astype(np.float32), w.astype(np.float32)
+
+
+def _read6(src, win):
+    if isinstance(src, _CachedBand):
+        return src.read6(win)
+    a = src.read(BANDS_1BASED, window=win)
+    if not ((a == np.round(a)).all() and a.min() >= 0 and a.max() <= 65535):
+        raise RuntimeError("VRT values are not uint16 integers")
+    return a.astype(np.uint16)
+
+
+def read_raw(src, msrc, x, y, side):
+    """Read a side x side window at (x, y): model-slot VRT values (6,s,s) uint16 and raw mask (s,s) uint8.
+    Outside the image: value 0 (-> invalid) and mask 255, same as a rasterio boundless read.
+    msrc None = image-only inference (labels never opened; mask 255)."""
+    x0, y0, x1, y1 = max(x, 0), max(y, 0), min(x + side, src.width), min(y + side, src.height)
+    raw = np.zeros((6, side, side), np.uint16)
+    rm = np.full((side, side), 255, np.uint8)
+    if x1 > x0 and y1 > y0:
+        win = Window(x0, y0, x1 - x0, y1 - y0)
+        raw[:, y0 - y:y1 - y, x0 - x:x1 - x] = _read6(src, win)
+        if msrc is not None:
+            rm[y0 - y:y1 - y, x0 - x:x1 - x] = msrc.read(1, window=win)
+    return raw, rm
+
+
+class _CachedBand:
+    """rasterio-like reader over the lossless ZSTD cache (build_cache.py); VRT fallback outside its bbox."""
+
+    def __init__(self, ds, box, fallback, is_mask):
+        self.ds, self.box, self.fallback, self.is_mask = ds, box, fallback, is_mask
+        self.height, self.width = box["H"], box["W"]
+        self._fb = None
+
+    def _inside(self, win):
+        x0, y0 = int(win.col_off), int(win.row_off)
+        b = self.box
+        if b["x0"] <= x0 and x0 + int(win.width) <= b["x1"] and b["y0"] <= y0 and y0 + int(win.height) <= b["y1"]:
+            return Window(x0 - b["x0"], y0 - b["y0"], int(win.width), int(win.height))
+        return None
+
+    def _fallback(self):
+        if self._fb is None:
+            self._fb = rasterio.open(self.fallback)
+        return self._fb
+
+    def read6(self, win):
+        w = self._inside(win)
+        return self.ds.read(window=w) if w is not None else _read6(self._fallback(), win)
+
+    def read(self, band, window):
+        w = self._inside(window)
+        return self.ds.read(band, window=w) if w is not None else self._fallback().read(band, window=window)
+
+
+_INDEX = {}
+
+
+def cached_pair(cache_dir, scene, vrt, mask):
+    import json as _json
+    if cache_dir not in _INDEX:
+        _INDEX[cache_dir] = _json.loads((Path(cache_dir) / "index.json").read_text())["scenes"]
+    idx = _INDEX[cache_dir]
+    if scene not in idx:
+        return None
+    box = idx[scene]
+    img = rasterio.open(Path(cache_dir) / f"{scene}.img.tif")
+    m = rasterio.open(Path(cache_dir) / f"{scene}.mask.tif")
+    return _CachedBand(img, box, vrt, False), _CachedBand(m, box, mask, True)
+
+
+def ctx_origin(x, y, k):
+    o = (k - 1) * P // 2
+    return x - o, y - o
+
+
+# ----------------------------------------------------------------------------------------------- augmentation
+def aug_params(rng: np.random.Generator):
+    """P44 PARITY augmentation, re-implemented so local and context share every parameter."""
+    p = {}
+    if rng.random() < 0.5:   # RandomResizedCrop(256, scale (.9,1), ratio (3/4,4/3))
+        for _ in range(10):
+            s = rng.uniform(0.9, 1.0) * P * P
+            r = np.exp(rng.uniform(np.log(3 / 4), np.log(4 / 3)))
+            w, h = int(round(np.sqrt(s * r))), int(round(np.sqrt(s / r)))
+            if 0 < w <= P and 0 < h <= P:
+                p["rrc"] = (int(rng.integers(0, P - w + 1)), int(rng.integers(0, P - h + 1)), w, h)
+                break
+    p["hflip"] = rng.random() < 0.5
+    p["vflip"] = rng.random() < 0.5
+    p["rot90"] = int(rng.integers(0, 4)) if rng.random() < 0.8 else 0
+    if rng.random() < 0.4:
+        p["noise"] = (float(rng.uniform(0.005, 0.02)), int(rng.integers(0, 2**31 - 1)))
+    if rng.random() < 0.3:
+        p["bc"] = (1.0 + float(rng.uniform(-0.1, 0.1)), float(rng.uniform(-0.1, 0.1)))
+    return p
+
+
+def _crop(a, cx, cy, w, h, interp):
+    """Resample the (w x h) box centred at (cx, cy) (edge coords; box = [cx-w/2, cx+w/2)) to P x P. a: (H,W) or (H,W,C)."""
+    sx, sy = w / P, h / P
+    M = np.array([[sx, 0, cx - w / 2 + 0.5 * sx - 0.5], [0, sy, cy - h / 2 + 0.5 * sy - 0.5]], np.float64)
+    return cv2.warpAffine(a, M, (P, P), flags=interp | cv2.WARP_INVERSE_MAP, borderMode=cv2.BORDER_REFLECT_101)
+
+
+def geom(a, p, k, interp, delta=None):
+    """Apply RRC (context: same w,h, centre shifted by delta/k), flips, rot90 to (H,W[,C])."""
+    if "rrc" in p:
+        x0, y0, w, h = p["rrc"]
+        dx, dy = x0 + w / 2 - P / 2, y0 + h / 2 - P / 2
+        a = _crop(a, P / 2 + dx / k, P / 2 + dy / k, w, h, interp)
+    if p["hflip"]:
+        a = a[:, ::-1]
+    if p["vflip"]:
+        a = a[::-1]
+    if p["rot90"]:
+        a = np.rot90(a, p["rot90"])
+    return np.ascontiguousarray(a)
+
+
+def photometric(img_hwc, p):
+    if "noise" in p:
+        std, s = p["noise"]
+        img_hwc = img_hwc + np.random.default_rng(s).normal(0, std, img_hwc.shape).astype(np.float32)
+    if "bc" in p:
+        a, b = p["bc"]
+        img_hwc = img_hwc * a + b
+    return img_hwc.astype(np.float32)
+
+
+# ----------------------------------------------------------------------------------------------- scoring
+def macro3(rows):
+    """rows: per-scene confusion dicts with key size_bin -> dict(all=pooled, small/medium/large=pooled, macro3)."""
+    out = {"all": C.pooled(rows)}
+    for b in BINS:
+        out[b] = C.pooled([r for r in rows if r["size_bin"] == b])
+    out["macro3"] = float(np.mean([out[b]["iou"] for b in BINS]))
+    return out
+
+
+# ----------------------------------------------------------------------------------------------- inference
+@torch.no_grad()
+def forward_pair(model, xl, xc, tta, amp, substitute_local=False):
+    def f(a, b):
+        return C._finite(model(a, b, substitute_local)["out"].float(), "ctx")
+    with torch.autocast("cuda", enabled=amp):
+        out = f(xl, xc)
+        if tta:
+            out = out + torch.flip(f(torch.flip(xl, [3]), torch.flip(xc, [3])), [3])
+            out = out + torch.flip(f(torch.flip(xl, [2]), torch.flip(xc, [2])), [2])
+            out = out / 3.0
+    return C._finite(out, "fused")
+
+
+class _Null:
+    def __enter__(self):
+        return None
+
+    def __exit__(self, *a):
+        return False
+
+
+@torch.no_grad()
+def predict_scene(model, device, vrt, mask_path, rois, cfg, stride, tta, amp, batch=32, perm=None,
+                  substitute_local=False):
+    """Context-aware logit mosaic over a scene's ROI union (P44 predict_scene + context per window).
+    mask_path None -> labels never opened (context targets are not used at inference).
+    perm: optional {(x, y): context tensor} replacement (derangement). Returns P44 dict + coverage per window."""
+    ds = cfg["dataset"]
+    k = model.k
+    ux0, uy0 = min(r["rx0"] for r in rois), min(r["ry0"] for r in rois)
+    ux1, uy1 = max(r["rx1"] for r in rois), max(r["ry1"] for r in rois)
+    h, w = uy1 - uy0, ux1 - ux0
+    acc = np.zeros((2, h, w), np.float32)
+    cnt = np.zeros((h, w), np.uint16)
+    valid = np.zeros((h, w), bool)
+    union = np.zeros((h, w), bool)
+    wins = R.roi_windows(rois, stride)
+    done, cov = set(), {}
+    model.eval()
+    o = (k - 1) * P // 2
+    with rasterio.open(vrt) as src, (rasterio.open(mask_path) if mask_path else _Null()) as msrc:
+        C.check_scene_grid(src, int(rois[0]["H"]), int(rois[0]["W"]), rois)
+        for r in rois:
+            rx0, ry0, rx1, ry1 = r["rx0"], r["ry0"], r["rx1"], r["ry1"]
+            ex0, ey0 = rx0 - o, ry0 - o
+            raw, rm = read_raw(src, msrc, ex0, ey0, rx1 - rx0 + 2 * o)
+            sl = (slice(ry0 - uy0, ry1 - uy0), slice(rx0 - ux0, rx1 - ux0))
+            valid[sl] = (raw[:, o:o + ry1 - ry0, o:o + rx1 - rx0] > 0).all(axis=0)
+            union[sl] = True
+            todo = [(x, y) for x, y in wins if (x, y) not in done
+                    and rx0 <= x and x + P <= rx1 and ry0 <= y and y + P <= ry1]
+            done.update(todo)
+            s = k * P
+            for i in range(0, len(todo), batch):
+                chunk = todo[i:i + batch]
+                xl, xc = [], []
+                for x, y in chunk:
+                    cx, cy = x - o - ex0, y - o - ey0
+                    li, _, ci, D, _, _ = make_pair(raw[:, cy:cy + s, cx:cx + s], rm[cy:cy + s, cx:cx + s], k,
+                                                   ds["pixel_mapping"])
+                    cov[(x, y)] = float(D.mean())
+                    xl.append(C.normalize(li, ds["mean"], ds["std"]))
+                    xc.append(C.normalize(ci, ds["mean"], ds["std"]))
+                xl = torch.from_numpy(np.stack(xl)).to(device)
+                xc = torch.from_numpy(np.stack(xc)).to(device)
+                if perm is not None:
+                    xc = torch.stack([perm[(x, y)].to(device) if (x, y) in perm else xc[j]
+                                      for j, (x, y) in enumerate(chunk)])
+                logits = forward_pair(model, xl, xc, tta, amp, substitute_local).cpu().numpy()
+                for (x, y), lg in zip(chunk, logits):
+                    acc[:, y - uy0:y - uy0 + P, x - ux0:x - ux0 + P] += lg
+                    cnt[y - uy0:y - uy0 + P, x - ux0:x - ux0 + P] += 1
+    if len(done) != len(wins):
+        raise RuntimeError(f"{len(wins) - len(done)} windows not assigned to any ROI")
+    c = cnt > 0
+    if not np.array_equal(c, union):
+        raise RuntimeError("window coverage != ROI union")
+    mean_logit = acc / np.maximum(cnt, 1)
+    pred = np.where(c, np.where(mean_logit[0] >= mean_logit[1], OIL, BG), 255).astype(np.uint8)
+    e = np.exp(mean_logit - mean_logit.max(axis=0, keepdims=True))
+    prob = (e[0] / e.sum(axis=0)).astype(np.float16)
+    prob[~c] = 0
+    margin = (mean_logit[0] - mean_logit[1]).astype(np.float32)
+    return dict(origin=(ux0, uy0), pred=pred, prob_oil=prob, valid=valid, union=union, coverage=cov, margin=margin)
+
+===== FILE: train_ctx.py =====
+"""ctx k2k4 v6 trainer: P44 trainer with the dual-branch context model, GoM v6 lists, macro-3 selection.
+
+Unchanged from P44 (train_p44.py): window list format, VirtualEpochSampler permutation stream, batch 16, AdamW groups
+(encoder lr0*0.1, heads lr0, wd 1e-3), AMP + GradScaler, clip 1.0, Cosine per step, 4000 steps/VE, max 40 VE,
+patience 8, invalid image pixels -> ignore.
+Changed (decision v5/v6): model = ctx_common.CtxSeg(k); loss = main + 0.4*(aux_l + aux_c)/2 (soft Tversky);
+augmentation re-implemented (ctx_common.aug_params) with per-sample RNG default_rng([seed, stream position]) so the
+local augmentation stream is identical across K1/K2/K4; VAL = context-aware mosaic (stride 256, no TTA, AMP),
+selection by macro-3 (strict >, earlier VE wins ties). Probationary gate: in the first 200 steps >= 20 oil batches,
+>= 18 of them with finite context-half aggregation gradient RMS > 1e-12, else abort (non-executed).
+"""
+from __future__ import annotations
+
+import argparse
+import csv
+import hashlib
+import json
+import os
+import sys
+import time
+from pathlib import Path
+
+os.environ.setdefault("GDAL_CACHEMAX", "128")   # before any GDAL use (see ctx_common)
+
+import numpy as np
+import pandas as pd
+import cv2
+import rasterio
+import torch
+from torch.utils.data import DataLoader, Dataset
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import ctx_common as X  # noqa: E402
+from ctx_common import C  # noqa: E402
+from train_p44 import Board, VirtualEpochSampler  # noqa: E402  (P44 dir on sys.path via ctx_common)
+from main_runner import set_global_seed  # noqa: E402
+
+TRAIN_CODE = ("train_ctx.py", "ctx_common.py")
+EXPOSURE_STEPS, EXPOSURE_MIN_OIL, EXPOSURE_MIN_OK = 200, 20, 18
+
+
+class PosSampler(VirtualEpochSampler):
+    """P44 VirtualEpochSampler, yielding (index, global stream position)."""
+
+    def __iter__(self):
+        start = self.epoch * self.samples
+        return iter([(i, start + j) for j, i in enumerate(self.indices(self.epoch))])
+
+
+def parse(name):
+    stem, xy = name.rsplit("_patch_x", 1)
+    x, y = xy.split("_y")
+    return stem, int(x), int(y)
+
+
+class CtxDataset(Dataset):
+    def __init__(self, files, split, cfg, k, seed, cache=None):
+        self.items = [parse(f) for f in files]
+        self.cache = cache   # lossless same-resolution read cache (build_cache.py); None -> VRT
+        self.split, self.k, self.seed = split, int(k), int(seed)
+        self.ds = cfg["dataset"]
+        self.fb = Path(cfg["paths"]["full_band"])
+        self._h = {}
+
+    def __len__(self):
+        return len(self.items)
+
+    def _open(self, path):
+        if path not in self._h:
+            self._h[path] = rasterio.open(path)
+        return self._h[path]
+
+    def _pair(self, scene):
+        vrt, mask = self.fb / self.split.loc[scene, "vrt_home"], self.fb / self.split.loc[scene, "mask_path"]
+        if self.cache and scene not in self._h:
+            self._h[scene] = X.cached_pair(self.cache, scene, vrt, mask)
+        if self.cache and self._h[scene] is not None:
+            return self._h[scene]
+        return self._open(vrt), self._open(mask)
+
+    def sample(self, idx, pos, augment=True):
+        scene, x, y = self.items[idx]
+        k, P = self.k, X.P
+        src, msrc = self._pair(scene)
+        cx, cy = X.ctx_origin(x, y, k)
+        raw, rm = X.read_raw(src, msrc, cx, cy, k * P)
+        li, ll, ci, cov, cq, cw = X.make_pair(raw, rm, k, self.ds["pixel_mapping"])
+        p = X.aug_params(np.random.default_rng([self.seed, int(pos)])) if augment else \
+            dict(hflip=False, vflip=False, rot90=0)
+        li = X.photometric(X.geom(li.transpose(1, 2, 0), p, 1, cv2.INTER_LINEAR), p)
+        ci = X.photometric(X.geom(ci.transpose(1, 2, 0), p, k, cv2.INTER_LINEAR), p)
+        ll = X.geom(ll.astype(np.uint8), p, 1, cv2.INTER_NEAREST).astype(np.int64)
+        cq = X.geom(cq, p, k, cv2.INTER_NEAREST)
+        cw = X.geom(cw, p, k, cv2.INTER_NEAREST)
+        norm = lambda a: C.normalize(a.transpose(2, 0, 1), self.ds["mean"], self.ds["std"]).astype(np.float32)  # noqa: E731
+        return (torch.from_numpy(norm(li)), torch.from_numpy(norm(ci)), torch.from_numpy(ll),
+                torch.from_numpy(cq), torch.from_numpy(cw), float(cov.mean()))
+
+    def __getitem__(self, item):
+        idx, pos = item
+        return self.sample(idx, pos)
+
+
+def verify_cache(cache: Path):
+    rep = json.loads((cache / "equivalence.json").read_text())
+    if not rep.get("passed"):
+        raise SystemExit(f"{cache}: equivalence test not passed")
+
+
+def worker_init(_):
+    import cv2
+    cv2.setNumThreads(1)
+    torch.set_num_threads(1)
+
+
+def collate(b):
+    xl, xc, m, cq, cw, cov = zip(*b)
+    return torch.stack(xl), torch.stack(xc), torch.stack(m), torch.stack(cq), torch.stack(cw), torch.tensor(cov)
+
+
+def param_groups(model, lr0, mult):
+    enc = list(model.encoder.parameters())
+    head = model.head_parameters()
+    allp = [p for p in model.parameters() if p.requires_grad]
+    if len(enc) + len(head) != len(allp) or len({id(p) for p in enc + head}) != len(allp):
+        raise RuntimeError("parameter groups do not partition the model")
+    return [{"params": enc, "lr": lr0 * mult}, {"params": head, "lr": lr0}]
+
+
+def load_split(cfg, lists):
+    return pd.read_csv(lists / "split_scenes.csv").set_index("scene_id")
+
+
+def validate(model, device, cfg, val_rois, split, stride, tta, amp, batch):
+    fb = Path(cfg["paths"]["full_band"])
+    rows = []
+    for scene, g in val_rois.groupby("scene", sort=True):
+        r = X.predict_scene(model, device, fb / split.loc[scene, "vrt_home"], None,
+                            g.to_dict("records"), cfg, stride, tta, amp, batch)
+        gt = C.gt_crop(fb / split.loc[scene, "mask_path"], r["origin"], r["pred"].shape)
+        c = C.confusion(r["pred"], gt, r["valid"], r["union"])
+        c.update(scene=scene, size_bin=split.loc[scene, "size_bin"])
+        rows.append(c)
+    return X.macro3(rows), rows
+
+
+def run(args):
+    if os.environ.get("CUBLAS_WORKSPACE_CONFIG") not in (":4096:8", ":16:8"):
+        raise SystemExit("CUBLAS_WORKSPACE_CONFIG must be :4096:8 or :16:8")
+    if args.mode == "train" and not args.allow_train:
+        raise SystemExit("train mode requires --allow-train (separate user authorization)")
+    cfg = C.load_config(args.config)
+    tc, ds, k = cfg["train"], cfg["dataset"], int(cfg["ctx"]["k"])
+    seed = int(tc["seed"])
+    set_global_seed(seed)
+    lists = Path(cfg["paths"]["lists"])
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    if any(out.iterdir()):
+        raise SystemExit(f"{out} is not empty")
+    files = [l.strip() for l in open(lists / "train_windows.txt") if l.strip()]
+    if args.subset:
+        files = files[:: max(1, len(files) // args.subset)][:args.subset]
+    split = load_split(cfg, lists)
+    val_rois = pd.read_csv(lists / "rois_val.csv")
+    if args.val_scenes:
+        keep = split[split.split == "val"].groupby("size_bin").head(args.val_scenes).index
+        val_rois = val_rois[val_rois.scene.isin(keep)]
+
+    model, device = X.build(cfg, k, init_seed=seed)
+    cache = cfg["ctx"].get("cache")
+    if cache:
+        verify_cache(Path(cache))
+    dset = CtxDataset(files, split, cfg, k, seed, cache)
+    spv = int(tc["steps_per_virtual_epoch"]) if args.mode == "train" else args.steps_per_ve
+    bs = int(tc["batch_size"])
+    sampler = PosSampler(len(files), spv * bs, seed)
+    workers = int(args.workers or tc["workers"])
+    loader = DataLoader(dset, batch_size=bs, sampler=sampler, num_workers=workers, pin_memory=True, drop_last=True,
+                        collate_fn=collate, persistent_workers=workers > 0, worker_init_fn=worker_init)
+    lr0 = float(tc["lr0"])
+    opt = torch.optim.AdamW(param_groups(model, lr0, float(tc["backbone_lr_mult"])),
+                            weight_decay=float(tc["weight_decay"]))
+    max_ve = int(tc["max_virtual_epochs"]) if args.mode == "train" else args.max_ve
+    max_steps = spv * max_ve
+    sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=max_steps, eta_min=lr0 * float(tc["eta_min_ratio"]))
+    amp = bool(tc["use_amp"])
+    scaler = torch.cuda.amp.GradScaler(enabled=amp)
+    patience = int(tc["patience"]) if args.mode == "train" else args.patience
+    vc = cfg["val"]
+    resolved = dict(config=json.loads(json.dumps(cfg)), mode=args.mode, k=k, n_train_windows=len(files),
+                    steps_per_virtual_epoch=spv, max_virtual_epochs=max_ve, max_steps=max_steps, patience=patience,
+                    val_scenes=int(val_rois.scene.nunique()), lists=str(lists),
+                    lists_manifest_sha256=C.sha256(lists / "build_manifest.json"),
+                    code_sha256={f: C.sha256(HERE / f) for f in TRAIN_CODE},
+                    p44_code_sha256={f: C.sha256(X.P44 / f) for f in ("p44_common.py", "p44_roi.py", "train_p44.py")})
+    (out / "resolved_config.json").write_text(json.dumps(resolved, indent=1, ensure_ascii=False))
+    board = Board(args.mode == "train", out, resolved, f"CTX_K{k}_S{seed}")
+    hist_f = open(out / "history.csv", "w", newline="")
+    hist, perm_log, expo = None, [], dict(oil=0, ok=0, rms=[])
+    best, best_ve, bad, step, ok = -1.0, -1, 0, 0, False
+    ctx_w = model.agg[0].weight
+    try:
+        for ve in range(max_ve):
+            sampler.set_epoch(ve)
+            idx = sampler.indices(ve)
+            perm_log.append(dict(ve=ve, first=idx[:3], last=idx[-3:],
+                                 sha=hashlib.sha256(np.asarray(idx, np.int64).tobytes()).hexdigest()))
+            model.train()
+            t0 = time.time()
+            agg = dict(loss=0.0, main=0.0, aux_l=0.0, aux_c=0.0, n=0, oil_batches=0, cov=0.0,
+                       nonfinite_grad=0, scale_drops=0, gctx=[])
+            for xl, xc, m, cq, cw, cov in loader:
+                xl, xc, m = xl.to(device, non_blocking=True), xc.to(device, non_blocking=True), m.to(device)
+                cq, cw = cq.to(device), cw.to(device)
+                with torch.autocast("cuda", enabled=amp):
+                    o = model(xl, xc)
+                    loss, parts = X.total_loss(o, m, cq, cw)
+                if not torch.isfinite(loss):
+                    raise RuntimeError(f"non-finite loss at step {step}")
+                scaler.scale(loss).backward()
+                scaler.unscale_(opt)
+                g = ctx_w.grad[:, 256:]
+                g_rms = float(g.float().pow(2).mean().sqrt()) if g is not None else float("nan")
+                gn = float(torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=float(tc["grad_clip"])))
+                s_before = scaler.get_scale()
+                scaler.step(opt)
+                scaler.update()
+                opt.zero_grad(set_to_none=True)
+                sched.step()
+                step += 1
+                has_oil = bool((m == 0).any())
+                if step <= EXPOSURE_STEPS and has_oil:
+                    expo["oil"] += 1
+                    expo["ok"] += int(np.isfinite(g_rms) and g_rms > 1e-12)
+                    expo["rms"].append(g_rms)
+                if step == EXPOSURE_STEPS:
+                    (out / "exposure_gate.json").write_text(json.dumps(dict(
+                        oil_batches=expo["oil"], ok_batches=expo["ok"],
+                        median_rms=float(np.median(expo["rms"])) if expo["rms"] else None,
+                        passed=expo["oil"] >= EXPOSURE_MIN_OIL and expo["ok"] >= EXPOSURE_MIN_OK), indent=1))
+                    if args.mode == "train" and not (expo["oil"] >= EXPOSURE_MIN_OIL and expo["ok"] >= EXPOSURE_MIN_OK):
+                        raise RuntimeError(f"exposure gate failed: {expo['oil']} oil batches, {expo['ok']} ok")
+                agg["loss"] += float(loss)
+                for kk in ("main", "aux_l", "aux_c"):
+                    agg[kk] += float(parts[kk])
+                agg["n"] += 1
+                agg["oil_batches"] += int(has_oil)
+                agg["cov"] += float(cov.mean())
+                agg["nonfinite_grad"] += int(not np.isfinite(gn))
+                agg["scale_drops"] += int(scaler.get_scale() < s_before)
+                agg["gctx"].append(g_rms)
+                if step % 200 == 0:
+                    print(f"[train] step {step} loss {agg['loss']/agg['n']:.4f} main {agg['main']/agg['n']:.4f} "
+                          f"aux_c {agg['aux_c']/agg['n']:.4f} oil_batch_frac {agg['oil_batches']/agg['n']:.3f} "
+                          f"{agg['n']/(time.time()-t0):.2f} it/s mem {torch.cuda.max_memory_reserved()/2**30:.1f}GiB",
+                          flush=True)
+            if agg["n"] != spv:
+                raise RuntimeError(f"virtual epoch {ve}: {agg['n']} steps != {spv}")
+            train_s = time.time() - t0
+            t1 = time.time()
+            v, vrows = validate(model, device, cfg, val_rois, split, vc["stride"], vc["tta"], vc["amp"], vc["batch"])
+            val_s = time.time() - t1
+            row = dict(ve=ve + 1, step=step, lr_head=opt.param_groups[1]["lr"], train_loss=agg["loss"] / agg["n"],
+                       train_main=agg["main"] / agg["n"], train_aux_l=agg["aux_l"] / agg["n"],
+                       train_aux_c=agg["aux_c"] / agg["n"], oil_batch_frac=agg["oil_batches"] / agg["n"],
+                       ctx_coverage=agg["cov"] / agg["n"], ctx_grad_rms_median=float(np.median(agg["gctx"])),
+                       nonfinite_grad=agg["nonfinite_grad"], scale_drops=agg["scale_drops"],
+                       val_macro3=v["macro3"], val_oil_iou=v["all"]["iou"], val_precision=v["all"]["precision"],
+                       val_recall=v["all"]["recall"], val_pred_to_gt=v["all"]["pred_to_gt"],
+                       **{f"val_iou[{b}]": v[b]["iou"] for b in X.BINS},
+                       it_per_s=agg["n"] / train_s, val_seconds=val_s,
+                       peak_mem_gib=torch.cuda.max_memory_reserved() / 2**30)
+            if hist is None:
+                hist = csv.DictWriter(hist_f, fieldnames=list(row))
+                hist.writeheader()
+            hist.writerow(row)
+            hist_f.flush()
+            board.log(row, step)
+            print(f"[val] ve {ve+1} macro3 {v['macro3']:.4f} pooled {v['all']['iou']:.4f} "
+                  + " ".join(f"{b} {v[b]['iou']:.3f}" for b in X.BINS)
+                  + f" R {v['all']['recall']:.3f} pred/gt {v['all']['pred_to_gt']:.3f} ({train_s:.0f}s+{val_s:.0f}s)",
+                  flush=True)
+            torch.save({"model_state": model.state_dict(), "step": step, "ve": ve + 1}, out / "last.pt")
+            if v["macro3"] > best:
+                best, best_ve, bad = v["macro3"], ve + 1, 0
+                torch.save(model.state_dict(), out / "best.pt")
+                pd.DataFrame(vrows).to_csv(out / "val_best_per_scene.csv", index=False)
+                (out / "val_best.json").write_text(json.dumps(v, indent=1))
+            else:
+                bad += 1
+                if bad >= patience:
+                    print(f"[early stop] {patience} virtual epochs without improvement", flush=True)
+                    break
+        ok = True
+    finally:
+        hist_f.close()
+        (out / "sampler_log.json").write_text(json.dumps(perm_log, indent=1))
+        board.finish(ok)
+    done = dict(ok=True, mode=args.mode, k=k, seed=seed, resolved_config_sha256=C.sha256(out / "resolved_config.json"),
+                steps=step, best_val_macro3=best, best_virtual_epoch=best_ve, best_step=best_ve * spv,
+                stopped_early=bad >= patience, best_sha256=C.sha256(out / "best.pt"),
+                last_sha256=C.sha256(out / "last.pt"))
+    (out / "train_complete.json").write_text(json.dumps(done, indent=1))
+    print(json.dumps(done, indent=1), flush=True)
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("mode", choices=("smoke", "train"))
+    ap.add_argument("--config", required=True)
+    ap.add_argument("--out", required=True)
+    ap.add_argument("--allow-train", action="store_true")
+    ap.add_argument("--subset", type=int, default=0)
+    ap.add_argument("--val-scenes", type=int, default=0, help="smoke only: first N VAL scenes per size bin")
+    ap.add_argument("--steps-per-ve", type=int, default=20)
+    ap.add_argument("--max-ve", type=int, default=2)
+    ap.add_argument("--patience", type=int, default=8)
+    ap.add_argument("--workers", type=int, default=0)
+    a = ap.parse_args()
+    if a.mode == "train" and (a.subset or a.val_scenes or a.workers):
+        raise SystemExit("--subset/--val-scenes/--workers are smoke-only (workers fixed in config)")
+    run(a)
+
+
+if __name__ == "__main__":
+    main()
+
+===== FILE: eval_ctx.py =====
+"""ctx k2k4 v6 post-training: VAL TTA breakdown, counterfactuals, pilot classification, Taiwan.
+
+  python eval_ctx.py val_tta --k K          best.pt, VAL stride128+TTA mosaic -> FN breakdown (bins of gate 1)
+  python eval_ctx.py counterfactual --k K   K2/K4: derangement + local-substitution adoption (main VAL operator)
+  python eval_ctx.py pilot                  frozen pilot classification (decision v6) -> pilot_result.json
+  python eval_ctx.py taiwan --k K           image-only Taiwan-24 predictions (test operator)
+  python eval_ctx.py taiwan_eval --allow-target-gt   Dalin 2 / other 22 per run, Kk - K1 (after pilot exists)
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import shutil
+import sys
+from pathlib import Path
+
+os.environ.setdefault("GDAL_CACHEMAX", "128")   # before any GDAL use (see ctx_common)
+
+import numpy as np
+import pandas as pd
+import torch
+from scipy import ndimage as ndi
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import ctx_common as X  # noqa: E402
+from ctx_common import C  # noqa: E402
+import train_ctx as T  # noqa: E402
+
+W = Path("/home/alanyh/oil_dataset/new/_ctx_k2k4_20261111")
+L = W / "lists"
+SEED = 42
+PERM_SEED = 20261111
+REGISTRY = C.REPO / "analysis/taiwan24_external_test_20261101/taiwan24_registry.json"
+DALIN = "大林"
+SMOKE_VAL = SMOKE_TW = 0
+
+
+def val_rois():
+    r = pd.read_csv(L / "rois_val.csv")
+    if SMOKE_VAL:
+        sp = split_df()
+        r = r[r.scene.isin(sp[sp.split == "val"].groupby("size_bin").head(SMOKE_VAL).index)]
+    return r
+DEP = [0, 2.5, 5.5, 10.5, 20.5, 1e9]; DEP_L = ["1-2px", "3-5", "6-10", "11-20", ">20"]
+FRAC = [0, .05, .2, .5, .8, 1.01]; FRAC_L = ["<5%", "5-20%", "20-50%", "50-80%", ">=80%"]
+
+
+def rj(p):
+    return json.loads(Path(p).read_text())
+
+
+def run_dir(k):
+    return W / f"train_K{k}_S{SEED}"
+
+
+def load(k):
+    cfg = C.load_config(W / "configs" / f"ctx_K{k}_S{SEED}.yaml")
+    d = run_dir(k)
+    t = rj(d / "train_complete.json")
+    official = W == Path("/home/alanyh/oil_dataset/new/_ctx_k2k4_20261111")
+    if not t["ok"] or t["k"] != k or (t["mode"] != "train" and official):
+        raise SystemExit(f"{d}: not a completed train run of K{k}")
+    model, device = X.build(cfg, k, SEED, d / "best.pt", t["best_sha256"])
+    return cfg, model, device, t
+
+
+def split_df():
+    return pd.read_csv(L / "split_scenes.csv").set_index("scene_id")
+
+
+def out_once(p: Path):
+    if p.exists():
+        raise SystemExit(f"{p} exists; refuse to overwrite")
+    p.parent.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+# ----------------------------------------------------------------------------------------------- VAL TTA
+def breakdown(preds, split, fb):
+    rows, conf = [], []
+    for scene, z in preds:
+        gt = C.gt_crop(fb / split.loc[scene, "mask_path"], z["origin"], z["pred"].shape)
+        c = C.confusion(z["pred"], gt, z["valid"], z["union"]); c.update(scene=scene, size_bin=split.loc[scene, "size_bin"])
+        conf.append(c)
+        m = z["valid"] & z["union"]
+        g = (gt == 0) & m
+        if not g.any():
+            continue
+        p = (z["pred"] == X.OIL) & m
+        lab, _ = ndi.label(g, structure=np.ones((3, 3)))
+        idx = np.nonzero(g)
+        rows.append(pd.DataFrame(dict(scene=scene, tp=p[idx], comp=[f"{scene}#{v}" for v in lab[idx]],
+                                      frac=ndi.uniform_filter(g.astype(np.float32), 256, mode="constant")[idx],
+                                      depth=ndi.distance_transform_edt(g)[idx])))
+    d = pd.concat(rows)
+    d["dep_b"] = pd.cut(d.depth, DEP, labels=DEP_L, right=False)
+    d["frac_b"] = pd.cut(d.frac, FRAC, labels=FRAC_L, right=False)
+    tot = int((~d.tp).sum())
+    tab = lambda col: d.groupby(col, observed=False).agg(gt_px=("tp", "size"), recall=("tp", "mean"),  # noqa: E731
+                                                         fn=("tp", lambda s: int((~s).sum()))).assign(
+        fn_share=lambda t: t.fn / max(tot, 1)).reset_index().astype({col: str}).to_dict("records")
+    deep = d[d.depth > 20.5]
+    mid = d[(d.depth > 5.5) & (d.depth <= 20.5)]
+    top = deep.comp.value_counts()
+    return dict(metrics=X.macro3(conf), recall_gt20px=float(deep.tp.mean()), gt_px_gt20px=len(deep),
+                fn_share_gt20px=float((~deep.tp).sum() / max(tot, 1)), recall_6_20px=float(mid.tp.mean()),
+                recall_ge80=float(d[d.frac >= .8].tp.mean()) if (d.frac >= .8).any() else None,
+                top_component_share_gt20px=float(top.iloc[0] / len(deep)) if len(deep) else None,
+                top_component_gt20px=top.index[0] if len(deep) else None,
+                depth=tab("dep_b"), density=tab("frac_b"), per_scene=conf)
+
+
+def cmd_val_tta(a):
+    k = a.k
+    target = out_once(W / "eval" / f"val_tta_K{k}.json")
+    cfg, model, device, t = load(k)
+    split, fb, tc = split_df(), Path(cfg["paths"]["full_band"]), cfg["test"]
+    rois = val_rois()
+    pdir = W / "eval" / f"val_tta_K{k}"
+    pdir.mkdir(parents=True, exist_ok=True)
+    preds = []
+    for i, (scene, g) in enumerate(rois.groupby("scene", sort=True)):
+        r = X.predict_scene(model, device, fb / split.loc[scene, "vrt_home"], None, g.to_dict("records"), cfg,
+                            tc["stride"], tc["tta"], tc["amp"], tc["batch"])
+        z = dict(origin=tuple(int(v) for v in r["origin"]), pred=r["pred"], valid=r["valid"], union=r["union"])
+        np.savez_compressed(pdir / f"{i:02d}.npz", scene=scene, **z)
+        preds.append((scene, z))
+        print(f"[val_tta K{k}] {i + 1}/{rois.scene.nunique()} {scene}", flush=True)
+    res = dict(k=k, checkpoint_sha256=t["best_sha256"], operator=tc, **breakdown(preds, split, fb))
+    target.write_text(json.dumps(res, indent=1, ensure_ascii=False, default=float))
+    print(json.dumps({kk: res[kk] for kk in ("recall_gt20px", "recall_6_20px", "fn_share_gt20px")}, indent=1))
+
+
+# ----------------------------------------------------------------------------------------------- counterfactuals
+def window_coverage(split, cfg, k, scenes):
+    """Per VAL window (main operator, stride 256): mean context coverage D (data only)."""
+    w = pd.read_csv(L / "windows_val.tsv", sep="\t")
+    w = w[w.scene.isin(scenes)].reset_index(drop=True)
+    ds = T.CtxDataset([f"{s}_patch_x{x}_y{y}" for s, x, y in zip(w.scene, w.x, w.y)], split, cfg, k, SEED)
+    cov = [ds.sample(i, 0, augment=False)[5] for i in range(len(ds))]
+    w["coverage"] = cov
+    w["group"] = split.loc[w.scene, "duplicate_group_id"].values
+    return w, ds
+
+
+def derange(w):
+    """Coverage deciles (rank, ties by order); within bins donors from another duplicate group; infeasible bins
+    (largest group > half) merged with the adjacent bin offering more other-group candidates (tie: lower index;
+    edge bins merge inward), scanning low -> high, repeated until feasible."""
+    rng = np.random.default_rng(PERM_SEED)
+    w = w.copy()
+    w["bin"] = (w.coverage.rank(method="first") - 1).mul(10).floordiv(len(w)).astype(int)
+    bins = [list(w.index[w.bin == b]) for b in range(10)]
+
+    def feasible(ix):
+        return w.loc[ix, "group"].value_counts().iloc[0] * 2 <= len(ix)
+
+    while True:
+        bad = [i for i, b in enumerate(bins) if not feasible(b)]
+        if not bad:
+            break
+        i = bad[0]
+        if len(bins) == 1:
+            raise SystemExit("derangement infeasible even with all windows in one bin")
+        cand = [j for j in (i - 1, i + 1) if 0 <= j < len(bins)]
+        own = set(w.loc[bins[i], "group"])
+        score = {j: int((~w.loc[bins[j], "group"].isin(own)).sum()) for j in cand}
+        j = max(cand, key=lambda c: (score[c], -c))
+        lo, hi = min(i, j), max(i, j)
+        bins = bins[:lo] + [bins[lo] + bins[hi]] + bins[hi + 1:]
+    mapping = {}
+    for b in bins:
+        sub = w.loc[b]
+        order = sub.sample(frac=1, random_state=rng.integers(2**31)).sort_values("group", kind="stable").index.tolist()
+        n, shift = len(order), int(sub.group.value_counts().iloc[0])
+        for a_, d_ in zip(order, order[shift:] + order[:shift]):
+            if w.loc[a_, "group"] == w.loc[d_, "group"]:
+                raise RuntimeError("same-group donor")
+            mapping[a_] = d_
+    return mapping, len(bins)
+
+
+def score_rows(model, device, cfg, split, rois, perm_for=None, substitute=False, keep_margin=False):
+    fb, vc = Path(cfg["paths"]["full_band"]), cfg["val"]
+    rows, margins = [], {}
+    for scene, g in rois.groupby("scene", sort=True):
+        perm = perm_for(scene) if perm_for else None
+        r = X.predict_scene(model, device, fb / split.loc[scene, "vrt_home"], None, g.to_dict("records"), cfg,
+                            vc["stride"], vc["tta"], vc["amp"], vc["batch"], perm=perm, substitute_local=substitute)
+        gt = C.gt_crop(fb / split.loc[scene, "mask_path"], r["origin"], r["pred"].shape)
+        c = C.confusion(r["pred"], gt, r["valid"], r["union"]); c.update(scene=scene, size_bin=split.loc[scene, "size_bin"])
+        rows.append(c)
+        if keep_margin:
+            m = r["valid"] & r["union"]
+            margins[scene] = (r["margin"][m], (gt == 0)[m])
+    return X.macro3(rows), margins
+
+
+def cmd_counterfactual(a):
+    k = a.k
+    if k == 1:
+        raise SystemExit("counterfactuals are defined for K2/K4")
+    target = out_once(W / "eval" / f"counterfactual_K{k}.json")
+    cfg, model, device, t = load(k)
+    split = split_df()
+    rois = val_rois()
+    w, ds = window_coverage(split, cfg, k, set(rois.scene))
+    mapping, nbins = derange(w)
+    (W / "eval" / f"derangement_K{k}.json").write_text(json.dumps(
+        [[*w.loc[a_, ["scene", "x", "y"]].tolist(), *w.loc[d_, ["scene", "x", "y"]].tolist()] for a_, d_ in mapping.items()],
+        default=int))
+    key = {(r.scene, r.x, r.y): i for i, r in w.iterrows()}
+
+    def perm_for(scene):
+        out = {}
+        for i in w.index[w.scene == scene]:
+            d = mapping[i]
+            out[(int(w.loc[i, "x"]), int(w.loc[i, "y"]))] = ds.sample(d, 0, augment=False)[1]
+        return out
+
+    full, mf = score_rows(model, device, cfg, split, rois, keep_margin=True)
+    der, _ = score_rows(model, device, cfg, split, rois, perm_for=perm_for)
+    sub, ms = score_rows(model, device, cfg, split, rois, substitute=True, keep_margin=True)
+    dm = np.concatenate([np.abs(mf[s][0] - ms[s][0]) for s in mf])
+    oil = np.concatenate([mf[s][1] for s in mf])
+    A = 0.5 * (float(dm[oil].mean()) + float(dm[~oil].mean()))
+    res = dict(k=k, checkpoint_sha256=t["best_sha256"], derangement_bins=nbins, n_windows=len(mapping),
+               full=full, deranged=der, substituted=sub,
+               derangement_drop_macro3=full["macro3"] - der["macro3"], A_identity=A, adopted=A >= 0.01,
+               note="descriptive only (decision v6)", n_key=len(key))
+    target.write_text(json.dumps(res, indent=1, default=float))
+    print(json.dumps({kk: res[kk] for kk in ("derangement_drop_macro3", "A_identity", "adopted")}, indent=1))
+
+
+# ----------------------------------------------------------------------------------------------- pilot
+def collapsed(v):
+    return v["all"]["recall"] <= 0.01 or v["all"]["pred_to_gt"] <= 0.01
+
+
+def cmd_pilot(_):
+    target = out_once(W / "pilot_result.json")
+    runs = {}
+    for k in (1, 2, 4):
+        t = rj(run_dir(k) / "train_complete.json")
+        v = rj(run_dir(k) / "val_best.json")
+        tta = rj(W / "eval" / f"val_tta_K{k}.json")
+        if tta["checkpoint_sha256"] != t["best_sha256"]:
+            raise SystemExit(f"K{k}: val_tta is not of best.pt")
+        runs[k] = dict(macro3=t["best_val_macro3"], best_ve=t["best_virtual_epoch"], collapse=collapsed(v),
+                       val_best=v, recall_gt20px_tta=tta["recall_gt20px"], tta_metrics=tta["metrics"],
+                       recall_6_20px_tta=tta["recall_6_20px"], fn_share_gt20px_tta=tta["fn_share_gt20px"],
+                       top_component_share_gt20px=tta["top_component_share_gt20px"])
+    r1 = runs[1]
+    ph = r1["fn_share_gt20px_tta"] >= 0.30 and r1["recall_gt20px_tta"] <= r1["recall_6_20px_tta"] - 0.15
+    phenotype = ("dominated by one scene/component" if (r1["top_component_share_gt20px"] or 0) > 0.5
+                 else "phenotype replicated" if ph else "phenotype not replicated")
+    cls = {}
+    for k in (2, 4):
+        rk = runs[k]
+        d_m, d_r = rk["macro3"] - r1["macro3"], rk["recall_gt20px_tta"] - r1["recall_gt20px_tta"]
+        if r1["collapse"]:
+            c = "不可判定（K1 collapse）"
+        elif rk["collapse"]:
+            c = "不可判定（treatment collapse）"
+        elif d_m >= 0.05 and d_r >= 0.10:
+            c = "值得補 seed"
+        elif d_m <= -0.05:
+            c = "pilot 負向"
+        elif d_m >= 0.05:
+            c = "不可判定—非預期效益訊號"
+        else:
+            c = "不可判定"
+        cls[f"K{k}"] = dict(delta_macro3=d_m, delta_recall_gt20px=d_r, classification=c)
+    res = dict(decision="v6", runs=runs, k1_phenotype=phenotype, classification=cls)
+    target.write_text(json.dumps(res, indent=1, ensure_ascii=False, default=float))
+    print(json.dumps(dict(k1_phenotype=phenotype, classification=cls), indent=1, ensure_ascii=False))
+
+
+# ----------------------------------------------------------------------------------------------- Taiwan
+def cmd_taiwan(a):
+    k = a.k
+    final = W / "predictions" / f"CTX_K{k}"
+    if final.exists():
+        raise SystemExit(f"{final} exists")
+    tmp = W / "predictions" / f".CTX_K{k}.tmp"
+    shutil.rmtree(tmp, ignore_errors=True)
+    tmp.mkdir(parents=True)
+    cfg, model, device, t = load(k)
+    tc = cfg["test"]
+    rois = pd.read_csv(L / "rois_taiwan.csv")
+    if SMOKE_TW:
+        rois = rois[rois.scene.isin(sorted(rois.scene.unique())[:SMOKE_TW])]
+    files = {}
+    for i, scene in enumerate(sorted(rois.scene.unique())):
+        g = rois[rois.scene == scene]
+        r = X.predict_scene(model, device, g.vrt.iloc[0], None, g.to_dict("records"), cfg,
+                            tc["stride"], tc["tta"], tc["amp"], tc["batch"])
+        f = tmp / f"{i:02d}.npz"
+        np.savez_compressed(f, scene=scene, origin=np.asarray(r["origin"]), pred=r["pred"], prob_oil=r["prob_oil"],
+                            valid=r["valid"], union=r["union"])
+        files[f.name] = dict(scene=scene, sha256=C.sha256(f))
+        print(f"[taiwan K{k}] {i + 1}/{rois.scene.nunique()} {scene}", flush=True)
+    (tmp / "manifest.json").write_text(json.dumps(dict(k=k, checkpoint_sha256=t["best_sha256"], operator=tc,
+                                                       files=files), indent=1, ensure_ascii=False))
+    os.replace(tmp, final)
+
+
+def cmd_taiwan_eval(a):
+    if not a.allow_target_gt:
+        raise SystemExit("needs --allow-target-gt")
+    if not (W / "pilot_result.json").exists():
+        raise SystemExit("Taiwan is read only after the VAL pilot classification is frozen")
+    target = out_once(W / "eval" / "taiwan_eval.json")
+    reg = {s["scene_id"]: s for s in rj(REGISTRY)["all_scenes"]}
+    res = {}
+    for k in (1, 2, 4):
+        d = W / "predictions" / f"CTX_K{k}"
+        man = rj(d / "manifest.json")
+        rows = []
+        for fname, info in man["files"].items():
+            if C.sha256(d / fname) != info["sha256"]:
+                raise SystemExit(f"{d}/{fname} changed")
+            z = np.load(d / fname)
+            scene = str(z["scene"])
+            gt = C.gt_crop(reg[scene]["mask"], tuple(int(v) for v in z["origin"]), z["pred"].shape)
+            c = C.confusion(z["pred"], gt, z["valid"], z["union"]); c["subset"] = "dalin" if DALIN in scene else "other"
+            rows.append(c)
+        if sum(r["subset"] == "dalin" for r in rows) != 2 or len(rows) != 24:
+            raise SystemExit("subsets are not 2 + 22")
+        res[f"K{k}"] = {s: C.pooled([r for r in rows if r["subset"] == s]) for s in ("dalin", "other")}
+    res["delta"] = {f"K{k}": {s: res[f"K{k}"][s]["iou"] - res["K1"][s]["iou"] for s in ("dalin", "other")} for k in (2, 4)}
+    res["note"] = "descriptive only; single seed; never used for selection (decision v6)"
+    target.write_text(json.dumps(res, indent=1, default=float))
+    print(json.dumps(res["delta"], indent=1))
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("cmd", choices=("val_tta", "counterfactual", "pilot", "taiwan", "taiwan_eval"))
+    ap.add_argument("--k", type=int, choices=(1, 2, 4))
+    ap.add_argument("--allow-target-gt", action="store_true")
+    ap.add_argument("--smoke-work", default=None, help="smoke only: alternative work dir with train_K*_S42 runs")
+    ap.add_argument("--smoke-val-scenes", type=int, default=0, help="smoke only: first N VAL scenes per bin")
+    ap.add_argument("--smoke-taiwan-scenes", type=int, default=0)
+    a = ap.parse_args()
+    global W, SMOKE_VAL, SMOKE_TW
+    if a.smoke_work:
+        W = Path(a.smoke_work)
+        SMOKE_VAL, SMOKE_TW = a.smoke_val_scenes, a.smoke_taiwan_scenes
+        if a.allow_target_gt:
+            raise SystemExit("smoke may not read Taiwan GT")
+    if a.cmd in ("val_tta", "counterfactual", "taiwan") and a.k is None:
+        raise SystemExit("--k required")
+    dict(val_tta=cmd_val_tta, counterfactual=cmd_counterfactual, pilot=cmd_pilot, taiwan=cmd_taiwan,
+         taiwan_eval=cmd_taiwan_eval)[a.cmd](a)
+
+
+if __name__ == "__main__":
+    main()
+
+===== FILE: build_lists.py =====
+"""ctx k2k4 v6 lists: GoM-only 195-scene pool, size-stratified VAL 10/10/10 by exact group DP, P44 ROI/windows.
+
+Pool + size bins + duplicate groups come from the frozen GoM v1 registry (FOLD_ASSIGNMENT_V1.csv; v1 folds unused).
+Split (decision v6): groups sorted by id, permuted with default_rng(20261111); 0/1 DP over count states
+(n_small, n_medium, n_large) <= (10,10,10), states visited in lexicographic order, first-reached predecessor kept;
+target (10,10,10) unreachable -> fail. ROIs/windows: P44 build_p44_windows.scene_job unchanged
+(TRAIN stride 128, keep invalid_frac <= .10; VAL stride 256, keep all). Taiwan lists copied from P44.
+Disclosure: old P44 drop_leak scenes' side, old split_leak_pairs crossing, cross-side oil-bbox / ROI overlaps.
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import shutil
+import sys
+from multiprocessing import Pool
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import rasterio
+from rasterio.warp import transform_bounds
+
+HERE = Path(__file__).resolve().parent
+P44 = HERE.parent / "p44_roi_sliding_global_20261106"
+V1 = HERE.parent / "gom_size_balanced_3fold_v1_20261111"
+sys.path.insert(0, str(P44))
+import build_p44_windows as BW  # noqa: E402
+import p44_roi as R  # noqa: E402
+
+ROOT = Path(BW.ROOT)
+P44_LISTS = Path("/home/alanyh/oil_dataset/new/_p44_roi_sliding_20261106/lists")
+SPLIT_SEED, PER_BIN = 20261111, 10
+BINS = ("small", "medium", "large")
+COPY = ("rois_taiwan.csv", "windows_taiwan.tsv", "taiwan_identity_audit.json")
+
+
+def sha256(p):
+    h = hashlib.sha256()
+    with open(p, "rb") as f:
+        for b in iter(lambda: f.read(1 << 20), b""):
+            h.update(b)
+    return h.hexdigest()
+
+
+def dp_split(pool: pd.DataFrame) -> set[str]:
+    vec = pool.groupby("duplicate_group_id").size_bin.agg(lambda s: tuple(int((s == b).sum()) for b in BINS))
+    ids = sorted(vec.index)
+    order = [ids[i] for i in np.random.default_rng(SPLIT_SEED).permutation(len(ids))]
+    reach = {(0, 0, 0): None}                       # state -> (prev_state, group_id)
+    for gid in order:
+        v = vec[gid]
+        for s in sorted(reach):                     # snapshot, lexicographic
+            n = tuple(a + b for a, b in zip(s, v))
+            if max(n) <= PER_BIN and n not in reach:
+                reach[n] = (s, gid)
+    target = (PER_BIN,) * 3
+    if target not in reach:
+        raise SystemExit("target (10,10,10) unreachable under group constraint; fail-closed")
+    chosen, s = set(), target
+    while reach[s] is not None:
+        s, gid = reach[s]
+        chosen.add(gid)
+    return chosen
+
+
+def footprints(scenes, vrt_of):
+    out = {}
+    for s in scenes:
+        with rasterio.open(ROOT / vrt_of[s]) as src:
+            out[s] = (src.crs, src.transform)
+    return out
+
+
+def box84(crs, tf, x0, y0, x1, y1):
+    a, b = tf * (x0, y0), tf * (x1, y1)
+    return transform_bounds(crs, "EPSG:4326", min(a[0], b[0]), min(a[1], b[1]), max(a[0], b[0]), max(a[1], b[1]))
+
+
+def hit(a, b):
+    return not (a[2] <= b[0] or b[2] <= a[0] or a[3] <= b[1] or b[3] <= a[1])
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--out", required=True)
+    ap.add_argument("--workers", type=int, default=8)
+    a = ap.parse_args()
+    out = Path(a.out)
+    if out.exists():
+        raise SystemExit(f"{out} exists; refuse to overwrite")
+    reg = json.loads((V1 / "SPLIT_REGISTRY_V1.json").read_text())
+    pool = pd.read_csv(V1 / "FOLD_ASSIGNMENT_V1.csv")
+    man = pd.read_csv(ROOT / "manifest.csv")
+    gom = man[man.splits_sv2.notna() & man.event_group.eq("NOAA_Gulf_of_Mexico_High_Confidence")]
+    if set(gom.scene_id) != set(pool.scene_id) or len(pool) != 195 or pool.scene_id.duplicated().any():
+        raise SystemExit("v1 pool != manifest GoM High Confidence with splits_sv2")
+
+    val_groups = dp_split(pool)
+    pool["split"] = np.where(pool.duplicate_group_id.isin(val_groups), "val", "train")
+    cnt = pool.groupby(["split", "size_bin"]).size().unstack()
+    if not ((cnt.loc["val", list(BINS)] == PER_BIN).all() and (cnt.loc["train", list(BINS)] == 55).all()):
+        raise SystemExit(f"bin counts wrong:\n{cnt}")
+    if pool.groupby("duplicate_group_id").split.nunique().max() != 1:
+        raise SystemExit("a duplicate group spans both sides")
+
+    mi = man.set_index("scene_id")
+    tmp = out.parent / f".{out.name}.tmp"
+    shutil.rmtree(tmp, ignore_errors=True)
+    tmp.mkdir(parents=True)
+    sp = pool.merge(mi[["vrt_home", "mask_path"]], left_on="scene_id", right_index=True)
+    sp["region"], sp["oil_bin"] = "GoM", sp.size_bin
+    sp[["scene_id", "split", "size_bin", "oil_bin", "region", "largest_component_px", "oil_px", "date", "sensor",
+        "tile", "duplicate_group_id", "vrt_home", "mask_path"]].to_csv(tmp / "split_scenes.csv", index=False)
+
+    jobs = [(r.scene_id, str(ROOT / r.vrt_home), str(ROOT / r.mask_path), r.split) for r in sp.itertuples()]
+    with Pool(a.workers) as p:
+        res = p.map(BW.scene_job, jobs, chunksize=1)
+    counts, rois_all = {}, {}
+    for split in ("train", "val"):
+        rois = [r for s_, rr, _, _, _ in res if s_ == split for r in rr]
+        rows = [w for s_, _, ww, _, _ in res if s_ == split for w in ww]
+        pd.DataFrame(rois).to_csv(tmp / f"rois_{split}.csv", index=False)
+        rois_all[split] = rois
+        w = pd.DataFrame(rows)
+        w["keep"] = (w.invalid_frac <= BW.INVALID_MAX).astype(int) if split == "train" else 1
+        w.to_csv(tmp / f"windows_{split}.tsv", sep="\t", index=False)
+        k = w[w.keep == 1]
+        (tmp / f"{split}_windows.txt").write_text("".join(f"{s}_patch_x{x}_y{y}\n" for s, x, y in zip(k.scene, k.x, k.y)))
+        per = k.groupby("scene").size()
+        missing = set(sp[sp.split == split].scene_id) - set(per.index)
+        if missing:
+            raise SystemExit(f"{split}: scenes without kept windows: {sorted(missing)[:3]}")
+        counts[split] = dict(scenes=int(w.scene.nunique()), rois=len(rois), windows=len(w),
+                             dropped_invalid=int((w.keep == 0).sum()), kept=len(k),
+                             kept_oil_windows=int((k.oil_px > 0).sum()), kept_oil_px=int(k.oil_px.sum()))
+    max_side = max(m for _, _, _, m, _ in res)
+    pd.DataFrame([x[4] for x in res]).to_csv(tmp / "source_inventory.csv", index=False)
+    for f in COPY:
+        shutil.copy2(P44_LISTS / f, tmp / f)
+
+    # ---- disclosure
+    old = pd.read_csv(P44_LISTS / "split_scenes.csv").set_index("scene_id")
+    side = sp.set_index("scene_id").split
+    drop_leak = {s: side[s] for s in old.index[old.split == "drop_leak"] if s in side.index}
+    lp = pd.read_csv(P44_LISTS / "split_leak_pairs.csv")
+    lp = lp[lp.val_scene.isin(side.index) & lp.train_scene.isin(side.index)]
+    leak_cross = int((side[lp.val_scene].values != side[lp.train_scene].values).sum())
+    geo = footprints(side.index, mi.vrt_home)
+    boxes = {}
+    for split in ("train", "val"):
+        for r in rois_all[split]:
+            crs, tf = geo[r["scene"]]
+            boxes.setdefault(r["scene"], []).append((box84(crs, tf, r["bx0"], r["by0"], r["bx1"], r["by1"]),
+                                                     box84(crs, tf, r["rx0"], r["ry0"], r["rx1"], r["ry1"])))
+    vs, ts = side.index[side == "val"], side.index[side == "train"]
+    oil_pairs = roi_pairs = 0
+    for v in vs:
+        for t in ts:
+            oil_pairs += any(hit(a[0], b[0]) for a in boxes[v] for b in boxes[t])
+            roi_pairs += any(hit(a[1], b[1]) for a in boxes[v] for b in boxes[t])
+    vp = sp[sp.split == "val"]
+    by_bin = {b: dict(gt_oil_px_scene_total=int(g.oil_px.sum()), max_scene_share=float(g.oil_px.max() / g.oil_px.sum()),
+                      max_scene=g.loc[g.oil_px.idxmax(), "scene_id"]) for b, g in vp.groupby("size_bin")}
+    disclosure = dict(old_p44_drop_leak_side=drop_leak, old_split_leak_pairs_in_pool=len(lp),
+                      old_split_leak_pairs_crossing=leak_cross, cross_side_scene_pairs_oil_bbox_overlap=oil_pairs,
+                      cross_side_scene_pairs_roi_overlap=roi_pairs, val_bins=by_bin,
+                      max_component_side=int(max_side), L_MAX=R.L_MAX)
+    (tmp / "disclosure.json").write_text(json.dumps(disclosure, indent=1, ensure_ascii=False))
+    outs = sorted(f.name for f in tmp.iterdir())
+    manifest = dict(split_seed=SPLIT_SEED, per_bin=PER_BIN, v1_registry=reg.get("status"),
+                    v1_sha256={f: sha256(V1 / f) for f in ("FOLD_ASSIGNMENT_V1.csv", "SPLIT_REGISTRY_V1.json")},
+                    full_band_manifest_sha256=sha256(ROOT / "manifest.csv"), val_groups=sorted(val_groups),
+                    bin_counts={k: {b: int(v) for b, v in r.items()} for k, r in cnt.to_dict("index").items()},
+                    counts=counts, stride=BW.STRIDE, invalid_max=BW.INVALID_MAX,
+                    sha256={f: sha256(tmp / f) for f in outs},
+                    code_sha256={"build_lists.py": sha256(__file__),
+                                 **{f: sha256(P44 / f) for f in ("build_p44_windows.py", "p44_roi.py", "p44_common.py")}})
+    (tmp / "build_manifest.json").write_text(json.dumps(manifest, indent=1, ensure_ascii=False))
+    os.replace(tmp, out)
+    print(json.dumps(dict(counts=counts, bins=manifest["bin_counts"], disclosure=disclosure), indent=1, ensure_ascii=False))
+
+
+if __name__ == "__main__":
+    main()
+
+===== FILE: build_cache.py =====
+"""Lossless same-resolution read cache for TRAIN (I/O gate G5 remedy; values bit-identical to the VRT read).
+
+Source TIFs are LZW, 2-row strips at full width, so any window read decodes whole image rows. Per TRAIN scene we store
+the union bbox of its ROIs expanded by MARGIN = (4-1)*128 (largest context), clipped to the image: the six model
+slots (B02 B03 B04 B8A B11 B12; slots 0/4 are zeroed for every read, see ctx_common.make_pair) as uint16 and the
+mask as uint8, each a 256-tiled ZSTD(level 1, predictor 2) GeoTIFF (lossless). VRT = 8 nearest SimpleSources of
+uint16 TIFs -> integer float32; checked here: every value integral and in [0, 65535]. ctx_common.cached_pair falls
+back to the VRT for any window not fully inside the cached bbox. Bitwise equivalence: preflight G6.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from multiprocessing import Pool
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import rasterio
+from rasterio.windows import Window
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+MARGIN = 384
+FB = Path("/home/alanyh/oil_dataset/new/full_band")
+
+
+MODEL_SLOTS = [1, 2, 3, 5, 6, 7]
+
+
+def write(path, a):
+    with rasterio.open(path, "w", driver="GTiff", width=a.shape[2], height=a.shape[1], count=a.shape[0],
+                       dtype=a.dtype, tiled=True, blockxsize=256, blockysize=256, compress="ZSTD", zstd_level=1,
+                       predictor=2, interleave="pixel") as d:
+        d.write(a)
+
+
+def job(args):
+    scene, vrt, mask, rois, out = args
+    with rasterio.open(vrt) as src, rasterio.open(mask) as msrc:
+        H, W = src.height, src.width
+        x0 = max(min(r[0] for r in rois) - MARGIN, 0); y0 = max(min(r[1] for r in rois) - MARGIN, 0)
+        x1 = min(max(r[2] for r in rois) + MARGIN, W); y1 = min(max(r[3] for r in rois) + MARGIN, H)
+        win = Window(x0, y0, x1 - x0, y1 - y0)
+        a = src.read(window=win)
+        if not (np.isfinite(a).all() and (a == np.round(a)).all() and a.min() >= 0 and a.max() <= 65535):
+            raise RuntimeError(f"{scene}: VRT values not uint16-exact")
+        m = msrc.read(1, window=win)
+    write(out / f"{scene}.img.tif", a[MODEL_SLOTS].astype(np.uint16))
+    write(out / f"{scene}.mask.tif", m[None].astype(np.uint8))
+    return scene, dict(x0=int(x0), y0=int(y0), x1=int(x1), y1=int(y1), H=int(H), W=int(W), count=int(a.shape[0]))
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--lists", required=True)
+    ap.add_argument("--out", required=True)
+    ap.add_argument("--workers", type=int, default=6)
+    a = ap.parse_args()
+    out = Path(a.out)
+    if (out / "index.json").exists():
+        raise SystemExit("cache exists")
+    out.mkdir(parents=True, exist_ok=True)
+    L = Path(a.lists)
+    split = pd.read_csv(L / "split_scenes.csv").set_index("scene_id")
+    rois = pd.read_csv(L / "rois_train.csv")
+    jobs = [(s, str(FB / split.loc[s, "vrt_home"]), str(FB / split.loc[s, "mask_path"]),
+             list(zip(g.rx0, g.ry0, g.rx1, g.ry1)), out) for s, g in rois.groupby("scene")]
+    with Pool(a.workers) as p:
+        idx = dict(p.imap_unordered(job, jobs))
+    (out / "index.json").write_text(json.dumps(dict(margin=MARGIN, scenes=idx), indent=1, ensure_ascii=False))
+    print(len(idx), "scenes cached")
+
+
+if __name__ == "__main__":
+    main()
+
+===== FILE: preflight_ctx.py =====
+"""ctx k2k4 v6 preflight gates (fail-closed). Writes <out>/preflight.json.
+
+G1 geometry   : (a) feature-level alignment of a coordinate ramp, centre error <= 0.5 source px (K2, K4);
+                (b) real data: centre (P/k)^2 block of the context image == area(local, k) (<= 1e-6).
+G2 K1 identity: dataset (with augmentation) xc == xl, ctx target == local target; model fl == fc, ca == fl,
+                aux_c == aux_l (all <= 1e-6).
+G3 soft Tversky == P44 TverskyLoss on hard targets: |loss| <= 1e-6, grad rel <= 1e-5.
+G4 memory     : K4 batch 16 training steps, peak reserved <= 30.5 GiB.
+G5 I/O        : K4 data-only throughput (400 batches) >= 1.2 x GPU step rate.
+D1 disclosure : raw-255 fraction in local vs context footprints (K2, K4), TRAIN/VAL samples (descriptive).
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+import time
+from pathlib import Path
+
+os.environ.setdefault("GDAL_CACHEMAX", "128")   # before any GDAL use (see ctx_common)
+
+import numpy as np
+import pandas as pd
+import rasterio
+import torch
+import torch.nn.functional as F
+from torch.utils.data import DataLoader
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import ctx_common as X  # noqa: E402
+from ctx_common import C  # noqa: E402
+import train_ctx as T  # noqa: E402
+from deeplab_adapter import TverskyLoss  # noqa: E402
+
+W = Path("/home/alanyh/oil_dataset/new/_ctx_k2k4_20261111")
+
+
+def cfg_k(k):
+    return C.load_config(W / "configs" / f"ctx_K{k}_S42.yaml")
+
+
+def lists():
+    L = W / "lists"
+    split = pd.read_csv(L / "split_scenes.csv").set_index("scene_id")
+    files = [l.strip() for l in open(L / "train_windows.txt") if l.strip()]
+    vfiles = [l.strip() for l in open(L / "val_windows.txt") if l.strip()]
+    return split, files, vfiles
+
+
+def g1_geometry(split, files):
+    res = {}
+    for k in (2, 4):
+        # (a) context feature cell j centre (source px, rel. to context origin) = (j+.5)*16k; local cell i centre
+        # rel. to context origin = o + (i+.5)*16. Align a ramp feature map and compare.
+        o = (k - 1) * X.P // 2
+        ramp = ((torch.arange(16, dtype=torch.float64) + 0.5) * 16 * k)
+        fc = ramp.view(1, 1, 1, 16).expand(1, 1, 16, 16).contiguous()
+        m = X.CtxSeg.__new__(X.CtxSeg)
+        torch.nn.Module.__init__(m)
+        m.k = k
+        got = m.align(fc)[0, 0, 8]
+        want = o + (torch.arange(16, dtype=torch.float64) + 0.5) * 16
+        err_feat = float((got - want).abs().max())
+        # (b) real data: centre (P/k)^2 block of the context == float32 area() of the local clean image, and
+        #     the full context == float reference N/D over the full-res clean window (<= 1e-6)
+        ds = T.CtxDataset(files[::5000][:8], split, cfg_k(k), k, 42)
+        errs, ref_errs = [], []
+        for i in range(len(ds)):
+            scene, x, y = ds.items[i]
+            src, msrc = ds._pair(scene)
+            cx, cy = X.ctx_origin(x, y, k)
+            raw, rm = X.read_raw(src, msrc, cx, cy, k * X.P)
+            li, ll, ci, D, q, w = X.make_pair(raw, rm, k, ds.ds["pixel_mapping"])
+            img = np.zeros((8, k * X.P, k * X.P), np.float32)
+            img[X.SLOTS] = raw.astype(np.float32) / 10000.0
+            v = (raw > 0).all(0).astype(np.float32)
+            Dr = X.area(v, k)
+            ref = np.where(Dr[None] > 0, X.area(img * v, k) / np.where(Dr > 0, Dr, 1)[None], X.area(img, k))
+            ref_errs.append(float(np.abs(ci - ref).max()))
+            if not (raw[:, o:o + X.P, o:o + X.P] > 0).all():
+                continue
+            c0 = o // k
+            errs.append(float(np.abs(ci[:, c0:c0 + X.P // k, c0:c0 + X.P // k] - X.area(li, k)).max()))
+        res[f"K{k}"] = dict(feature_centre_err_px=err_feat, block_err=max(errs) if errs else None, n_block=len(errs),
+                            ref_err=max(ref_errs))
+    passed = all(v["feature_centre_err_px"] <= 0.5 and v["block_err"] is not None and v["block_err"] <= 1e-6
+                 and v["ref_err"] <= 1e-6 for v in res.values())
+    return dict(passed=passed, **res)
+
+
+def g2_k1_identity(split, files, model, device):
+    ds = T.CtxDataset(files[::997][:64], split, cfg_k(1), 1, 42)
+    md = 0.0
+    batch = []
+    for i in range(len(ds)):
+        xl, xc, m, cq, cw, _ = ds.sample(i, 1000 + i)
+        q, vm = X.hard_to_soft(m)
+        md = max(md, float((xl - xc).abs().max()), float((q - cq).abs().max()), float((vm - cw).abs().max()))
+        batch.append((xl, xc))
+    xl = torch.stack([b[0] for b in batch[:16]]).to(device)
+    xc = torch.stack([b[1] for b in batch[:16]]).to(device)
+    model.eval()
+    with torch.no_grad():
+        o = model(xl, xc)
+    fd = float((o["fl"] - o["ca"]).abs().max())
+    ad = float((o["aux_l"] - o["aux_c"]).abs().max())
+    return dict(passed=md <= 1e-6 and fd <= 1e-6 and ad <= 1e-6, data_max_diff=md, feature_max_diff=fd, aux_max_diff=ad)
+
+
+def g3_tversky(device):
+    g = torch.Generator().manual_seed(0)
+    logits = torch.randn(4, 2, 64, 64, generator=g, dtype=torch.float64)
+    mask = torch.randint(0, 2, (4, 64, 64), generator=g)
+    mask[:, :5] = 255
+    a, b = logits.clone().requires_grad_(), logits.clone().requires_grad_()
+    l1 = TverskyLoss(alpha=0.3, beta=0.7, oil_class=0, ignore_index=255)(a, mask)
+    q, vm = X.hard_to_soft(mask)
+    l2 = X.SoftTversky()(b, q.double(), vm.double())
+    l1.backward(); l2.backward()
+    rel = float((a.grad - b.grad).norm() / a.grad.norm())
+    return dict(passed=abs(float(l1 - l2)) <= 1e-6 and rel <= 1e-5, loss_diff=abs(float(l1 - l2)), grad_rel=rel)
+
+
+def g6_cache_equivalence(split, files, n=300):
+    """Cached reader == VRT reader, bitwise, for local/K2/K4 windows incl. image-edge and out-of-image ones."""
+    cfg = cfg_k(4)
+    cache = Path(cfg["ctx"]["cache"])
+    ds_c = T.CtxDataset(files, split, cfg, 4, 42, cache)
+    ds_v = T.CtxDataset(files, split, cfg, 4, 42, None)
+    rng = np.random.default_rng(7)
+    picks = rng.choice(len(files), n, replace=False)
+    worst, checked, hits = 0, 0, 0
+    for i in picks:
+        scene, x, y = ds_c.items[i]
+        sc, mc = ds_c._pair(scene)
+        sv, mv = ds_v._pair(scene)
+        for side, (xx, yy) in ((256, (x, y)), (512, X.ctx_origin(x, y, 2)), (1024, X.ctx_origin(x, y, 4)),
+                               (1024, (-200, y)), (1024, (sc.width - 600, sc.height - 300))):
+            a = X.read_raw(sc, mc, xx, yy, side)
+            b = X.read_raw(sv, mv, xx, yy, side)
+            same = all(np.array_equal(p, q) for p, q in zip(a, b))
+            worst += int(not same)
+            checked += 1
+        b = sc.box
+        hits += int(b["x0"] <= X.ctx_origin(x, y, 4)[0] and X.ctx_origin(x, y, 4)[0] + 1024 <= b["x1"])
+    for i in picks[:16]:   # whole training sample, K4, with augmentation
+        p, q = ds_c.sample(int(i), 5), ds_v.sample(int(i), 5)
+        same = all(torch.equal(u, v) if torch.is_tensor(u) else u == v for u, v in zip(p, q))
+        worst += int(not same)
+        checked += 1
+    rep = dict(passed=worst == 0, mismatches=worst, checked=checked, k4_windows_inside_cache=hits, n_windows=n)
+    (cache / "equivalence.json").write_text(json.dumps(rep, indent=1))
+    return rep
+
+
+def g4_g5(split, files, steps, io_batches, workers):
+    cfg = cfg_k(4)
+    model, device = X.build(cfg, 4, 42)
+    opt = torch.optim.AdamW(T.param_groups(model, 5e-5, 0.1), weight_decay=1e-3)
+    scaler = torch.cuda.amp.GradScaler()
+    ds = T.CtxDataset(files, split, cfg, 4, 42, cfg["ctx"]["cache"])
+    sampler = T.PosSampler(len(files), (steps + io_batches) * 16, 42)
+    dl = DataLoader(ds, batch_size=16, sampler=sampler, num_workers=workers, collate_fn=T.collate, drop_last=True,
+                    pin_memory=True, persistent_workers=False, worker_init_fn=T.worker_init)
+    it = iter(dl)
+    pre = [next(it) for _ in range(4)]
+    torch.cuda.reset_peak_memory_stats()
+    model.train()
+    times = []
+    for s in range(steps):
+        xl, xc, m, cq, cw, _ = pre[s % len(pre)]
+        torch.cuda.synchronize(); t = time.time()
+        with torch.autocast("cuda"):
+            o = model(xl.to(device), xc.to(device))
+            loss, _ = X.total_loss(o, m.to(device), cq.to(device), cw.to(device))
+        scaler.scale(loss).backward()
+        scaler.unscale_(opt)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        scaler.step(opt); scaler.update(); opt.zero_grad(set_to_none=True)
+        torch.cuda.synchronize(); times.append(time.time() - t)
+    peak = torch.cuda.max_memory_reserved() / 2**30
+    gpu_rate = 1.0 / float(np.median(times[5:]))
+    del model, opt
+    torch.cuda.empty_cache()
+    t = time.time()
+    n = 0
+    for _ in range(io_batches):
+        next(it); n += 1
+    io_rate = n / (time.time() - t)
+    return (dict(passed=peak <= 30.5, peak_reserved_gib=peak),
+            dict(passed=io_rate >= 1.2 * gpu_rate, data_batches_per_s=io_rate, gpu_steps_per_s=gpu_rate,
+                 ratio=io_rate / gpu_rate, workers=workers, batches=n))
+
+
+def d1_raw255(split, files, vfiles, n=300):
+    out = {}
+    for name, fl in (("train", files), ("val", vfiles)):
+        sel = fl[:: max(1, len(fl) // n)][:n]
+        for k in (2, 4):
+            ds = T.CtxDataset(sel, split, cfg_k(k), k, 42)
+            loc = ctx = loc_v = ctx_v = 0.0
+            for i in range(len(ds)):
+                scene, x, y = ds.items[i]
+                src, msrc = ds._pair(scene)
+                cx, cy = X.ctx_origin(x, y, k)
+                raw, rm = X.read_raw(src, msrc, cx, cy, k * X.P)
+                valid = (raw > 0).all(0)
+                o = (k - 1) * X.P // 2
+                lr, lvv = rm[o:o + X.P, o:o + X.P], valid[o:o + X.P, o:o + X.P]
+                loc += (lr == 255).mean(); ctx += (rm == 255).mean()
+                loc_v += ((lr == 255) & lvv).sum() / max(lvv.sum(), 1); ctx_v += ((rm == 255) & valid).sum() / max(valid.sum(), 1)
+            m = len(ds)
+            r = dict(local_255=loc / m, context_255=ctx / m, local_255_on_valid=loc_v / m, context_255_on_valid=ctx_v / m)
+            r["context_gt_2x_local_on_valid"] = bool(r["context_255_on_valid"] > 2 * r["local_255_on_valid"])
+            out[f"{name}_K{k}"] = r
+    return out
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--out", required=True)
+    ap.add_argument("--workers", type=int, default=8)
+    ap.add_argument("--steps", type=int, default=30)
+    ap.add_argument("--io-batches", type=int, default=400)
+    a = ap.parse_args()
+    os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+    split, files, vfiles = lists()
+    r = {}
+    r["G6_cache_equivalence"] = g6_cache_equivalence(split, files); print("G6", r["G6_cache_equivalence"], flush=True)
+    r["G1_geometry"] = g1_geometry(split, files); print("G1", r["G1_geometry"], flush=True)
+    r["G3_soft_tversky"] = g3_tversky(None); print("G3", r["G3_soft_tversky"], flush=True)
+    m1, dev = X.build(cfg_k(1), 1, 42)
+    r["G2_k1_identity"] = g2_k1_identity(split, files, m1, dev); print("G2", r["G2_k1_identity"], flush=True)
+    del m1
+    torch.cuda.empty_cache()
+    r["G4_memory"], r["G5_io"] = g4_g5(split, files, a.steps, a.io_batches, a.workers)
+    print("G4", r["G4_memory"], "\nG5", r["G5_io"], flush=True)
+    r["D1_raw255"] = d1_raw255(split, files, vfiles); print("D1", json.dumps(r["D1_raw255"], indent=1), flush=True)
+    r["all_gates_passed"] = all(v["passed"] for kk, v in r.items() if kk.startswith("G"))
+    r["code_sha256"] = {f: C.sha256(HERE / f) for f in ("ctx_common.py", "train_ctx.py", "preflight_ctx.py",
+                                                         "build_cache.py", "build_lists.py", "eval_ctx.py")}
+    Path(a.out).mkdir(parents=True, exist_ok=True)
+    (Path(a.out) / "preflight.json").write_text(json.dumps(r, indent=1, default=float))
+    print("ALL_GATES_PASSED", r["all_gates_passed"])
+
+
+if __name__ == "__main__":
+    main()
+
+===== FILE: make_configs.py =====
+"""Write ctx_K{1,2,4}_S42.yaml: p44_config.yaml + paths.{root,lists} + ctx.k (+ train.workers if --workers)."""
+import argparse, copy, json, sys
+from pathlib import Path
+import yaml
+HERE = Path(__file__).resolve().parent
+P44 = HERE.parent / "p44_roi_sliding_global_20261106"
+W = Path("/home/alanyh/oil_dataset/new/_ctx_k2k4_20261111")
+ap = argparse.ArgumentParser(); ap.add_argument("--workers", type=int, default=0); a = ap.parse_args()
+base = yaml.safe_load((P44 / "p44_config.yaml").read_text())
+(W / "configs").mkdir(parents=True, exist_ok=True)
+rec = {}
+for k in (1, 2, 4):
+    d = copy.deepcopy(base)
+    d["paths"]["root"], d["paths"]["lists"] = str(W), str(W / "lists")
+    d["ctx"] = {"k": k, "cache": str(W / "cache_train_zstd")}
+    if a.workers:
+        d["train"]["workers"] = a.workers
+    f = W / "configs" / f"ctx_K{k}_S42.yaml"
+    f.write_text(yaml.safe_dump(d, sort_keys=False, allow_unicode=True))
+    rec[f.name] = dict(k=k, workers=d["train"]["workers"])
+print(json.dumps(rec))
+
+===== FILE: launch.sh =====
+#!/bin/bash
+# ctx k2k4 v6 pilot: K1 -> K2 -> K4 (S42) training, then VAL TTA breakdowns, counterfactuals (K2/K4),
+# frozen pilot classification, image-only Taiwan predictions, and last the Taiwan scoring (Dalin 2 / other 22).
+# Holds the shared GPU lock for the whole sequence. Needs a clean tree and FROZEN.sha256 match.
+set -euo pipefail
+here=$(cd "$(dirname "$0")" && pwd)
+repo=$(cd "$here/../.." && pwd)
+W=/home/alanyh/oil_dataset/new/_ctx_k2k4_20261111
+lock=/home/alanyh/oil_dataset/new/.gpu_main_runner.lock
+log=$W/launch.log
+git_=(git -c safe.directory="$repo" -C "$repo")
+cd "$here"
+if ! "${git_[@]}" diff --quiet -- analysis/ctx_k2k4_20261111 || \
+   "${git_[@]}" status --porcelain -- analysis/ctx_k2k4_20261111 | grep -q '^?? '; then
+    echo 'ctx_k2k4 has uncommitted or untracked files; commit before launch' >&2; exit 2
+fi
+sha256sum -c --quiet FROZEN.sha256 || { echo 'code differs from FROZEN.sha256' >&2; exit 2; }
+python -c "import json,sys; r=json.load(open('$W/preflight/preflight.json')); sys.exit(0 if r['all_gates_passed'] else 1)" \
+    || { echo 'preflight gates not all passed' >&2; exit 2; }
+
+export PYTHONDONTWRITEBYTECODE=1 CUBLAS_WORKSPACE_CONFIG=:4096:8 WANDB_TAGS=CTX_K2K4_v6
+exec 9>"$lock" || { echo "cannot open GPU lock $lock" >&2; exit 3; }
+printf '[CTX] waiting for GPU lock at %s\n' "$(date -Is)" >> "$log"
+flock 9 || { echo 'flock failed' >&2; exit 3; }
+printf '[CTX] start=%s commit=%s pid=%s\n' "$(date -Is)" "$("${git_[@]}" rev-parse HEAD)" "$$" >> "$log"
+
+step() { printf '[CTX] %s begin %s\n' "$1" "$(date -Is)" >> "$log"; shift; "$@"; printf '[CTX] done %s\n' "$(date -Is)" >> "$log"; }
+for k in 1 2 4; do
+    step "train K$k" python train_ctx.py train --allow-train --config "$W/configs/ctx_K${k}_S42.yaml" \
+        --out "$W/train_K${k}_S42" > "$W/train_K${k}.log" 2>&1
+done
+for k in 1 2 4; do step "val_tta K$k" python eval_ctx.py val_tta --k $k >> "$W/eval.log" 2>&1; done
+step "pilot" python eval_ctx.py pilot >> "$W/eval.log" 2>&1
+for k in 2 4; do step "counterfactual K$k" python eval_ctx.py counterfactual --k $k >> "$W/eval.log" 2>&1 || printf "[CTX] counterfactual K%s FAILED (descriptive; continuing)\n" "$k" >> "$log"; done
+for k in 1 2 4; do step "taiwan K$k" python eval_ctx.py taiwan --k $k >> "$W/eval.log" 2>&1; done
+step "taiwan_eval" python eval_ctx.py taiwan_eval --allow-target-gt >> "$W/eval.log" 2>&1
+printf '[CTX] EXIT=0 %s\n' "$(date -Is)" >> "$log"
+
+===== P44 train_p44.py VirtualEpochSampler/Board are imported unchanged; p44_common.predict_scene/confusion/pooled/gt_crop unchanged =====
+---VERDICT---
+STANCE / BLOCKING / RESTATE / CONFIDENCE
+---END---

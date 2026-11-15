@@ -78,6 +78,12 @@ Context k×256 → resize256 → shared Prithvi ─→ F_context → ROI ─┘
 4. 所有比較固定 split、seed、loss、sampling、ASPP rates 與 evaluator；不得用 test GT 產生 action label、reward 或選尺度。
 5. 另報 dual-branch 的 memory、latency 與失敗邊界；共享 encoder 權重不代表計算量不增加。
 
+## 本專案實測狀態（fixed k=2／k=4）
+
+單 seed（S42）GoM-only pilot（ROI 固定倍率 context，無 RL，branch aggregation 融合）：VAL macro-3 K1 .340／K2 .376／K4 .373，Δ +.036／+.033，未達預先門檻 +.05；Δrecall_>20px +.365／+.450 達 +.10，但 K1 的 >20px GT 約 90% 來自單一元件。依凍結規則判「不可判定」，採用閘門 1 既未通過也未被否定。描述性訊號：模型依賴 context 輸入（derangement 使 macro-3 降 .25–.32）；large bin IoU 上升、medium 不升、small 不穩。臺灣僅作描述：大林 K2 −.128／K4 +.415，其他 22 張 +.043／+.101。是否補 seed 待使用者決定。詳見 [[20261112_ctx_k2k4_v6_pilot_不可判定_結果]]。
+
+- 2026-11-14 證據（補 seed S43／S44）：K2、K4 的 d_m 均值 +.035／+.032，判「探索性 fresh-seed 佐證」（探索性、同一 VAL 選模並評分、非 held-out）；large bin 排除 15RVM 後增益不明顯（d_Lx +.027／+.008），可能有小幅 medium 代價；採用閘門 1 仍未確認，閘門 2（oracle-k）尚未做。詳見 [[20261114_ctx_k2k4_補seed_探索性佐證_結果]]。
+
 ## 主要風險
 
 - 大倍率降採樣會消除細長、低對比油膜，因此 context-only 不可作主架構。
@@ -92,3 +98,8 @@ Context k×256 → resize256 → shared Prithvi ─→ F_context → ROI ─┘
 - [[20260731_ASPP_rate適配實驗]] — patch 內大 receptive field 的既有證據
 - [[GT_expand_pipeline]] — 現行 256×256 patch、Prithvi+DeepLabV3 管線
 - [[20260716_資料溯源洩漏與評估合約v1]] — 正式評估單位與外推限制
+
+## 變更紀錄
+
+- 2026-11-12｜新增「本專案實測狀態」，記 fixed k2/k4 pilot 不可判定｜依據 [[20261112_ctx_k2k4_v6_pilot_不可判定_結果]]
+- 2026-11-14｜「本專案實測狀態」追加補 seed 證據行｜依據 [[20261114_ctx_k2k4_補seed_探索性佐證_結果]]

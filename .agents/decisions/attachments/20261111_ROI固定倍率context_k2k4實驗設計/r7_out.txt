@@ -1,0 +1,10 @@
+確認，v6設計共識已收斂，無剩餘設計分歧。
+
+後續所有 split建立、VAL重跑、prereg凍結／commit、preflight及 GPU launch仍各自需要使用者個別授權；本次共識不推定任何執行授權。所有 launch gates維持 fail-closed，失敗時不得自行改 seed、batch、算子、K4、aux或門檻。
+
+---VERDICT---
+STANCE: ACCEPT
+BLOCKING: []
+RESTATE: v6以精確且不可挑選的GoM group-constrained split、三尺度等權macro-3及同seed三組pilot，在大幅降低算力成本的同時，保留了對dense-interior failure的預註冊機制檢查與所有實作完整性gates。
+CONFIDENCE: HIGH
+---END---

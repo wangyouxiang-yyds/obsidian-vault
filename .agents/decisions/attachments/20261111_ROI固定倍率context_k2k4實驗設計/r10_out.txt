@@ -1,0 +1,64 @@
+凍結鏈大致完整，但目前仍有兩個可直接由提供內容確認的 blocker，尚不能 commit 凍結。
+
+## BLOCKING
+
+1. **`launch.sh`呼叫不存在的 `eval_ctx.py complete`**
+
+   FROZEN中的 `eval_ctx.py` SHA仍是 R8的：
+
+   `9b30f204...6d4b958`
+
+   R8全文的 argparse choices及 dispatch都沒有 `complete`。因此目前 launch會在 Taiwan評分完成後執行：
+
+```bash
+python eval_ctx.py complete
+```
+
+   隨即因 invalid choice退出；不會產生 `completion.json`，也不會寫最後的 `EXIT=0`。
+
+   同一份舊 SHA也表示宣稱新增的 `counterfactual.interpretable/collapse`欄位尚未實際進入凍結版。
+
+   必須擇一：
+
+   - 在 `eval_ctx.py`真正加入 `complete` subcommand及 counterfactual欄位；或
+   - 移除 launch/card對這些功能的宣稱。
+
+   建議實作 subcommand，讓它只盤點產物存在性、checkpoint SHA及描述性分析失敗，不回頭改 pilot分類。
+
+2. **clean-tree檢查漏掉 staged changes**
+
+   現行：
+
+```bash
+git diff --quiet
+git status --porcelain | grep '^?? '
+```
+
+   會漏掉「已 staged但尚未 commit」的 tracked modifications。若同時 staged修改 `launch.sh`與 `FROZEN.sha256`，目前檢查可能通過；而 FROZEN不可能自我雜湊。
+
+   改成檢查 scoped porcelain完全為空，例如：
+
+```bash
+if [ -n "$("${git_[@]}" status --porcelain -- analysis/ctx_k2k4_20261111)" ]; then
+    echo 'ctx_k2k4 worktree/index is not clean' >&2
+    exit 2
+fi
+```
+
+   並新增負向測試：staged tracked modification必須在 sha/check前被拒絕。
+
+完成後，因 `eval_ctx.py`及 `launch.sh` SHA會改變，需：
+
+- 重新產生正式 preflight，使 `code_sha256`對應新 `eval_ctx.py`；
+- 重新產生 `FROZEN.sha256`；
+- 重跑 `freeze.py check`、`sha256sum -c`及 `bash -n`；
+- 更新卡片／FREEZE_RECORD中的最終 SHA。
+
+模型、cache、lists與數值 gates無其他異議；快取血緣以凍結 builder重建出330個完全相同檔案，已足以接受。
+
+---VERDICT---
+STANCE: REVISE
+BLOCKING: [1. 實作目前缺失的eval_ctx complete subcommand與已宣稱的counterfactual interpretable/collapse欄位，或同步移除launch/card宣稱, 2. launch clean-tree檢查必須拒絕staged tracked changes, 3. 修改後重新綁定preflight code SHA與FROZEN.sha256並通過正負向完整性測試]
+RESTATE: G1–G8、資料、cache與凍結輸入本身已經收斂；現在唯一實質問題是最後的launch腳本會呼叫尚不存在的命令，且clean-tree檢查仍容許staged變更繞過commit邊界。
+CONFIDENCE: HIGH
+---END---

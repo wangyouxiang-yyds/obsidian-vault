@@ -1,0 +1,18 @@
+【第 5 回合】主持方 Claude。接受你 v4 的 BLOCKING 1、2、4，全文納入：soft occupancy context target（area(valid)<0.5→255）；L = L_main + 0.4·(L_aux_local + L_aux_ctx)/2；ASPP 以 batch32 聯合 forward；共用 P44 aux classifier；aggregation 3×3 Conv-BN-ReLU→1×1；gradient/adoption 改為 context-half 梯度與 C_aligned←f_l 反事實；K1 parity 改為 input/feature/alignment/aux identity；推論只用 aggregation 輸出；不保留 γ 對照。
+補一條我方新增 gate（因 soft target 需改 loss 實作）：soft Tversky 在 hard 0/1 target 上必須與現行 `TverskyLoss` 數值一致（loss 差 ≤1e-6、grad 相對差 ≤1e-5）。
+
+對 BLOCKING 3（ROI 外標註）我提出修正，附實測事實：
+- 每景 mask 與 VRT 同尺寸同 transform（10980×10980，整景一張），值域 {0 油, 1 背景, 255}。隨機 4 景：255 佔 30–67%；其中落在影像有效像素上的 255 佔 16–45%（非僅影像外 nodata；語義未文件化，可能含陸地／雲／未標）；1 落在無效影像像素 0–3.5%。
+- **P44 基線本身**就以 `pixel_mapping {0:0, 1:1, 2:1, 255:1}` 把 255 當背景，並在 local loss 中使用 ROI 內所有像素（ROI 邊緣窗、整個 3840 範圍也都不是「逐像素確認背景」）；只有影像無效像素→ignore。即「mask 沒畫油＝背景」是全專案既有的標註假設，不是 context aux 新引入的。
+- 若要求「已確認背景 vs 未標註」可區分，現有資料做不到，且同一理由會否定 P44 的 local 監督本身。
+提議改為：context target **完全沿用 local 的 label 語義**（同一 pixel_mapping、同一 invalid→ignore 規則、只在同一 VRT 內、不跨 split），並把以下列為 fail-closed 的「一致性與揭露」gate，而非「可區分」gate：
+ (i) context target 的產生碼與 local target 共用同一函式；K1 target identity ≤1e-6；
+ (ii) 不跨 VRT／split（同 v3）；
+ (iii) 揭露：在 TRAIN/VAL 各抽樣統計 context footprint 中原值 255 佔比 vs local footprint 中原值 255 佔比（K2、K4 分別），寫入卡片；若 context 的 255 佔比比 local 高出 >2 倍，標註為「context aux 受未定義 255 區影響較大」的已知限制（描述性，不停跑）；
+ (iv) 不得因此自行移除 context aux；若使用者日後要求 255→ignore 版本，另立實驗。
+請判斷此修正是否可接受；若你仍認為需 fail-closed 停跑條件，請給具體可執行的數值門檻。
+
+請給 v5 最終差異並結尾：
+---VERDICT---
+STANCE / BLOCKING / RESTATE / CONFIDENCE
+---END---

@@ -1,0 +1,34 @@
+【第 6 回合】主持方 Claude。v5 已收斂（你 R5 ACCEPT），但使用者在 gate 1 跑完後做了三項設計變更（使用者裁決，不需辯論是否要改，請審「怎麼改才不出錯」）。
+
+## 先報 gate 1 結果（舊 VAL，P44 全球資料，stride128+TTA）
+P44 S42 / P48 S43：VAL IoU .188/.168。>20px：1.09M GT px、3 事件群、FN share .654/.640、recall .103/.078（6–20px recall .406/.348）。≥80% density：700k px、2 事件群、FN share .452/.439、recall .036/.017。兩 seed 皆過 → targeted。
+揭露：VAL 油像素 51% 為單一景單一元件 NOAA_GoM_HighConf_20190925_S2_16RCS（1.008M px，recall .06/.04）；≥80% bin 692k/700k 來自 GoM；千里達 20240303 20PQT 137k px 元件整塊漏。
+
+## 使用者三項變更
+C1 seed：K1/K2/K4 各跑一次（S42），共 3 runs。Stage A/B、5 seed、4/5 勝、median 門檻全部移除 → 結果定位為單 seed pilot。
+   已知 seed 雜訊：P44 S42 vs S43 VAL IoU 差 .020；S44 全背景塌縮。
+   我的提案（使用者尚未對數字表態，請審）：
+   - 「值得補 seed」＝ primary Δ(Kk−K1) ≥ +0.05 且 >20px recall Δ ≥ +0.10；
+   - 「pilot 負向」＝ Δ ≤ −0.05；其餘一律「不可判定」。任一情形都不得稱支持／否定。
+   - K1 或 Kk 塌縮（VAL recall≤.01 或 pred/gt≤.01）→ 該比較記「不可判定（collapse）」，不得重跑換 seed。
+   - derangement、adoption counterfactual 仍做（描述性）；臺灣仍 VAL 凍結後才讀、只報大林 2／其他 22、純描述。
+C2 資料：改 GoM-only。資料池＝GoM High Confidence 且 splits_sv2 有值的 195 景（v1 定案的同一池；不使用 v1 三折成員，只沿用其分級）。
+   分級（v1 定案）：每景 mask 值 0、8 鄰接最大連續油區面積；q1=4091.33、q2=18171；小<q1、中[q1,q2)、大≥q2，各 65 景。
+   VAL＝30 景、大中小各 10，固定 seed 分層隨機，抽一次後凍結，三組共用；其餘當 TRAIN（約 165 景）。不人工挑景。
+   不拆小組：v1 的 duplicate_group_id（同日 footprint 相交／同官報 ID／同重疊標註報告，157 組：123 單景、30 雙景、4 三景；11 組混 bin：large/medium 7、medium/small 2、large/small 1、L/M/S 1）必須整組進同一側。
+   我的抽樣提案：以 seed 20261111 打亂組順序，依序嘗試加入，若加入後任一 bin 超過 10 景即跳過，直到 10/10/10；若無法剛好填滿則 fail-closed（不放寬為 9/11）。
+   ROI：P44 的 ROI 清單只覆蓋其中 183 景（12 景在 P44 因 split_leak_pairs 為 drop_leak）；這 12 景以 P44 p44_roi.scene_rois 同規則補建。跨日期同地點仍可能分屬兩側（v1 記錄跨組油區 bbox 相交 1,832 對）→ 只揭露，結果只能稱「已見 GoM 地點附近的新場景」。
+   參考：舊 P44 GoM VAL 25 景為 大8/中11/小6，像素 大89%、中10%、小1.3%。195 景各折像素佔比大 84–92%。
+C3 主指標：大、中、小三組各自 pooled oil IoU（組內像素加總）後取算術平均（macro-3）。best checkpoint 選擇（每 VE 的 VAL，stride256 無 TTA）也改用 macro-3；patience 8 等其餘不變。並列 pooled oil IoU 與三組各自 IoU、P/R/pred-gt。
+   注意：某 bin 若 VAL 中沒有任何預測也沒有 GT 不會發生（每 bin 10 景皆有油）。
+
+## 連帶問題，請給明確處置
+Q1 gate 1 的 targeted 定位是在舊 VAL＋全球模型得到的。新 GoM-only 分層 VAL 上沒有現成模型。我提議：保留 targeted 標記但註明來源，K1 跑完後以同一 val_fn_prereq 方法在新 VAL 上補做描述性拆解（不作 gate）。可接受嗎？
+Q2 macro-3 下，小油污 bin 像素少（約 2%），其 IoU 變異會大；用它選 checkpoint 是否需要任何保護（例如 bin 內 GT px 下限揭露）？我傾向不加門檻、只揭露每 bin GT px。
+Q3 TRAIN 從 298 景減為約 165 景、自然比例窗數會變；VE=4000 steps、max 40 VE、batch16 是否維持？我傾向全部維持（與 P51 同理）。
+Q4 其餘 v5 內容（三組架構、聚合頭、aux、context 讀取、area N/D、RRC Δ/k、preflight gates 2–4、200-step gradient exposure）是否全部沿用？有無因 GoM-only 或單 seed 而需改的？
+
+請給 v6 候選稿差異並結尾：
+---VERDICT---
+STANCE / BLOCKING / RESTATE / CONFIDENCE
+---END---
